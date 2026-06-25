@@ -6,15 +6,37 @@ Shows how each term contributes to the overall predicted trend
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from statsmodels.regression.mixed_linear_model import MixedLM
+import warnings
+warnings.filterwarnings('ignore')
 
-# Set style
-plt.style.use('seaborn-v0_8-whitegrid')
+# Set style (this style ships with matplotlib; no seaborn package required)
+try:
+    plt.style.use('seaborn-v0_8-whitegrid')
+except OSError:
+    plt.style.use('ggplot')
 
-# Fixed effects from the model
-intercept = 16.2075
-beta_time = 2.1927
-beta_time2 = -0.9532
-beta_time3 = -0.1831
+# ------------------------------------------------------------
+# Fixed effects fitted live from the analytic dataset, so this
+# visualization can never drift from the model it illustrates.
+# Coefficients come from the time-only baseline (Model 1) on the
+# same N=250 analytic sample saved by hierarchical_violations_model.py.
+# ------------------------------------------------------------
+_df = pd.read_csv('/Users/keshavgoel/Research/model_data_long.csv')
+_df['state'] = pd.Categorical(_df['state'])
+_baseline = MixedLM.from_formula(
+    'violations ~ time + time2 + time3',
+    data=_df, groups=_df['state'], re_formula='~time'
+).fit(method='lbfgs')
+_fe = _baseline.fe_params
+
+intercept  = float(_fe['Intercept'])
+beta_time  = float(_fe['time'])
+beta_time2 = float(_fe['time2'])
+beta_time3 = float(_fe['time3'])
+print(f"Baseline coefficients (fitted, N={len(_df)}): "
+      f"intercept={intercept:.4f}, time={beta_time:.4f}, "
+      f"time2={beta_time2:.4f}, time3={beta_time3:.4f}")
 
 # Create time values (centered on 2017)
 years = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019])
@@ -32,8 +54,9 @@ cumulative_linear = cumulative_intercept + component_linear
 cumulative_quadratic = cumulative_linear + component_quadratic
 cumulative_total = cumulative_quadratic + component_cubic  # This is the final prediction
 
-# Actual mean violations by year
-actual_means = [6.66, 8.46, 7.00, 6.83, 5.96, 14.19, 20.57, 16.67, 15.54]
+# Actual mean violations by year (computed from the same analytic sample)
+_actual = _df.groupby('year')['violations'].mean()
+actual_means = [float(_actual.get(y, np.nan)) for y in years]
 
 # ============================================================
 # FIGURE 1: Stacked Area showing cumulative contribution
@@ -176,7 +199,7 @@ ax3.legend(loc='lower left', fontsize=10)
 ax3.set_xlim(2010.5, 2019.5)
 
 # Add annotations explaining each term
-ax3.annotate('Linear: Constant increase\nof 2.19 per year',
+ax3.annotate(f'Linear: Constant increase\nof {beta_time:.2f} per year',
              xy=(2019, linear_smooth[-1]), xytext=(2018, 8),
              fontsize=9, ha='center',
              arrowprops=dict(arrowstyle='->', color='#E94F37', lw=1.5))

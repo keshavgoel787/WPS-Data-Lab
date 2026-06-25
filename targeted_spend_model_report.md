@@ -120,7 +120,7 @@ The ICC of 78.1% in this restricted sample is consistent with the full-sample ba
 |---|---|
 | Log-Likelihood | −808.50 |
 | Between-state variance explained (pseudo-R²) | **21.25%** |
-| Δσ²\_u0 vs. restricted baseline | −80.10 |
+| Δσ²\_u0 vs. restricted baseline (reduction) | **+80.10** (376.94 → 296.84) |
 
 ---
 

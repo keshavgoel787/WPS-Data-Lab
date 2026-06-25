@@ -11,7 +11,7 @@ Approach (Zimmerman 2000 / Raudenbush & Bryk 2002):
 
 Covariates (all standardized to mean=0, SD=1 before entry):
   1. spending_per_estab       — inflation-adj. grant $ / mean ECHO WPS establishment count
-                                (2015–2019 mean; 2014 imputed from 2015 for CO and CT)
+                                (2014–2019 mean; CO and CT 2014 imputed from 2015)
                                 [team-agreed operationalization: Stephane proposed, Joe and
                                  Kaitlyn agreed; matches enforcement dollars to regulated units]
   2. land_area_sqmi           — total state land area in sq miles (US Census Bureau)
@@ -381,7 +381,7 @@ print(f"Baseline ICC: {icc:.4f}  ({icc*100:.1f}% of variance is between states)"
 print("\n" + "=" * 70)
 print("STEPWISE MODELS — ZIMMERMAN APPROACH")
 print("Variable sequence per research team decision:")
-print("  1. spending_per_estab      (spending / ECHO establishments mean 2015-2019)")
+print("  1. spending_per_estab      (spending / ECHO establishments mean 2014-2019)")
 print("  2. land_area_sqmi          (state total area)")
 print("  3. farming_operations      (total farming operations, Census 2017)")
 print("  4. h2a_workers             (H-2A workers per state, 2017)")
@@ -392,7 +392,7 @@ print("=" * 70)
 all_models = [m0]
 
 predictor_sequence = [
-    ('spending_per_estab_z',      'spending per ECHO establishment (mean 2015–2019)'),
+    ('spending_per_estab_z',      'spending per ECHO establishment (mean 2014–2019)'),
     ('land_area_sqmi_z',          'state land area (sq miles)'),
     ('operations_z',              'total farming operations (Census 2017)'),
     ('h2a_workers_z',             'H-2A workers per state (2017)'),

@@ -6,12 +6,15 @@ Creates 6 visualizations to illustrate model findings
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib.colors import LinearSegmentedColormap
+from statsmodels.regression.mixed_linear_model import MixedLM
+import warnings
+warnings.filterwarnings('ignore')
 
-# Set style
-plt.style.use('seaborn-v0_8-whitegrid')
-sns.set_palette("husl")
+# Set style (this style ships with matplotlib; no seaborn package required)
+try:
+    plt.style.use('seaborn-v0_8-whitegrid')
+except OSError:
+    plt.style.use('ggplot')
 
 # Load the data
 print("Loading data...")
@@ -166,10 +169,17 @@ heatmap_data = heatmap_data.loc[heatmap_data.mean(axis=1).sort_values(ascending=
 
 fig5, ax5 = plt.subplots(figsize=(12, 16))
 
-# Create heatmap
-sns.heatmap(heatmap_data, cmap='YlOrRd', annot=False, fmt='.0f',
-            cbar_kws={'label': 'Violations'}, ax=ax5,
-            linewidths=0.5, linecolor='white')
+# Create heatmap (matplotlib imshow; NaNs shown as blank via masked array)
+masked = np.ma.masked_invalid(heatmap_data.values)
+cmap = plt.cm.YlOrRd.copy()
+cmap.set_bad(color='#f0f0f0')
+im = ax5.imshow(masked, cmap=cmap, aspect='auto')
+ax5.set_xticks(range(len(heatmap_data.columns)))
+ax5.set_xticklabels(heatmap_data.columns)
+ax5.set_yticks(range(len(heatmap_data.index)))
+ax5.set_yticklabels(heatmap_data.index, fontsize=9)
+cbar = fig5.colorbar(im, ax=ax5, fraction=0.025, pad=0.02)
+cbar.set_label('Violations')
 
 ax5.set_xlabel('Year', fontsize=12)
 ax5.set_ylabel('State', fontsize=12)
@@ -185,12 +195,21 @@ print("  Saved: fig5_violations_heatmap.png")
 # ============================================================
 print("Creating Figure 6: Variance Decomposition...")
 
-# These values would come from the model output
-# For visualization, we'll estimate from the data
-between_state_var = df_model.groupby('state')['violations'].mean().var()
-within_state_var = df_model.groupby('state')['violations'].var().mean()
+# Variance components from the actual fitted model (time-only baseline,
+# Model 1) on the same analytic sample, so the ICC here matches the model
+# output rather than a crude group-means approximation.
+df_fit = df_model.copy()
+df_fit['state'] = pd.Categorical(df_fit['state'])
+_m = MixedLM.from_formula(
+    'violations ~ time + time2 + time3',
+    data=df_fit, groups=df_fit['state'], re_formula='~time'
+).fit(method='lbfgs')
+between_state_var = float(_m.cov_re.iloc[0, 0])   # random intercept variance
+within_state_var = float(_m.scale)                # residual variance
 total_var = between_state_var + within_state_var
 icc = between_state_var / total_var
+print(f"  Variance components (fitted): between={between_state_var:.2f}, "
+      f"within={within_state_var:.2f}, ICC={icc:.3f}")
 
 fig6, (ax6a, ax6b) = plt.subplots(1, 2, figsize=(12, 5))
 
