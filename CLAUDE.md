@@ -26,6 +26,10 @@ python3 inspections_targeted_spend_model.py   # requires spend_bls_variables.csv
 # Labor intensity & DOL H-2A covariate models (new datasets)
 python3 labor_covariates_violations_models.py
 python3 labor_covariates_inspections_models.py
+
+# Final curated models (PI-directed: lii_2017 only; inspections linear-time)
+python3 final_labor_violations_model.py
+python3 final_labor_inspections_model.py
 ```
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded.
@@ -71,7 +75,7 @@ New data files (used by `labor_covariates_*.py`):
 - `CPI_U`: BLS CPI-U annual averages 2011–2019, base year 2017 for inflation adjustment
 - `STATE_NAME_MAPPING = {'Massachusetts ': 'Massachusetts', 'Oregon ': 'Oregon'}`: known trailing-space issues in ECHO index
 
-**Time variable**: always `time = year − 2017`. Cubic polynomial (`time`, `time2`, `time3`) is retained in all models. Never drop terms.
+**Time variable**: always `time = year − 2017`. Cubic polynomial (`time`, `time2`, `time3`) is retained in all violations and all *exploratory* models. Never drop terms — **except** in the curated final **inspections** models (`final_labor_inspections_model.py`), where per PI direction (2026-06) the inspections series carries only a linear time trend, so `time2`/`time3` are dropped and the pseudo-R² baseline is re-estimated as linear-time on the same analytic sample. Violations final models keep the cubic.
 
 **Model estimation**: always `MixedLM.from_formula(..., re_formula='~time').fit(method='lbfgs')` — random intercept + random slope for linear time by state, REML.
 
@@ -95,6 +99,8 @@ New data files (used by `labor_covariates_*.py`):
 | `inspections_targeted_spend_model.py` | Same FIFRA targeted model with inspections DV | Terminal output only |
 | `labor_covariates_violations_models.py` | Zimmerman stepwise for 6 new labor/DOL covariates, DV = violations | Terminal output only |
 | `labor_covariates_inspections_models.py` | Same, DV = inspections | Terminal output only |
+| `final_labor_violations_model.py` | Curated final model: cubic time + labor/DOL block (lii_2017 only, no lii_2012); ×time interactions screened at p<.20 | Terminal output only |
+| `final_labor_inspections_model.py` | Curated final model: **linear** time + labor/DOL block (lii_2017 only); linear-time baseline | Terminal output only |
 
 ## BLS OEWS Data Notes
 
