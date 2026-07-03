@@ -14,7 +14,16 @@ Curated final model implementing PI guidance (2026-06):
      are linear-time only — see final_labor_inspections_model.py.)
 
 Final covariate block (z-scored Level-2 predictors):
-  lii_2017_z, dol_workers_cert_z, dol_n_cases_z, dol_demand_met_pct_z, pct_flc_z
+  lii_2017_z, h2a_per_farmworker_z, dol_demand_met_pct_z, pct_flc_z
+
+Change log (2026-07, PI direction):
+  • dol_workers_cert (raw certified H-2A count) is REPLACED by h2a_per_farmworker
+    = mean certified H-2A workers / farmworker employment (BLS OEWS OCC 45-2092,
+    2011 snapshot). This expresses H-2A certified visas relative to the state
+    agricultural workforce rather than as a raw count. ~6–7 BLS-suppressed states
+    drop out listwise.
+  • dol_n_cases is DROPPED from the block.
+  • Labor Intensity Index retains ONLY the 2017 wave (2012/2022 dropped).
 
 ×time interactions are screened one-at-a-time and included if p < .20, matching
 the established combined-model convention. The pseudo-R² baseline is
@@ -79,8 +88,9 @@ STATE_NAME_MAPPING = {
 TIME_TERMS  = ['time', 'time2', 'time3']
 TIME_PREFIX = ' + '.join(TIME_TERMS)
 
-# Final-model covariate block (lii_2012 dropped — collinear with lii_2017).
-FINAL_COVARIATES = ['lii_2017', 'dol_workers_cert', 'dol_n_cases',
+# Final-model covariate block (lii_2012 dropped — collinear with lii_2017;
+# dol_workers_cert replaced by the h2a_per_farmworker ratio; dol_n_cases dropped).
+FINAL_COVARIATES = ['lii_2017', 'h2a_per_farmworker',
                     'dol_demand_met_pct', 'pct_flc']
 
 print("=" * 70)
@@ -150,19 +160,37 @@ print(f"    lii_2017: {level2['lii_2017'].notna().sum()} states "
       f"(2012/2022 waves excluded — collinear, r≈0.977)")
 
 # --- 2b. DOL H-2A Annual Workers (2011–2019, excl. 2013/2014) ---
+#     n_cases dropped per PI direction (2026-07). workers_certified is retained
+#     only to build the h2a_per_farmworker ratio in 2c (not entered as a raw count).
 dol1 = pd.read_csv('/Users/keshavgoel/Research/dol_var1_workers_by_state_annual.csv')
 dol_study = dol1[dol1['year'].between(2011, 2019) & (dol1['year'] != 2013)].copy()
 dol_means = dol_study.groupby('state').agg(
     dol_workers_cert=('workers_certified', 'mean'),
-    dol_n_cases=('n_cases', 'mean'),
     dol_demand_met_pct=('demand_met_pct', lambda x: x[x != np.inf].mean())
 ).reset_index()
 dol_means['state_name'] = dol_means['state'].map(STATE_ABBREV_TO_NAME)
 level2 = level2.merge(dol_means[['state_name', 'dol_workers_cert',
-                                 'dol_n_cases', 'dol_demand_met_pct']].rename(
+                                 'dol_demand_met_pct']].rename(
     columns={'state_name': 'state'}), on='state', how='left')
 
-# --- 2c. DOL Employer Type (2020 proxy) ---
+# --- 2c. H-2A workers relative to the agricultural workforce ---
+#     Numerator: mean certified H-2A workers (from 2b).  Denominator: farmworker
+#     employment (BLS OEWS OCC 45-2092 "Farmworkers and Laborers, Crop, Nursery,
+#     and Greenhouse", 2011 snapshot).  ~6–7 BLS-suppressed states drop out listwise.
+bls = pd.read_csv('/Users/keshavgoel/Research/bls_oews_panel.csv')
+emp_farmworker = (
+    bls[bls['occ_code'] == '45-2092']
+    .rename(columns={'area_title': 'state', 'tot_emp': 'emp_farmworker'})
+    [['state', 'emp_farmworker']]
+)
+level2 = level2.merge(emp_farmworker, on='state', how='left')
+level2['h2a_per_farmworker'] = level2['dol_workers_cert'] / level2['emp_farmworker']
+print(f"    emp_farmworker (BLS 45-2092): "
+      f"{level2['emp_farmworker'].notna().sum()} states non-missing")
+print(f"    h2a_per_farmworker = cert. H-2A / farmworkers: "
+      f"{level2['h2a_per_farmworker'].notna().sum()} states")
+
+# --- 2d. DOL Employer Type (2020 proxy) ---
 dol2 = pd.read_csv('/Users/keshavgoel/Research/dol_var2_employer_type_annual.csv')
 d2020 = dol2[dol2['year'] == 2020].copy()
 d2020['state_name'] = d2020['state'].map(STATE_ABBREV_TO_NAME)

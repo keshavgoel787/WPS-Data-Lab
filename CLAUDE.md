@@ -30,6 +30,9 @@ python3 labor_covariates_inspections_models.py
 # Final curated models (PI-directed: lii_2017 only; inspections linear-time)
 python3 final_labor_violations_model.py
 python3 final_labor_inspections_model.py
+
+# Comprehensive "every variable" inspections model (kitchen-sink, exploratory)
+python3 comprehensive_inspections_model.py
 ```
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded.
@@ -99,8 +102,11 @@ New data files (used by `labor_covariates_*.py`):
 | `inspections_targeted_spend_model.py` | Same FIFRA targeted model with inspections DV | Terminal output only |
 | `labor_covariates_violations_models.py` | Zimmerman stepwise for 6 new labor/DOL covariates, DV = violations | Terminal output only |
 | `labor_covariates_inspections_models.py` | Same, DV = inspections | Terminal output only |
-| `final_labor_violations_model.py` | Curated final model: cubic time + labor/DOL block (lii_2017 only, no lii_2012); ×time interactions screened at p<.20 | Terminal output only |
-| `final_labor_inspections_model.py` | Curated final model: **linear** time + labor/DOL block (lii_2017 only); linear-time baseline | Terminal output only |
+| `final_labor_violations_model.py` | Curated final model: cubic time + labor/DOL block; ×time interactions screened at p<.20 | Terminal output only |
+| `final_labor_inspections_model.py` | Curated final model: **linear** time + labor/DOL block; linear-time baseline | Terminal output only |
+| `comprehensive_inspections_model.py` | Kitchen-sink inspections model entering **every** project covariate (15 predictors) + ×time screen; linear time; exploratory | Terminal output only |
+
+**Final-model covariate block (2026-07 revision, both final models):** `lii_2017_z, h2a_per_farmworker_z, dol_demand_met_pct_z, pct_flc_z`. `h2a_per_farmworker` = mean certified H-2A workers ÷ BLS OCC 45-2092 farmworkers (2011). Replaces the raw `dol_workers_cert`; `dol_n_cases` dropped. BLS suppression → N=44 states. See `final_models_update_2026-07.md`.
 
 ## BLS OEWS Data Notes
 
