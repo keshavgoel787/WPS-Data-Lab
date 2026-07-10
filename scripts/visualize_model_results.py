@@ -18,9 +18,9 @@ except OSError:
 
 # Load the data
 print("Loading data...")
-df_model = pd.read_csv('/Users/keshavgoel/Research/model_data_long.csv')
-re_df = pd.read_csv('/Users/keshavgoel/Research/state_random_effects.csv')
-pred_df = pd.read_csv('/Users/keshavgoel/Research/predicted_trend.csv')
+df_model = pd.read_csv('/Users/keshavgoel/Research/data/generated/model_data_long.csv')
+re_df = pd.read_csv('/Users/keshavgoel/Research/data/generated/state_random_effects.csv')
+pred_df = pd.read_csv('/Users/keshavgoel/Research/data/generated/predicted_trend.csv')
 
 # ============================================================
 # FIGURE 1: National Trend - Predicted vs Actual
@@ -46,7 +46,7 @@ ax1.legend(loc='best', fontsize=10)
 ax1.set_xticks(range(2011, 2020))
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig1_national_trend.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig1_national_trend.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig1_national_trend.png")
 
@@ -82,7 +82,7 @@ legend_elements = [Patch(facecolor='#E94F37', alpha=0.8, label='Above Average'),
 ax2.legend(handles=legend_elements, loc='lower right', fontsize=10)
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig2_state_random_effects.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig2_state_random_effects.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig2_state_random_effects.png")
 
@@ -113,7 +113,7 @@ ax3.legend(loc='best', fontsize=10)
 ax3.set_xticks(range(2011, 2020))
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig3_state_trajectories.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig3_state_trajectories.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig3_state_trajectories.png")
 
@@ -152,7 +152,7 @@ else:
     ax4.legend()
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig4_random_effects_scatter.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig4_random_effects_scatter.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig4_random_effects_scatter.png")
 
@@ -186,7 +186,7 @@ ax5.set_ylabel('State', fontsize=12)
 ax5.set_title('EPA Violations by State and Year (2011-2019)\nHeatmap sorted by average violations', fontsize=14)
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig5_violations_heatmap.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig5_violations_heatmap.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig5_violations_heatmap.png")
 
@@ -240,7 +240,7 @@ for bar, val in zip(bars, var_components['Variance']):
               f'{val:.1f}', ha='center', va='bottom', fontsize=11)
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig6_variance_decomposition.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig6_variance_decomposition.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig6_variance_decomposition.png")
 
@@ -305,7 +305,7 @@ ax.set_xticks(range(2011, 2020))
 plt.suptitle('Hierarchical Mixed-Effects Model: EPA Violations Analysis (2011-2019)',
              fontsize=16, fontweight='bold', y=1.02)
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_summary_combined.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_summary_combined.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("  Saved: fig_summary_combined.png")
 

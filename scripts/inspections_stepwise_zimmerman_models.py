@@ -89,7 +89,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base inspections and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -121,7 +121,7 @@ echo_long_filtered['time']  = echo_long_filtered['year'] - 2017
 echo_long_filtered['time2'] = echo_long_filtered['time'] ** 2
 echo_long_filtered['time3'] = echo_long_filtered['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -183,7 +183,7 @@ print("PREPARING LEVEL-2 STATE COVARIATES")
 print("=" * 70)
 
 print("\n[3a] Loading H2A state summary (2017 Census)...")
-h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/h2a_state_summary_2017.csv')
+h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/data/raw/h2a_state_summary_2017.csv')
 h2a_2017['state'] = h2a_2017['state_code'].map(STATE_ABBREV_TO_NAME)
 h2a_2017 = h2a_2017[h2a_2017['state'].isin(US_STATES_50)].copy()
 print(f"  States in H2A 2017 data: {h2a_2017['state'].nunique()}")

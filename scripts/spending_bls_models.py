@@ -104,7 +104,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base violations and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -125,7 +125,7 @@ echo_long_filtered['time']  = echo_long_filtered['year'] - 2017
 echo_long_filtered['time2'] = echo_long_filtered['time'] ** 2
 echo_long_filtered['time3'] = echo_long_filtered['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -162,7 +162,7 @@ level2 = level2.merge(mean_spending, on='state', how='left')
 level2['land_area_sqmi'] = level2['state'].map(STATE_LAND_AREA_SQMI)
 
 # --- 2b. Farming operations (Census of Agriculture 2017 via Yuri's data) ---
-h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/h2a_state_summary_2017.csv')
+h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/data/raw/h2a_state_summary_2017.csv')
 h2a_2017['state'] = h2a_2017['state_code'].map(STATE_ABBREV_TO_NAME)
 h2a_2017 = h2a_2017[h2a_2017['state'].isin(US_STATES_50)].copy()
 level2 = level2.merge(h2a_2017[['state', 'operations']], on='state', how='left')
@@ -471,7 +471,7 @@ save_cols = ['state', 'mean_spending_2017', 'land_area_sqmi', 'operations',
              'SPEND_WORK', 'SPEND_APP', 'SPEND_FLC', 'SPEND_OP', 'SPEND_AREA',
              'SPEND_WORK_z', 'SPEND_APP_z', 'SPEND_FLC_z', 'SPEND_OP_z', 'SPEND_AREA_z']
 
-level2[save_cols].to_csv('/Users/keshavgoel/Research/spend_bls_variables.csv', index=False)
+level2[save_cols].to_csv('/Users/keshavgoel/Research/data/generated/spend_bls_variables.csv', index=False)
 print("  Saved: spend_bls_variables.csv")
 print(f"  Rows: {len(level2)}  |  Columns: {save_cols}")
 

@@ -38,7 +38,7 @@ STATE_NAME_MAPPING = {
 # ------------------------------------------------------------
 # Load and reshape ECHO data to long format (state, year)
 # ------------------------------------------------------------
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -166,7 +166,7 @@ if len(nan_insp) > 0:
             nan_with_viol[['state', 'year', 'insp_epa', 'insp_state', 'violations']], index=False))
 
 report = "\n".join(lines) + "\n"
-with open('/Users/keshavgoel/Research/inspection_violation_crosstab_diagnostic.md', 'w') as f:
+with open('/Users/keshavgoel/Research/docs/inspection_violation_crosstab_diagnostic.md', 'w') as f:
     f.write(report)
 
 # Console echo

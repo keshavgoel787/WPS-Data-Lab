@@ -1,33 +1,33 @@
 """
-FINAL MODEL — WPS Violations, Labor/DOL Covariates
+FINAL MODEL — WPS Inspections, Labor/DOL Covariates
 
-Curated final model implementing PI guidance (2026-06):
+Curated final model implementing PI guidance (2026-06). Structural mirror of
+final_labor_violations_model.py; two outcome-specific differences:
 
-  1. Labor Intensity Index collinearity: lii_2012 / lii_2017 / lii_2022 are
-     near-collinear (r ≈ 0.977) and produce sign flips when entered together.
-     The final model retains ONLY the 2017 wave, matching the time reference
-     year (time = year − 2017). The 2012-vs-2017 comparison remains documented
-     in the exploratory script labor_covariates_violations_models.py.
+  1. Labor Intensity Index collinearity: only the 2017 wave is retained
+     (lii_2012 / lii_2022 are near-collinear, r ≈ 0.977). Same as violations.
 
-  2. Violations retain the cubic time polynomial (time + time2 + time3): the
-     2016–2017 spike is asymmetric and requires it. (Inspections, by contrast,
-     are linear-time only — see final_labor_inspections_model.py.)
+  2. TIME SPECIFICATION: inspections are modeled with LINEAR time only.
+     The quadratic (time2) and cubic (time3) terms are dropped from the final
+     model — the inspections series shows only a linear time trend (the
+     curvilinear/cubic terms were non-significant), unlike the violations
+     series whose 2016–2017 spike requires the cubic. The pseudo-R² baseline
+     is likewise a linear-time baseline, re-estimated on the same analytic
+     sample so the variance-reduction comparison is against a matched baseline.
 
 Final covariate block (z-scored Level-2 predictors):
   lii_2017_z, h2a_per_farmworker_z, dol_demand_met_pct_z, pct_flc_z
 
-Change log (2026-07, PI direction):
+Change log (2026-07, PI direction) — identical to the violations final model:
   • dol_workers_cert (raw certified H-2A count) is REPLACED by h2a_per_farmworker
     = mean certified H-2A workers / farmworker employment (BLS OEWS OCC 45-2092,
-    2011 snapshot). This expresses H-2A certified visas relative to the state
-    agricultural workforce rather than as a raw count. ~6–7 BLS-suppressed states
-    drop out listwise.
+    2011 snapshot). ~6–7 BLS-suppressed states drop out listwise.
   • dol_n_cases is DROPPED from the block.
   • Labor Intensity Index retains ONLY the 2017 wave (2012/2022 dropped).
 
-×time interactions are screened one-at-a-time and included if p < .20, matching
-the established combined-model convention. The pseudo-R² baseline is
-re-estimated on the final listwise-complete analytic sample.
+×time interactions are screened one-at-a-time and included if p < .20. With a
+linear-time model these interactions are linear (covariate × time) and are
+therefore consistent with dropping the higher-order polynomial terms.
 """
 
 import pandas as pd
@@ -84,8 +84,8 @@ STATE_NAME_MAPPING = {
     'Oregon ': 'Oregon',
 }
 
-# Final-model time specification: violations retain the cubic polynomial.
-TIME_TERMS  = ['time', 'time2', 'time3']
+# Final-model time specification: inspections are LINEAR-time only.
+TIME_TERMS  = ['time']
 TIME_PREFIX = ' + '.join(TIME_TERMS)
 
 # Final-model covariate block (lii_2012 dropped — collinear with lii_2017;
@@ -94,36 +94,46 @@ FINAL_COVARIATES = ['lii_2017', 'h2a_per_farmworker',
                     'dol_demand_met_pct', 'pct_flc']
 
 print("=" * 70)
-print("FINAL MODEL — WPS VIOLATIONS (LABOR/DOL COVARIATES)")
+print("FINAL MODEL — WPS INSPECTIONS (LABOR/DOL COVARIATES, LINEAR TIME)")
 print("=" * 70)
 
 # ============================================================
-# [1] BASE VIOLATIONS + SPENDING DATA
+# [1] BASE INSPECTIONS + SPENDING DATA
 # ============================================================
-print("\n[1] Loading base violations and spending data...")
+print("\n[1] Loading base inspections and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
 echo_long_list = []
 for year in range(2011, 2020):
-    col = f'violations-{year}'
-    if col in echo_df.columns:
-        echo_long_list.append(pd.DataFrame({
-            'state': echo_df.index,
-            'year': year,
-            'violations': echo_df[col].values
-        }))
+    col_epa   = f'inspections-epa-{year}'
+    col_state = f'inspections-state-{year}'
+    epa_vals   = pd.to_numeric(
+        echo_df[col_epa]   if col_epa   in echo_df.columns else pd.Series(np.nan, index=echo_df.index),
+        errors='coerce'
+    )
+    state_vals = pd.to_numeric(
+        echo_df[col_state] if col_state in echo_df.columns else pd.Series(np.nan, index=echo_df.index),
+        errors='coerce'
+    )
+    total = epa_vals.add(state_vals, fill_value=0)
+    echo_long_list.append(pd.DataFrame({
+        'state':       echo_df.index,
+        'year':        year,
+        'inspections': total.values
+    }))
+
 echo_long = pd.concat(echo_long_list, ignore_index=True)
 echo_long = echo_long[echo_long['state'].isin(US_STATES_50)].copy()
-echo_long['violations'] = pd.to_numeric(echo_long['violations'], errors='coerce')
-echo_long = echo_long.dropna(subset=['violations'])
+echo_long['inspections'] = pd.to_numeric(echo_long['inspections'], errors='coerce')
+echo_long = echo_long.dropna(subset=['inspections'])
 echo_long['time']  = echo_long['year'] - 2017
 echo_long['time2'] = echo_long['time'] ** 2
 echo_long['time3'] = echo_long['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -152,7 +162,7 @@ print("\n[2] Constructing final Level-2 covariates (lii_2017 only)...")
 level2 = pd.DataFrame({'state': US_STATES_50})
 
 # --- 2a. Labor Intensity Index — 2017 wave only ---
-li_17 = pd.read_csv('/Users/keshavgoel/Research/labor_intensity_index_2017.csv')
+li_17 = pd.read_csv('/Users/keshavgoel/Research/data/raw/labor_intensity_index_2017.csv')
 li_17['state'] = li_17['state_name'].str.title()
 level2 = level2.merge(li_17[['state', 'Labor_Intensity_Index']].rename(
     columns={'Labor_Intensity_Index': 'lii_2017'}), on='state', how='left')
@@ -162,7 +172,7 @@ print(f"    lii_2017: {level2['lii_2017'].notna().sum()} states "
 # --- 2b. DOL H-2A Annual Workers (2011–2019, excl. 2013/2014) ---
 #     n_cases dropped per PI direction (2026-07). workers_certified is retained
 #     only to build the h2a_per_farmworker ratio in 2c (not entered as a raw count).
-dol1 = pd.read_csv('/Users/keshavgoel/Research/dol_var1_workers_by_state_annual.csv')
+dol1 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var1_workers_by_state_annual.csv')
 dol_study = dol1[dol1['year'].between(2011, 2019) & (dol1['year'] != 2013)].copy()
 dol_means = dol_study.groupby('state').agg(
     dol_workers_cert=('workers_certified', 'mean'),
@@ -177,7 +187,7 @@ level2 = level2.merge(dol_means[['state_name', 'dol_workers_cert',
 #     Numerator: mean certified H-2A workers (from 2b).  Denominator: farmworker
 #     employment (BLS OEWS OCC 45-2092 "Farmworkers and Laborers, Crop, Nursery,
 #     and Greenhouse", 2011 snapshot).  ~6–7 BLS-suppressed states drop out listwise.
-bls = pd.read_csv('/Users/keshavgoel/Research/bls_oews_panel.csv')
+bls = pd.read_csv('/Users/keshavgoel/Research/data/raw/bls_oews_panel.csv')
 emp_farmworker = (
     bls[bls['occ_code'] == '45-2092']
     .rename(columns={'area_title': 'state', 'tot_emp': 'emp_farmworker'})
@@ -191,7 +201,7 @@ print(f"    h2a_per_farmworker = cert. H-2A / farmworkers: "
       f"{level2['h2a_per_farmworker'].notna().sum()} states")
 
 # --- 2d. DOL Employer Type (2020 proxy) ---
-dol2 = pd.read_csv('/Users/keshavgoel/Research/dol_var2_employer_type_annual.csv')
+dol2 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var2_employer_type_annual.csv')
 d2020 = dol2[dol2['year'] == 2020].copy()
 d2020['state_name'] = d2020['state'].map(STATE_ABBREV_TO_NAME)
 d2020 = d2020.rename(columns={'pct_Farm Labor Contractor': 'pct_flc'})
@@ -261,13 +271,13 @@ def print_params(m):
 
 
 # ============================================================
-# [6] BASELINE (re-estimated on FINAL analytic sample)
+# [6] BASELINE — LINEAR-TIME (re-estimated on FINAL analytic sample)
 # ============================================================
 print("\n" + "=" * 70)
-print("BASELINE — TIME POLYNOMIAL ONLY (final analytic sample)")
+print("BASELINE — LINEAR TIME ONLY (final analytic sample)")
 print("=" * 70)
 
-m0 = fit_mixedlm(f'violations ~ {TIME_PREFIX}', df_final, pred_cols=[])
+m0 = fit_mixedlm(f'inspections ~ {TIME_PREFIX}', df_final, pred_cols=[])
 baseline_var_ri = m0['var_ri']
 icc = baseline_var_ri / (baseline_var_ri + m0['var_res'])
 print_params(m0)
@@ -285,7 +295,7 @@ print("  " + "-" * 56)
 
 included_int = []
 for zc in z_cols:
-    mb = fit_mixedlm(f'violations ~ {TIME_PREFIX} + {zc} + {zc}:time',
+    mb = fit_mixedlm(f'inspections ~ {TIME_PREFIX} + {zc} + {zc}:time',
                      df_final, pred_cols=[zc, f'{zc}:time'])
     int_term = f'{zc}:time'
     pval = mb['pvalues'].get(int_term, float('nan'))
@@ -300,11 +310,11 @@ for zc in z_cols:
 # [8] FINAL MODEL
 # ============================================================
 print("\n" + "=" * 70)
-print("FINAL MODEL — violations ~ cubic time + labor/DOL block")
+print("FINAL MODEL — inspections ~ linear time + labor/DOL block")
 print("=" * 70)
 
 int_list = [f'{c}:time' for c in included_int]
-final_formula = (f'violations ~ {TIME_PREFIX} + ' + ' + '.join(z_cols) +
+final_formula = (f'inspections ~ {TIME_PREFIX} + ' + ' + '.join(z_cols) +
                  (' + ' + ' + '.join(int_list) if int_list else ''))
 print(f"\nFormula: {final_formula}")
 print(f"Interactions retained (p<.20): {included_int if included_int else 'none'}")
@@ -322,5 +332,5 @@ print(f"  σ²_ε  = {m_final['var_res']:.4f}")
 print(f"  Log-Likelihood: {m_final['llf']:.2f}")
 
 print("\n" + "=" * 70)
-print("FINAL VIOLATIONS MODEL COMPLETE")
+print("FINAL INSPECTIONS MODEL COMPLETE")
 print("=" * 70)

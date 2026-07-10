@@ -101,7 +101,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base inspections and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -132,7 +132,7 @@ echo_long_filtered['time']  = echo_long_filtered['year'] - 2017
 echo_long_filtered['time2'] = echo_long_filtered['time'] ** 2
 echo_long_filtered['time3'] = echo_long_filtered['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -160,7 +160,7 @@ print(f"  Base dataset: {len(df_model)} obs, {df_model['state'].nunique()} state
 # ============================================================
 print("\n[2] Building Level-2 spending denominators (from spend_bls_variables.csv)...")
 
-spend_lv2 = pd.read_csv('/Users/keshavgoel/Research/spend_bls_variables.csv')
+spend_lv2 = pd.read_csv('/Users/keshavgoel/Research/data/generated/spend_bls_variables.csv')
 spend_vars  = ['SPEND_WORK', 'SPEND_APP', 'SPEND_FLC', 'SPEND_OP', 'SPEND_AREA']
 spend_z_vars = [v + '_z' for v in spend_vars]
 

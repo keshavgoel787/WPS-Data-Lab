@@ -76,7 +76,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base inspections and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -107,7 +107,7 @@ echo_long['time']  = echo_long['year'] - 2017
 echo_long['time2'] = echo_long['time'] ** 2
 echo_long['time3'] = echo_long['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -137,9 +137,9 @@ level2 = pd.DataFrame({'state': US_STATES_50})
 
 # --- 2a. Labor Intensity Index ---
 print("\n  [2a] Labor Intensity Index (Census of Agriculture)...")
-li_17 = pd.read_csv('/Users/keshavgoel/Research/labor_intensity_index_2017.csv')
+li_17 = pd.read_csv('/Users/keshavgoel/Research/data/raw/labor_intensity_index_2017.csv')
 li_17['state'] = li_17['state_name'].str.title()
-li_12 = pd.read_csv('/Users/keshavgoel/Research/labor_intensity_index_2012.csv')
+li_12 = pd.read_csv('/Users/keshavgoel/Research/data/raw/labor_intensity_index_2012.csv')
 li_12['state'] = li_12['state_name'].str.title()
 
 level2 = level2.merge(li_17[['state', 'Labor_Intensity_Index']].rename(
@@ -155,7 +155,7 @@ print(f"    Pearson r(lii_2012, lii_2017): {level2['lii_2012'].corr(level2['lii_
 
 # --- 2b. DOL H-2A Annual Workers ---
 print("\n  [2b] DOL H-2A annual workers (2011–2019)...")
-dol1 = pd.read_csv('/Users/keshavgoel/Research/dol_var1_workers_by_state_annual.csv')
+dol1 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var1_workers_by_state_annual.csv')
 dol_study = dol1[dol1['year'].between(2011, 2019) & (dol1['year'] != 2013)].copy()
 print(f"    Years used: {sorted(dol_study['year'].unique())} (2013 excluded: missing)")
 
@@ -175,7 +175,7 @@ for v in ['dol_workers_cert', 'dol_n_cases', 'dol_demand_met_pct']:
 
 # --- 2c. DOL Employer Type (2020 proxy) ---
 print("\n  [2c] DOL employer type — pct Farm Labor Contractor (2020 proxy)...")
-dol2 = pd.read_csv('/Users/keshavgoel/Research/dol_var2_employer_type_annual.csv')
+dol2 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var2_employer_type_annual.csv')
 d2020 = dol2[dol2['year'] == 2020].copy()
 d2020['state_name'] = d2020['state'].map(STATE_ABBREV_TO_NAME)
 d2020 = d2020.rename(columns={'pct_Farm Labor Contractor': 'pct_flc'})

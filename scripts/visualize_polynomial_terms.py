@@ -22,7 +22,7 @@ except OSError:
 # Coefficients come from the time-only baseline (Model 1) on the
 # same N=250 analytic sample saved by hierarchical_violations_model.py.
 # ------------------------------------------------------------
-_df = pd.read_csv('/Users/keshavgoel/Research/model_data_long.csv')
+_df = pd.read_csv('/Users/keshavgoel/Research/data/generated/model_data_long.csv')
 _df['state'] = pd.Categorical(_df['state'])
 _baseline = MixedLM.from_formula(
     'violations ~ time + time2 + time3',
@@ -86,7 +86,7 @@ ax1.legend(loc='upper left', fontsize=10)
 ax1.set_xticks(years)
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_polynomial_stacked.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_polynomial_stacked.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("Saved: fig_polynomial_stacked.png")
 
@@ -152,7 +152,7 @@ ax.legend(fontsize=9, loc='lower left')
 
 plt.suptitle('Decomposition of Polynomial Time Terms', fontsize=16, fontweight='bold', y=1.02)
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_polynomial_components.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_polynomial_components.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("Saved: fig_polynomial_components.png")
 
@@ -215,7 +215,7 @@ ax3.annotate('Cubic: Asymmetry\n(positive before 2017,\nnegative after)',
              arrowprops=dict(arrowstyle='->', color='#86BA90', lw=1.5))
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_polynomial_curves.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_polynomial_curves.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("Saved: fig_polynomial_curves.png")
 
@@ -254,7 +254,7 @@ for i, y in enumerate(years):
                     arrowprops=dict(arrowstyle='->', color='gray', alpha=0.3, lw=1))
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_polynomial_buildup.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_polynomial_buildup.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("Saved: fig_polynomial_buildup.png")
 
@@ -304,7 +304,7 @@ ax5.set_title('Polynomial Term Calculation Table\n(Yellow = 2017, the reference 
               fontsize=14, fontweight='bold', pad=20)
 
 plt.tight_layout()
-plt.savefig('/Users/keshavgoel/Research/fig_polynomial_table.png', dpi=150, bbox_inches='tight')
+plt.savefig('/Users/keshavgoel/Research/figures/fig_polynomial_table.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("Saved: fig_polynomial_table.png")
 

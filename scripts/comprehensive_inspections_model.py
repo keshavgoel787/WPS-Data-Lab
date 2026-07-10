@@ -127,7 +127,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base inspections and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -154,7 +154,7 @@ echo_long['time']  = echo_long['year'] - 2017
 echo_long['time2'] = echo_long['time'] ** 2
 echo_long['time3'] = echo_long['time'] ** 3
 
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -203,7 +203,7 @@ level2['establishments_mean'] = level2['state'].map(est_df['establishments_mean'
 level2['spending_per_estab'] = level2['mean_spending_2017'] / level2['establishments_mean']
 
 # --- 2d. Census of Agriculture 2017 (operations, H-2A workers) ---
-h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/h2a_state_summary_2017.csv')
+h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/data/raw/h2a_state_summary_2017.csv')
 h2a_2017['state'] = h2a_2017['state_code'].map(STATE_ABBREV_TO_NAME)
 h2a_2017 = h2a_2017[h2a_2017['state'].isin(US_STATES_50)].copy()
 level2 = level2.merge(
@@ -212,7 +212,7 @@ level2 = level2.merge(
 )
 
 # --- 2e. BLS OEWS employment (2011 snapshot; 3 occupations) ---
-bls = pd.read_csv('/Users/keshavgoel/Research/bls_oews_panel.csv')
+bls = pd.read_csv('/Users/keshavgoel/Research/data/raw/bls_oews_panel.csv')
 bls_wide = bls.pivot_table(index='area_title', columns='occ_code',
                            values='tot_emp', aggfunc='first').reset_index()
 bls_wide.columns.name = None
@@ -235,14 +235,14 @@ level2['SPEND_OP']   = level2['mean_spending_2017'] / level2['operations']
 level2['SPEND_AREA'] = level2['mean_spending_2017'] / level2['land_area_sqmi']
 
 # --- 2g. Labor Intensity Index (2017 wave only) ---
-li_17 = pd.read_csv('/Users/keshavgoel/Research/labor_intensity_index_2017.csv')
+li_17 = pd.read_csv('/Users/keshavgoel/Research/data/raw/labor_intensity_index_2017.csv')
 li_17['state'] = li_17['state_name'].str.title()
 level2 = level2.merge(li_17[['state', 'Labor_Intensity_Index']].rename(
     columns={'Labor_Intensity_Index': 'lii_2017'}), on='state', how='left')
 
 # --- 2h. DOL H-2A workers → demand met + h2a_per_farmworker ratio ---
 #     n_cases excluded; dol_workers_cert used only as the ratio numerator.
-dol1 = pd.read_csv('/Users/keshavgoel/Research/dol_var1_workers_by_state_annual.csv')
+dol1 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var1_workers_by_state_annual.csv')
 dol_study = dol1[dol1['year'].between(2011, 2019) & (dol1['year'] != 2013)].copy()
 dol_means = dol_study.groupby('state').agg(
     dol_workers_cert=('workers_certified', 'mean'),
@@ -255,7 +255,7 @@ level2 = level2.merge(dol_means[['state_name', 'dol_workers_cert',
 level2['h2a_per_farmworker'] = level2['dol_workers_cert'] / level2['emp_farmworker']
 
 # --- 2i. DOL employer type (2020 proxy) → pct_flc ---
-dol2 = pd.read_csv('/Users/keshavgoel/Research/dol_var2_employer_type_annual.csv')
+dol2 = pd.read_csv('/Users/keshavgoel/Research/data/raw/dol_var2_employer_type_annual.csv')
 d2020 = dol2[dol2['year'] == 2020].copy()
 d2020['state_name'] = d2020['state'].map(STATE_ABBREV_TO_NAME)
 d2020 = d2020.rename(columns={'pct_Farm Labor Contractor': 'pct_flc'})

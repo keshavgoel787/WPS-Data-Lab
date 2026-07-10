@@ -124,7 +124,7 @@ print("=" * 70)
 # ============================================================
 print("\n[1] Loading base violations and spending data...")
 
-echo_df = pd.read_csv('/Users/keshavgoel/Research/establishments-data (2).csv', index_col=0)
+echo_df = pd.read_csv('/Users/keshavgoel/Research/data/raw/establishments_data.csv', index_col=0)
 echo_df.index = echo_df.index.str.strip()
 echo_df.index = echo_df.index.map(lambda x: STATE_NAME_MAPPING.get(x, x))
 
@@ -149,7 +149,7 @@ echo_long_filtered['time2'] = echo_long_filtered['time'] ** 2
 echo_long_filtered['time3'] = echo_long_filtered['time'] ** 3
 
 # Spending
-spending_raw = pd.read_csv('/Users/keshavgoel/Research/spending_data_master(in) (1).csv')
+spending_raw = pd.read_csv('/Users/keshavgoel/Research/data/raw/spending_data_master.csv')
 spending = spending_raw[spending_raw['Year'].between(2011, 2019)].copy()
 spending['state'] = spending['State'].map(STATE_ABBREV_TO_NAME)
 spending = spending[spending['state'].isin(US_STATES_50)].copy()
@@ -224,7 +224,7 @@ print("=" * 70)
 
 # 3a. H2A / farming operations from Yuri's data (2017 Census of Agriculture)
 print("\n[3a] Loading Yuri's H2A state summary (2017 Census)...")
-h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/h2a_state_summary_2017.csv')
+h2a_2017 = pd.read_csv('/Users/keshavgoel/Research/data/raw/h2a_state_summary_2017.csv')
 h2a_2017['state'] = h2a_2017['state_code'].map(STATE_ABBREV_TO_NAME)
 h2a_2017 = h2a_2017[h2a_2017['state'].isin(US_STATES_50)].copy()
 print(f"  States in H2A 2017 data: {h2a_2017['state'].nunique()}")
@@ -519,7 +519,7 @@ output_cols = ['state', 'land_area_sqmi', 'establishments_mean',
                'mean_spending_2017', 'spending_per_estab',
                'operations', 'h2a_workers', 'workers_per_operation',
                'spending_per_operation'] + [v for v in std_covariates.values()]
-level2[output_cols].to_csv('/Users/keshavgoel/Research/level2_covariates.csv', index=False)
+level2[output_cols].to_csv('/Users/keshavgoel/Research/data/generated/level2_covariates.csv', index=False)
 print("  Saved: level2_covariates.csv")
 
 print("\n" + "=" * 70)
