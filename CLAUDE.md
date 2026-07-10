@@ -54,6 +54,8 @@ python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/W
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
+Stata ports of three core scripts also live in `scripts/` (`hierarchical_violations_model.do`, `visualize_model_results.do`, `visualize_polynomial_terms.do`), merged from the `stata` branch. They read/write the same `data/` and `figures/` paths as their Python counterparts.
+
 ## Data Pipeline and File Dependencies
 
 ```

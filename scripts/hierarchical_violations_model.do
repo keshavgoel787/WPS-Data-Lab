@@ -49,7 +49,7 @@ display _newline "[1] Loading violations data..."
 
 * EPA ECHO data: state names as first column (empty header), then violations-YYYY columns
 * Stata import delimited converts dashes in column names to underscores
-import delimited "/Users/keshavgoel/Research/establishments-data (2).csv", ///
+import delimited "/Users/keshavgoel/Research/data/raw/establishments_data.csv", ///
     clear varnames(1) bindquote(strict)
 
 * First column is state names (the pandas index); rename from auto-assigned v1
@@ -59,7 +59,7 @@ display "  EPA ECHO data loaded: " c(N) " rows, " c(k) " columns"
 
 * Also load WPS data (loaded for completeness; not used in model fitting)
 preserve
-import delimited "/Users/keshavgoel/Research/wps-data (2).csv", ///
+import delimited "/Users/keshavgoel/Research/data/raw/wps_data.csv", ///
     clear varnames(1) bindquote(strict)
 display "  WPS data loaded: " c(N) " rows, " c(k) " columns"
 restore
@@ -146,7 +146,7 @@ save `df_model'
 * ============================================================
 display _newline "[6] Loading and processing spending data..."
 
-import delimited "/Users/keshavgoel/Research/spending_data_master(in) (1).csv", ///
+import delimited "/Users/keshavgoel/Research/data/raw/spending_data_master.csv", ///
     clear varnames(1) bindquote(strict)
 
 display "  Raw spending data: " c(N) " rows"
@@ -247,7 +247,7 @@ list year cpi_u cpi_deflator if inrange(year, 2011, 2019), noobs separator(0)
 display _newline "  Spending summary (2017 dollars, millions) by year:"
 tabstat spending_2017m, by(year) stat(mean sum min max n) nototal
 
-export delimited "/Users/keshavgoel/Research/spending_aggregated.csv", replace
+export delimited "/Users/keshavgoel/Research/data/generated/spending_aggregated.csv", replace
 display "  Saved: spending_aggregated.csv"
 
 tempfile spending_agg
@@ -297,7 +297,7 @@ display _newline "Spending by year (2017 $M):"
 tabstat spending_2017m, by(year) stat(mean sd min max) nototal
 
 * Save analytic dataset
-export delimited "/Users/keshavgoel/Research/model_data_long.csv", replace
+export delimited "/Users/keshavgoel/Research/data/generated/model_data_long.csv", replace
 display "  Saved: model_data_long.csv"
 
 * ============================================================
@@ -397,7 +397,7 @@ list state random_intercept random_slope_time in 1/10, noobs separator(0)
 display _newline "  States with LOWEST baseline violations:"
 list state random_intercept random_slope_time in -10/-1, noobs separator(0)
 
-export delimited "/Users/keshavgoel/Research/state_random_effects.csv", replace
+export delimited "/Users/keshavgoel/Research/data/generated/state_random_effects.csv", replace
 display "  Saved: state_random_effects.csv"
 restore
 
@@ -459,7 +459,7 @@ display _newline "  Year | time | Predicted | Actual Mean"
 display "  " "{hline 40}"
 list year time predicted_violations actual_mean, noobs separator(0)
 
-export delimited "/Users/keshavgoel/Research/predicted_trend.csv", replace
+export delimited "/Users/keshavgoel/Research/data/generated/predicted_trend.csv", replace
 display "  Saved: predicted_trend.csv"
 restore
 

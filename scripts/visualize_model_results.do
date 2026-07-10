@@ -15,15 +15,15 @@ set scheme s1color
 
 display "Loading data..."
 
-import delimited "/Users/keshavgoel/Research/model_data_long.csv", clear varnames(1)
+import delimited "/Users/keshavgoel/Research/data/generated/model_data_long.csv", clear varnames(1)
 tempfile df_model
 save `df_model'
 
-import delimited "/Users/keshavgoel/Research/state_random_effects.csv", clear varnames(1)
+import delimited "/Users/keshavgoel/Research/data/generated/state_random_effects.csv", clear varnames(1)
 tempfile re_data
 save `re_data'
 
-import delimited "/Users/keshavgoel/Research/predicted_trend.csv", clear varnames(1)
+import delimited "/Users/keshavgoel/Research/data/generated/predicted_trend.csv", clear varnames(1)
 tempfile pred_data
 save `pred_data'
 
@@ -54,7 +54,7 @@ twoway ///
     legend(order(1 2) rows(1) position(6)) ///
     xline(2017, lcolor(gray) lpattern(dot))
 
-graph export "/Users/keshavgoel/Research/fig1_national_trend.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig1_national_trend.png", ///
     replace width(1500) height(900)
 display "  Saved: fig1_national_trend.png"
 
@@ -96,7 +96,7 @@ foreach s of local state_names {
 }
 label values rank state_lbl
 
-graph export "/Users/keshavgoel/Research/fig2_state_random_effects.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig2_state_random_effects.png", ///
     replace width(1200) height(1800)
 display "  Saved: fig2_state_random_effects.png"
 
@@ -122,7 +122,7 @@ foreach s of local all_states {
 
 * Load predicted trend into a tempfile for overlay
 preserve
-import delimited "/Users/keshavgoel/Research/predicted_trend.csv", clear varnames(1)
+import delimited "/Users/keshavgoel/Research/data/generated/predicted_trend.csv", clear varnames(1)
 tempfile pred_overlay
 save `pred_overlay'
 restore
@@ -142,7 +142,7 @@ twoway `state_plots' ///
           "Individual States (gray) vs National Trend", size(medlarge)) ///
     legend(order(`= wordcount("`all_states'") + 1' `= wordcount("`all_states'") + 2') rows(1) position(6))
 
-graph export "/Users/keshavgoel/Research/fig3_state_trajectories.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig3_state_trajectories.png", ///
     replace width(1500) height(1000)
 display "  Saved: fig3_state_trajectories.png"
 
@@ -191,7 +191,7 @@ else {
         title("Distribution of State Random Intercepts", size(medlarge))
 }
 
-graph export "/Users/keshavgoel/Research/fig4_random_effects_scatter.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig4_random_effects_scatter.png", ///
     replace width(1200) height(1000)
 display "  Saved: fig4_random_effects_scatter.png"
 
@@ -235,7 +235,7 @@ else {
               "Bubble size = violations; sorted by average", size(medlarge)))
 }
 
-graph export "/Users/keshavgoel/Research/fig5_violations_heatmap.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig5_violations_heatmap.png", ///
     replace width(1200) height(2000)
 display "  Saved: fig5_violations_heatmap.png"
 
@@ -306,7 +306,7 @@ graph combine "/tmp/fig6_pie.gph" "/tmp/fig6_bar.gph", ///
     cols(2) title("") xsize(12) ysize(5)
 restore
 
-graph export "/Users/keshavgoel/Research/fig6_variance_decomposition.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig6_variance_decomposition.png", ///
     replace width(1800) height(750)
 display "  Saved: fig6_variance_decomposition.png"
 
@@ -407,7 +407,7 @@ graph combine "/tmp/panel_a.gph" "/tmp/panel_b.gph" ///
           size(medlarge) fweight(bold)) ///
     xsize(14) ysize(12)
 
-graph export "/Users/keshavgoel/Research/fig_summary_combined.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_summary_combined.png", ///
     replace width(2100) height(1800)
 display "  Saved: fig_summary_combined.png"
 

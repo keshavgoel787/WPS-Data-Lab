@@ -90,7 +90,7 @@ twoway ///
           "(Cumulative Contribution of Each Term)", size(medlarge)) ///
     legend(order(1 2 3 4 5 6) rows(2) position(6) size(small))
 
-graph export "/Users/keshavgoel/Research/fig_polynomial_stacked.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_polynomial_stacked.png", ///
     replace width(1800) height(1050)
 display "Saved: fig_polynomial_stacked.png"
 
@@ -186,7 +186,7 @@ graph combine "/tmp/comp_a.gph" "/tmp/comp_b.gph" ///
           size(medlarge) fweight(bold)) ///
     xsize(14) ysize(10)
 
-graph export "/Users/keshavgoel/Research/fig_polynomial_components.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_polynomial_components.png", ///
     replace width(2100) height(1500)
 display "Saved: fig_polynomial_components.png"
 
@@ -245,7 +245,7 @@ twoway ///
                  4 "Sum of time terms") ///
            rows(2) position(6) size(small))
 
-graph export "/Users/keshavgoel/Research/fig_polynomial_curves.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_polynomial_curves.png", ///
     replace width(1800) height(1050)
 display "Saved: fig_polynomial_curves.png"
 
@@ -279,7 +279,7 @@ twoway ///
           "(From Intercept to Full Model)", size(medlarge)) ///
     legend(order(1 2 3 4 5) rows(2) position(6) size(small))
 
-graph export "/Users/keshavgoel/Research/fig_polynomial_buildup.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_polynomial_buildup.png", ///
     replace width(1800) height(1050)
 display "Saved: fig_polynomial_buildup.png"
 
@@ -314,7 +314,7 @@ list year time time2 time3 ///
 * Export the table as a dataset (CSV), since Stata can't render HTML tables as PNG natively
 export delimited year time time2 time3 b1_x_time b2_x_time2 b3_x_time3 ///
     poly_sum intercept_plus_sum actual_mean ///
-    using "/Users/keshavgoel/Research/polynomial_table.csv", ///
+    using "/Users/keshavgoel/Research/data/generated/polynomial_table.csv", ///
     replace
 
 * Create a simple tabular visualization using a dot chart as proxy
@@ -330,7 +330,7 @@ twoway ///
           "(Yellow line = 2017, reference year where time=0)", size(medlarge)) ///
     legend(order(3 "Predicted (Int+Sum)" 4 "Actual Mean") rows(1) position(6) size(small))
 
-graph export "/Users/keshavgoel/Research/fig_polynomial_table.png", ///
+graph export "/Users/keshavgoel/Research/figures/fig_polynomial_table.png", ///
     replace width(1800) height(1050)
 display "Saved: fig_polynomial_table.png"
 display "(Full numeric table also saved: polynomial_table.csv)"
