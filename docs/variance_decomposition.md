@@ -102,25 +102,61 @@ figures: `figures/vpc_violations.png`, `figures/vpc_inspections.png`):
 | inspections | M3 | 0.782 | 0.857 | 0.904 |
 | violations | M1 | 0.009 | 0.619 | 0.737 |
 | violations | M2 | 0.003 | 0.524 | 0.655 |
-| violations | M3 | 0.004 | 0.520 | 0.651 |
+| violations | M3 | 0.004 | 0.520 | 0.652 |
 
-In every model, in both DVs, the between-state share **rises monotonically
-from 2011 through 2019** (VPC(2011) < VPC(2017) < VPC(2019)). This is a direct
-consequence of `σ_u01 > 0` (positive intercept–slope correlation): the
-`2·t·σ_u01` term in the VPC numerator is negative for `t < 0` (years before
-2017) and positive for `t > 0` (years after 2017), so states that start with a
-higher intercept also tend to trend upward faster, pulling the between-state
-share down before 2017 and up after it.
+In every model, in both DVs, the endpoint comparison holds: VPC(2011) <
+VPC(2019). But the trend across the full 2011–2019 window is only strictly
+monotonic — rising at every single year-over-year step — for the
+**violations** models. The **inspections** models dip before they rise:
 
-The effect is dramatically larger for violations than for inspections because
-of the near-boundary correlation noted above: with `corr_u01 ≈ 1`, the
-`2·t·σ_u01` term very nearly cancels σ²_u0 at `t = −6` (2011), driving VPC to
-essentially zero (0.003–0.009) — almost none of the cross-state variance in
-2011 violation counts is "between-state" once the model's random-slope
-structure is accounted for; nearly all of it looks like Level-1 residual at
-that end of the window. Inspections, with a more moderate correlation
-(0.70–0.74), shows the same directional pattern but far more mildly (0.73–0.90
-across the window, never collapsing toward zero).
+- Inspections M1 falls once, 2011 → 2012 (0.7296 → 0.7262), then rises every
+  year through 2019 (minimum at 2012).
+- Inspections M2 falls twice, 2011 → 2012 → 2013 (0.7907 → 0.7647 → 0.7549),
+  then rises every year through 2019 (minimum at 2013).
+- Inspections M3 falls twice, 2011 → 2012 → 2013 (0.7823 → 0.7596 → 0.7536),
+  then rises every year through 2019 (minimum at 2013).
+
+Violations, by contrast, rise at every single step in all three models (e.g.
+M1: 0.0091 → 0.0754 → 0.1889 → ... → 0.7368), with no dip anywhere in the
+window.
+
+**Mechanism.** The VPC numerator, `N(t) = σ²_u0 + 2·t·σ_u01 + t²·σ²_u1`, is an
+upward-opening parabola in `t` (since `σ²_u1 > 0`). Its vertex — the value of
+`t` that *minimizes* `N(t)`, and therefore `VPC(t)` — sits at
+`t* = −σ_u01 / σ²_u1`, not automatically at the earliest observed year
+(`t = −6`, i.e. 2011). Whether the observed window (`t = −6 … 2`) lies
+entirely on the rising branch of that parabola, or straddles the vertex,
+depends on where `t*` falls:
+
+| DV | Model | σ_u01 | σ²_u1 | t* = −σ_u01/σ²_u1 | Implied minimum |
+|---|---|---:|---:|---:|---|
+| violations | M1 | 29.273 | 4.563 | −6.42 | before window → monotonic rise |
+| violations | M2 | 24.313 | 3.832 | −6.34 | before window → monotonic rise |
+| violations | M3 | 23.848 | 3.752 | −6.36 | before window → monotonic rise |
+| inspections | M1 | 78.837 | 14.894 | −5.29 | inside window → dips to t=−5 (2012) |
+| inspections | M2 | 97.778 | 24.309 | −4.02 | inside window → dips to t=−4 (2013) |
+| inspections | M3 | 95.858 | 22.840 | −4.20 | inside window → dips to t=−4 (2013) |
+
+For violations, `t*` falls just *before* 2011 in all three models (≈ −6.3 to
+−6.4), so the entire observed window sits on the rising side of the parabola:
+the `2·t·σ_u01` term is still the dominant, most-negative influence at
+`t = −6`, and `N(t)` — hence VPC(t) — rises at every subsequent step with no
+turnaround inside the data. For inspections, `σ²_u1` is large enough relative
+to `σ_u01` that `t*` lands *inside* the window (between 2012 and 2013): by
+`t = −6` (2011) the `t²·σ²_u1` term has not yet caught up with the negative
+`2·t·σ_u01` term, so `N(t)` is still falling; the reversal only happens once
+`t` passes the vertex — at `t = −5` (2012) for M1, `t = −4` (2013) for M2/M3 —
+after which VPC rises through 2019 exactly as in the violations models. In
+short, for inspections the minimum sits at 2012–2013, not at 2011 — the
+earliest year is not the point of minimum between-state share once the
+`t²·σ²_u1` term is accounted for.
+
+The magnitude of the swing across the window still traces back to `corr_u01`
+noted in Section 2: violations' near-boundary correlation (0.999–1.000) makes
+`σ_u01` large relative to `σ²_u0`, so VPC collapses to near zero at the start
+of the window (0.003–0.009) before recovering; inspections' more moderate
+correlation (0.70–0.74) keeps VPC within a much narrower band (0.73–0.91)
+throughout, dip included.
 
 ---
 
@@ -143,7 +179,7 @@ state variance did not disappear — it was reallocated into Level-1 residual
 variance, not credited to the covariates by pseudo-R² at all. Summing σ²_u0 +
 σ²_e at `t = 0` (2017) — the two components that determine the year-2017
 ICC — total unexplained variance falls only modestly, from 303.63 (M1) to
-294.55 (M2) to 291.61 (M3), a ~3.97% drop overall versus the much larger
+294.55 (M2) to 291.61 (M3), a ~3.96% drop overall versus the much larger
 ~19.4% drop pseudo-R² reports for σ²_u0 alone.
 
 **Inspections** — here every component *rises* alongside the covariates
