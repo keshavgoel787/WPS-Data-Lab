@@ -43,7 +43,23 @@ overlaps (SPEND_WORK–SPEND_FLC = 0.71, SPEND_APP–SPEND_OP = 0.75) all involv
 out. Their shared numerator still means the two retained coefficients should be
 read as a joint spending block rather than as fully independent effects.
 
-## 3. H-2A block — ratios, not raw counts
+**Spending×time interactions dropped (PI direction, 2026-07).** Earlier drafts of
+Table 3 carried `SPEND_APP × time` and `SPEND_WORK × time` interactions. These have
+been removed; the violations table now enters both spending variables as main
+effects only. The one surviving ×time interaction is `%H-2A Authorized to FLC × time`
+in M3. Table 2 (inspections) never carried any ×time interactions.
+
+## 3. Time trend — linear only
+
+Both tables now carry a **linear** time trend only (`time = year − 2017`); the
+quadratic and cubic terms (`time2`, `time3`) were dropped per PI direction
+(2026-07). Table 2 (inspections) was already linear in M2/M3, and its M1
+descriptive column is now linear as well. Table 3 (violations) previously used a
+cubic polynomial to fit the asymmetric 2016–2017 violation spike; under the new
+specification M1/M2/M3 all use linear time, and the violations Δσ² baseline is the
+matched `inspections + linear time` spec.
+
+## 4. H-2A block — ratios, not raw counts
 
 The H-2A predictors are expressed as ratios to remove the state-size scaling that
 makes raw counts collinear with every other size-driven variable (farmworker
@@ -59,7 +75,7 @@ employment, farming operations, land area):
 `dol_n_cases` was dropped entirely: it is a near-duplicate of the certified-worker
 count and adds no independent information.
 
-## 4. Sample sizes
+## 5. Sample sizes
 
 BLS suppresses small employment cells, so the occupation denominators
 (OCC 37-3012 pesticide applicators; OCC 45-2092 farmworkers) are missing for
@@ -69,11 +85,11 @@ against a baseline re-estimated on that same analytic sample, so the
 variance-reduction figures are matched-N comparisons (never against the full-N
 M1 baseline).
 
-## 5. Reading the variance components
+## 6. Reading the variance components
 
 - **Violations (Table 3):** the spending + labor block reduces between-state
-  intercept variance by ~30% (M2 30.4%, M3 29.6%) relative to the
-  inspections + cubic-time baseline — a substantial, meaningful reduction.
+  intercept variance by ~28% (M2 27.2%, M3 28.4%) relative to the
+  inspections + linear-time baseline — a substantial, meaningful reduction.
 - **Inspections (Table 2):** Δσ² is slightly **negative** (M2 −0.2%, M3 −1.3%).
   In a mixed model the between-state variance is not bounded to fall when
   predictors are added; a small negative value means these Level-2 covariates

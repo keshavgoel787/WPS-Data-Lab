@@ -12,7 +12,7 @@ import json
 from docx import Document
 
 SRC = '/Users/keshavgoel/Downloads/WPS Table Sheels.docx'
-OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_filled.docx'
+OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_filled_linear.docx'
 JSON = '/Users/keshavgoel/Research/data/generated/paper_table_params.json'
 
 with open(JSON) as f:

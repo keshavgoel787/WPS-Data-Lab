@@ -49,7 +49,7 @@ python3 scripts/comprehensive_inspections_model.py
 
 # Manuscript Tables 2 & 3 (combined spending + labor + H-2A build-up)
 python3 scripts/paper_table_models.py       # fits 6 models → data/generated/paper_table_params.json
-python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/WPS_Table_Sheels_filled.docx
+python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/WPS_Table_Sheels_filled_linear.docx
 ```
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
@@ -94,7 +94,7 @@ Additional raw data files (data/raw/, used by `labor_covariates_*.py`):
 - `CPI_U`: BLS CPI-U annual averages 2011–2019, base year 2017 for inflation adjustment
 - `STATE_NAME_MAPPING = {'Massachusetts ': 'Massachusetts', 'Oregon ': 'Oregon'}`: known trailing-space issues in ECHO index
 
-**Time variable**: always `time = year − 2017`. Cubic polynomial (`time`, `time2`, `time3`) is retained in all violations and all *exploratory* models. Never drop terms — **except** in the curated final **inspections** models (`final_labor_inspections_model.py`), where per PI direction (2026-06) the inspections series carries only a linear time trend, so `time2`/`time3` are dropped and the pseudo-R² baseline is re-estimated as linear-time on the same analytic sample. Violations final models keep the cubic.
+**Time variable**: always `time = year − 2017`. Cubic polynomial (`time`, `time2`, `time3`) is retained in all violations and all *exploratory* models. Never drop terms — **except** in the curated final **inspections** models (`final_labor_inspections_model.py`), where per PI direction (2026-06) the inspections series carries only a linear time trend, so `time2`/`time3` are dropped and the pseudo-R² baseline is re-estimated as linear-time on the same analytic sample. Violations final models keep the cubic. **The manuscript paper tables are a further exception: per PI direction (2026-07) both the inspections and violations tables in `paper_table_models.py` use linear time only (`time2`/`time3` dropped), and each column's Δσ² baseline is re-estimated as linear-time on its own analytic sample.**
 
 **Model estimation**: always `MixedLM.from_formula(..., re_formula='~time').fit(method='lbfgs')` — random intercept + random slope for linear time by state, REML.
 
@@ -121,8 +121,8 @@ Additional raw data files (data/raw/, used by `labor_covariates_*.py`):
 | `final_labor_violations_model.py` | Curated final model: cubic time + labor/DOL block; ×time interactions screened at p<.20 | Terminal output only |
 | `final_labor_inspections_model.py` | Curated final model: **linear** time + labor/DOL block; linear-time baseline | Terminal output only |
 | `comprehensive_inspections_model.py` | Kitchen-sink inspections model entering **every** project covariate (15 predictors) + ×time screen; linear time; exploratory | Terminal output only |
-| `paper_table_models.py` | Manuscript Tables 2 & 3: 3-model build-up per DV combining SPEND_APP/SPEND_WORK + LII 2017 + H-2A block; inspections table = linear time, violations table = cubic time + raw inspections count as a Level-1 predictor. ×time interactions are pre-specified by the table, not screened. | `data/generated/paper_table_params.json` |
-| `fill_wps_tables_docx.py` | Reads `paper_table_params.json` and populates the Word template (`~/Downloads/WPS Table Sheels.docx`); corrects the study period to 2011–2019 and appends a collinearity note. Requires `python-docx`. | `docs/WPS_Table_Sheels_filled.docx` |
+| `paper_table_models.py` | Manuscript Tables 2 & 3: 3-model build-up per DV combining SPEND_APP/SPEND_WORK + LII 2017 + H-2A block; **both tables = linear time** (time2/time3 dropped per PI direction 2026-07), violations table adds the raw inspections count as a Level-1 predictor. The only ×time interaction is `pct_flc_z:time` in violations M3; the two spending×time interactions were dropped (2026-07). | `data/generated/paper_table_params.json` |
+| `fill_wps_tables_docx.py` | Reads `paper_table_params.json` and populates the Word template (`~/Downloads/WPS Table Sheels.docx`); corrects the study period to 2011–2019, drops table rows for terms no longer in the model (time2/time3, spending×time), and appends a collinearity note. Requires `python-docx`. | `docs/WPS_Table_Sheels_filled_linear.docx` |
 
 Manuscript-table dependency: `paper_table_models.py` must run before `fill_wps_tables_docx.py`, and both require `spending_bls_models.py` (for `data/generated/spend_bls_variables.csv`) to have run first. Collinearity rationale for the table specification is in `docs/collinearity_notes.md`.
 
