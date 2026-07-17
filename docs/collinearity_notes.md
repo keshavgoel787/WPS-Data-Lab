@@ -43,21 +43,22 @@ overlaps (SPEND_WORK–SPEND_FLC = 0.71, SPEND_APP–SPEND_OP = 0.75) all involv
 out. Their shared numerator still means the two retained coefficients should be
 read as a joint spending block rather than as fully independent effects.
 
-**Spending×time interactions dropped (PI direction, 2026-07).** Earlier drafts of
-Table 3 carried `SPEND_APP × time` and `SPEND_WORK × time` interactions. These have
-been removed; the violations table now enters both spending variables as main
-effects only. The one surviving ×time interaction is `%H-2A Authorized to FLC × time`
-in M3. Table 2 (inspections) never carried any ×time interactions.
+**No ×time interactions (PI direction, 2026-07).** Earlier drafts of Table 3 carried
+`SPEND_APP × time`, `SPEND_WORK × time`, and `%H-2A Authorized to FLC × time`
+interactions. All three have been removed; the violations table now enters every
+covariate as a main effect only. Table 2 (inspections) never carried any ×time
+interactions.
 
-## 3. Time trend — linear only
+## 3. Time trend — cubic in both tables
 
-Both tables now carry a **linear** time trend only (`time = year − 2017`); the
-quadratic and cubic terms (`time2`, `time3`) were dropped per PI direction
-(2026-07). Table 2 (inspections) was already linear in M2/M3, and its M1
-descriptive column is now linear as well. Table 3 (violations) previously used a
-cubic polynomial to fit the asymmetric 2016–2017 violation spike; under the new
-specification M1/M2/M3 all use linear time, and the violations Δσ² baseline is the
-matched `inspections + linear time` spec.
+Both tables carry a **cubic** time polynomial (`time`, `time2`, `time3`;
+`time = year − 2017`) in every column, per PI direction (2026-07). This restored
+the quadratic/cubic terms — which had briefly been dropped in favor of a linear
+trend — and reverted the earlier PI decision (2026-06) that had set the inspections
+table to linear time. The cubic captures the asymmetric 2016–2017 violation spike;
+the inspections table now uses the same cubic form for consistency. Each column's
+Δσ² baseline is the matched cubic-time spec re-estimated on that column's sample
+(inspections: `time + time2 + time3`; violations: `inspections + time + time2 + time3`).
 
 ## 4. H-2A block — ratios, not raw counts
 
@@ -88,10 +89,10 @@ M1 baseline).
 ## 6. Reading the variance components
 
 - **Violations (Table 3):** the spending + labor block reduces between-state
-  intercept variance by ~28% (M2 27.2%, M3 28.4%) relative to the
-  inspections + linear-time baseline — a substantial, meaningful reduction.
-- **Inspections (Table 2):** Δσ² is slightly **negative** (M2 −0.2%, M3 −1.3%).
-  In a mixed model the between-state variance is not bounded to fall when
-  predictors are added; a small negative value means these Level-2 covariates
-  explain essentially **no** between-state variation in inspection counts beyond
-  the linear time trend. This is reported as-is rather than floored at zero.
+  intercept variance by ~28% (M2 27.8%, M3 28.1%) relative to the
+  inspections + cubic-time baseline — a substantial, meaningful reduction.
+- **Inspections (Table 2):** Δσ² is negligible (M2 +0.1%, M3 −0.9%). In a mixed
+  model the between-state variance is not bounded to fall when predictors are
+  added; values this close to zero mean these Level-2 covariates explain
+  essentially **no** between-state variation in inspection counts beyond the cubic
+  time trend. This is reported as-is rather than floored at zero.

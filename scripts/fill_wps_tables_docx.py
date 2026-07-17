@@ -2,17 +2,20 @@
 Populate "WPS Table Sheels.docx" with the fitted coefficients.
 
 Reads data/generated/paper_table_params.json (written by paper_table_models.py) and
-replaces every X.XX / XX.XX / XX.X% placeholder in the two tables with the real
-value, in reading order (M1_b, M1_se, M2_b, M2_se, M3_b, M3_se — only the columns
-where a term is present, matching the template's placeholder layout).
+writes each coefficient's b / SE into its model column. Coefficient rows are filled
+by model→column position (M1=cols 1-2, M2=cols 3-4, M3=cols 5-6) rather than by
+hunting placeholder cells, so terms present in a column the template left blank
+(e.g. cubic time2/time3 in inspections M2/M3) still get populated. Rows for terms
+no longer in any model (e.g. the ×time interactions) are deleted. Variance rows
+(State-to-State σ² and Δσ²) are still filled by placeholder position.
 
-Output: docs/WPS_Table_Sheels_filled.docx  (the source in ~/Downloads is untouched).
+Output: docs/WPS_Table_Sheels_filled_cubic.docx  (the source in ~/Downloads is untouched).
 """
 import json
 from docx import Document
 
 SRC = '/Users/keshavgoel/Downloads/WPS Table Sheels.docx'
-OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_filled_linear.docx'
+OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_filled_cubic.docx'
 JSON = '/Users/keshavgoel/Research/data/generated/paper_table_params.json'
 
 with open(JSON) as f:
@@ -37,15 +40,25 @@ LABEL_TO_TERM = {
 }
 
 
-def coef_values(tab, term):
-    """Ordered fill list for a coefficient row: b then SE for each model present."""
-    vals = []
+# coefficient columns per model: (b column index, SE column index) within the row
+COEF_COLS = {'M1': (1, 2), 'M2': (3, 4), 'M3': (5, 6)}
+
+
+def term_present(tab, term):
+    """True if any model reports this term."""
+    return any(tab[m].get(term) is not None for m in MODELS)
+
+
+def fill_coef_row(row, tab, term):
+    """Write b / SE into each model's own columns (position-based, not placeholder-
+    based), so cells the template left blank for a present term still get filled."""
     for m in MODELS:
         cell = tab[m].get(term)
-        if cell is not None:
-            vals.append(f"{cell['b']:.2f}{cell['stars']}")
-            vals.append(f"{cell['se']:.2f}")
-    return vals
+        if cell is None:
+            continue                       # term absent for this model → leave blank
+        bcol, secol = COEF_COLS[m]
+        row.cells[bcol].text = f"{cell['b']:.2f}{cell['stars']}"
+        row.cells[secol].text = f"{cell['se']:.2f}"
 
 
 def is_placeholder(text):
@@ -81,11 +94,11 @@ def fill_table(table, tab):
             fill_row(row, [f"{tab[m]['sigma2']:.2f}"
                            for m in MODELS if 'sigma2' in tab[m]])
         elif label in LABEL_TO_TERM:
-            values = coef_values(tab, LABEL_TO_TERM[label])
-            if not values:      # term dropped from model (e.g. spending×time) → drop row
+            term = LABEL_TO_TERM[label]
+            if term_present(tab, term):
+                fill_coef_row(row, tab, term)
+            else:               # term dropped from model (e.g. ×time terms) → drop row
                 remove_row(row)
-            else:
-                fill_row(row, values)
 
 
 doc = Document(SRC)

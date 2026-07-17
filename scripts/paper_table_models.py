@@ -6,25 +6,26 @@ coefficient / SE / p-value / variance component to
     data/generated/paper_table_params.json
 which fill_wps_tables_docx.py then drops into the Word template.
 
-Table 2 — DV = inspections (EPA + state), LINEAR time (PI direction, 2026-06):
-    M1  inspections ~ time                                       (linear trend, descriptive)
-    M2  inspections ~ time + SPEND_APP_z + SPEND_WORK_z + lii_2017_z
+Table 2 — DV = inspections (EPA + state), CUBIC time (PI direction, 2026-07):
+    M1  inspections ~ time + time2 + time3
+    M2  M1 + SPEND_APP_z + SPEND_WORK_z + lii_2017_z
     M3  M2 + h2a_per_farmworker_z + dol_demand_met_pct_z + pct_flc_z
 
-Table 3 — DV = violations, LINEAR time (PI direction, 2026-07: time2/time3 dropped):
-    M1  violations ~ inspections + time
+Table 3 — DV = violations, CUBIC time (2016–2017 spike is asymmetric):
+    M1  violations ~ inspections + time + time2 + time3
     M2  M1 + SPEND_APP_z + SPEND_WORK_z + lii_2017_z
-    M3  M2 + h2a_per_farmworker_z + dol_demand_met_pct_z + pct_flc_z + pct_flc_z:time
+    M3  M2 + h2a_per_farmworker_z + dol_demand_met_pct_z + pct_flc_z
 
 "Inspections" enters Table 3 as a raw contemporaneous Level-1 count (PI direction).
-Both tables now carry a linear time trend only — time2/time3 were dropped per PI
-direction (2026-07). The two spending×time interactions (SPEND_APP_z:time,
-SPEND_WORK_z:time) were also dropped; only the pct_flc_z:time interaction remains.
+Both tables carry a cubic time trend (time2/time3 restored per PI direction 2026-07,
+reverting the earlier linear-time inspections spec). There are NO ×time interactions:
+the two spending×time interactions (SPEND_APP_z:time, SPEND_WORK_z:time) and the
+pct_flc_z:time interaction have all been dropped per PI direction.
 
 Variance components (State-to-State σ² and Δ σ²) are reported for M2 and M3 only.
 Δ σ² = % reduction in between-state intercept variance relative to a baseline
 re-estimated on that column's own listwise-complete analytic sample:
-    • inspections baseline = linear-time-only  (matches the linear final model)
+    • inspections baseline = cubic-time-only
     • violations  baseline = M1 spec (inspections + cubic time)
 so every comparison is against a matched-N baseline (CLAUDE.md convention).
 
@@ -186,26 +187,27 @@ def sigma2(res):
     return float(res.cov_re.iloc[0, 0])
 
 # ============================================================
-# [4] TABLE 2 — INSPECTIONS  (linear time in M2/M3)
+# [4] TABLE 2 — INSPECTIONS  (cubic time in all columns)
 # ============================================================
+CUBIC = ['time', 'time2', 'time3']
 insp = {}
-# M1: linear descriptive trend (full available sample)
-r1, _ = fit('inspections', ['time'], df)
-insp['M1'] = extract(r1, ['time'])
+# M1: cubic descriptive trend (full available sample)
+r1, _ = fit('inspections', CUBIC, df)
+insp['M1'] = extract(r1, CUBIC)
 
-# M2: linear time + spending + labor
-rhs2 = ['time'] + Z_SPEND + Z_LABOR
+# M2: cubic time + spending + labor
+rhs2 = CUBIC + Z_SPEND + Z_LABOR
 r2, d2 = fit('inspections', rhs2, df)
-base2, _ = fit('inspections', ['time'], d2)              # matched linear baseline
+base2, _ = fit('inspections', CUBIC, d2)                 # matched cubic baseline
 insp['M2'] = extract(r2, rhs2)
 insp['M2']['sigma2'] = sigma2(r2)
 insp['M2']['delta_pct'] = (sigma2(base2) - sigma2(r2)) / sigma2(base2) * 100
 insp['M2']['n_obs'], insp['M2']['n_states'] = len(d2), d2['state'].nunique()
 
 # M3: + H-2A block
-rhs3 = ['time'] + Z_SPEND + Z_LABOR + Z_H2A
+rhs3 = CUBIC + Z_SPEND + Z_LABOR + Z_H2A
 r3, d3 = fit('inspections', rhs3, df)
-base3, _ = fit('inspections', ['time'], d3)
+base3, _ = fit('inspections', CUBIC, d3)
 insp['M3'] = extract(r3, rhs3)
 insp['M3']['sigma2'] = sigma2(r3)
 insp['M3']['delta_pct'] = (sigma2(base3) - sigma2(r3)) / sigma2(base3) * 100
@@ -215,8 +217,8 @@ insp['M3']['n_obs'], insp['M3']['n_states'] = len(d3), d3['state'].nunique()
 # [5] TABLE 3 — VIOLATIONS  (cubic time; inspections raw count predictor)
 # ============================================================
 viol = {}
-base_terms = ['inspections', 'time']
-# M1: inspections + linear time
+base_terms = ['inspections', 'time', 'time2', 'time3']
+# M1: inspections + cubic time
 v1, _ = fit('violations', base_terms, df)
 viol['M1'] = extract(v1, base_terms)
 
@@ -229,8 +231,8 @@ viol['M2']['sigma2'] = sigma2(v2)
 viol['M2']['delta_pct'] = (sigma2(vbase2) - sigma2(v2)) / sigma2(vbase2) * 100
 viol['M2']['n_obs'], viol['M2']['n_states'] = len(dv2), dv2['state'].nunique()
 
-# M3: + H-2A block + %FLC:time
-rhs3v = rhs2v + Z_H2A + ['pct_flc_z:time']
+# M3: + H-2A block  (pct_flc_z:time interaction dropped per PI direction 2026-07)
+rhs3v = rhs2v + Z_H2A
 v3, dv3 = fit('violations', rhs3v, df)
 vbase3, _ = fit('violations', base_terms, dv3)
 viol['M3'] = extract(v3, rhs3v)
@@ -259,7 +261,7 @@ def show(title, tab, order):
         print(f"  {m}: N={tab[m]['n_obs']} obs, {tab[m]['n_states']} states")
 
 show("TABLE 2 — WPS INSPECTIONS", insp, [
-    ('Time', 'time'),
+    ('Time', 'time'), ('Time2', 'time2'), ('Time3', 'time3'),
     ('Spending/applicator', 'SPEND_APP_z'),
     ('Spending/farmworker', 'SPEND_WORK_z'),
     ('Labor Intensity', 'lii_2017_z'),
@@ -269,14 +271,13 @@ show("TABLE 2 — WPS INSPECTIONS", insp, [
 ])
 show("TABLE 3 — WPS VIOLATIONS", viol, [
     ('Inspections', 'inspections'),
-    ('Time', 'time'),
+    ('Time', 'time'), ('Time2', 'time2'), ('Time3', 'time3'),
     ('Spending/applicator', 'SPEND_APP_z'),
     ('Spending/farmworker', 'SPEND_WORK_z'),
     ('Labor Intensity', 'lii_2017_z'),
     ('H-2A farmworkers:BLS farmworkers', 'h2a_per_farmworker_z'),
     ('H-2A Authorized/H-2A Requested', 'dol_demand_met_pct_z'),
     ('%H-2A Authorized to FLC', 'pct_flc_z'),
-    ('%H-2A Authorized to FLC*time', 'pct_flc_z:time'),
 ])
 
 with open(GEN + 'paper_table_params.json', 'w') as f:
