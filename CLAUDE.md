@@ -50,6 +50,10 @@ python3 scripts/comprehensive_inspections_model.py
 # Manuscript Tables 2 & 3 (combined spending + labor + H-2A build-up)
 python3 scripts/paper_table_models.py       # fits 6 models → data/generated/paper_table_params.json
 python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/WPS_Table_Sheels_filled_linear.docx
+
+# Exploratory (2026-07): transformed-DV robustness + variance decomposition
+python3 scripts/transformed_violations_models.py   # violations suite across log/sqrt/Anscombe/Box-Cox
+python3 scripts/variance_decomposition.py          # full random-effects component breakdown + VPC
 ```
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
@@ -123,6 +127,8 @@ Additional raw data files (data/raw/, used by `labor_covariates_*.py`):
 | `comprehensive_inspections_model.py` | Kitchen-sink inspections model entering **every** project covariate (15 predictors) + ×time screen; linear time; exploratory | Terminal output only |
 | `paper_table_models.py` | Manuscript Tables 2 & 3: 3-model build-up per DV combining SPEND_APP/SPEND_WORK + LII 2017 + H-2A block; **both tables = linear time** (time2/time3 dropped per PI direction 2026-07), violations table adds the raw inspections count as a Level-1 predictor. The only ×time interaction is `pct_flc_z:time` in violations M3; the two spending×time interactions were dropped (2026-07). | `data/generated/paper_table_params.json` |
 | `fill_wps_tables_docx.py` | Reads `paper_table_params.json` and populates the Word template (`~/Downloads/WPS Table Sheels.docx`); corrects the study period to 2011–2019, drops table rows for terms no longer in the model (time2/time3, spending×time), and appends a collinearity note. Requires `python-docx`. | `docs/WPS_Table_Sheels_filled_linear.docx` |
+| `transformed_violations_models.py` | Full violations suite re-fit under raw/log/sqrt/Anscombe/Box-Cox; residual diagnostics + pseudo-R² (AIC not cross-comparable). Exploratory. | `data/generated/transform_comparison.csv`, `docs/transform_exploration.md`, `figures/transform_qq_*.png` |
+| `variance_decomposition.py` | Full variance-component decomposition (σ²_u0/σ²_u1/σ_u01/σ²_e, ICC, time-varying VPC) of the paper-table models; diagnoses the negative inspections Δσ². Exploratory. | `data/generated/variance_components.csv`, `docs/variance_decomposition.md`, `figures/vpc_*.png` |
 
 Manuscript-table dependency: `paper_table_models.py` must run before `fill_wps_tables_docx.py`, and both require `spending_bls_models.py` (for `data/generated/spend_bls_variables.csv`) to have run first. Collinearity rationale for the table specification is in `docs/collinearity_notes.md`.
 
