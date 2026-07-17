@@ -54,6 +54,7 @@ python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/W
 # Exploratory (2026-07): transformed-DV robustness + variance decomposition
 python3 scripts/transformed_violations_models.py   # violations suite across log/sqrt/Anscombe/Box-Cox
 python3 scripts/variance_decomposition.py          # full random-effects component breakdown + VPC
+python3 scripts/parameter_walkthrough_models.py    # variable-by-variable rebuild of Tables 2&3 with dropped time terms put back
 ```
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
@@ -129,6 +130,7 @@ Additional raw data files (data/raw/, used by `labor_covariates_*.py`):
 | `fill_wps_tables_docx.py` | Reads `paper_table_params.json` and populates the Word template (`~/Downloads/WPS Table Sheels.docx`); corrects the study period to 2011–2019, drops table rows for terms no longer in the model (time2/time3, spending×time), and appends a collinearity note. Requires `python-docx`. | `docs/WPS_Table_Sheels_filled_linear.docx` |
 | `transformed_violations_models.py` | Full violations suite re-fit under raw/log/sqrt/Anscombe/Box-Cox; residual diagnostics + pseudo-R² (AIC not cross-comparable). Exploratory. | `data/generated/transform_comparison.csv`, `docs/transform_exploration.md`, `figures/transform_qq_*.png` |
 | `variance_decomposition.py` | Full variance-component decomposition (σ²_u0/σ²_u1/σ_u01/σ²_e, ICC, time-varying VPC) of the paper-table models; diagnoses the negative inspections Δσ². Exploratory. | `data/generated/variance_components.csv`, `docs/variance_decomposition.md`, `figures/vpc_*.png` |
+| `parameter_walkthrough_models.py` | Variable-by-variable (cumulative add-one-in) rebuild of Tables 2 & 3 on a **fixed common sample**, with all dropped time terms reintroduced (cubic `time2`/`time3` + `SPEND_APP_z:time`/`SPEND_WORK_z:time`/`pct_flc_z:time`). Reports every coefficient + all four variance components per step to show what each parameter does — esp. the time interactions (centering re-interpretation, σ²_u1 vs σ²_u0, collinearity). Exploratory; does not change the paper. | `data/generated/parameter_walkthrough.json`, `docs/parameter_walkthrough.md` |
 
 Manuscript-table dependency: `paper_table_models.py` must run before `fill_wps_tables_docx.py`, and both require `spending_bls_models.py` (for `data/generated/spend_bls_variables.csv`) to have run first. Collinearity rationale for the table specification is in `docs/collinearity_notes.md`.
 
