@@ -172,3 +172,36 @@ for dv, models in SPECS.items():
 vc = pd.DataFrame(records)
 vc.to_csv(GEN + 'variance_components.csv', index=False)
 print(f"\nWrote {GEN}variance_components.csv ({len(vc)} rows)")
+
+# ============================================================
+# FIGURES: VPC-over-time and variance-component bars
+# ============================================================
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+FIG = '/Users/keshavgoel/Research/figures/'
+YEARS = list(range(2011, 2020))
+
+def make_figs(vc):
+    for dv in vc['dv'].unique():
+        sub = vc[vc['dv'] == dv]
+        # VPC curves
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        for _, r in sub.iterrows():
+            ax.plot(YEARS, [r[f'vpc_{y}'] for y in YEARS], marker='o', label=r['model'])
+        ax.set_title(f'{dv}: variance partition coefficient over time')
+        ax.set_xlabel('year'); ax.set_ylabel('VPC (between-state share)')
+        ax.set_ylim(0, 1); ax.legend()
+        fig.tight_layout(); fig.savefig(f'{FIG}vpc_{dv}.png', dpi=120); plt.close(fig)
+        print(f"Wrote {FIG}vpc_{dv}.png")
+        # Component bars (u0, u1 scaled, residual)
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        x = np.arange(len(sub)); w = 0.6
+        ax.bar(x, sub['sigma2_u0'], w, label='sigma^2_u0 (intercept)')
+        ax.bar(x, sub['sigma2_e'], w, bottom=sub['sigma2_u0'], label='sigma^2_e (residual)')
+        ax.set_xticks(x); ax.set_xticklabels(sub['model'])
+        ax.set_title(f'{dv}: intercept vs residual variance'); ax.legend()
+        fig.tight_layout(); fig.savefig(f'{FIG}varcomp_{dv}.png', dpi=120); plt.close(fig)
+        print(f"Wrote {FIG}varcomp_{dv}.png")
+
+make_figs(vc)
