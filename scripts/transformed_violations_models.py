@@ -237,3 +237,31 @@ head = out[out['model'].isin(['baseline_cubic', 'final_labor', 'paper_M3'])]
 cols = ['model', 'transform', 'shapiro_w', 'shapiro_p', 'resid_skew',
         'resid_kurtosis', 'bp_r2', 'pseudo_r2_pct']
 print(head[cols].to_string(index=False))
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+FIG = '/Users/keshavgoel/Research/figures/'
+HEADLINE = {'baseline_cubic', 'final_labor', 'paper_M3'}
+spec_by_name = {n: (r, b) for (n, r, b) in MODEL_SPECS}
+
+def make_figs():
+    for name in HEADLINE:
+        rhs, _ = spec_by_name[name]
+        fig, axes = plt.subplots(2, len(TRANSFORMS), figsize=(4 * len(TRANSFORMS), 8))
+        for j, (tkey, dv_col) in enumerate(TRANSFORMS.items()):
+            res, d = fit_spec(dv_col, rhs, df)
+            resid = np.asarray(res.resid)
+            stats.probplot(resid, dist='norm', plot=axes[0, j])
+            axes[0, j].set_title(f'{tkey}: QQ')
+            axes[1, j].scatter(np.asarray(res.fittedvalues), resid, s=8, alpha=.5)
+            axes[1, j].axhline(0, color='r', lw=.8)
+            axes[1, j].set_title(f'{tkey}: resid vs fitted')
+        fig.suptitle(f'Violations model "{name}" — residual diagnostics by transform')
+        fig.tight_layout()
+        fig.savefig(f'{FIG}transform_qq_{name}.png', dpi=120)
+        plt.close(fig)
+        print(f"Wrote {FIG}transform_qq_{name}.png")
+
+make_figs()
