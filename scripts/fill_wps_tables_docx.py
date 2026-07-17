@@ -64,8 +64,13 @@ def fill_row(row, values):
         cell.text = val
 
 
+def remove_row(row):
+    """Delete a table row (used for terms no longer in the model)."""
+    row._element.getparent().remove(row._element)
+
+
 def fill_table(table, tab):
-    for row in table.rows:
+    for row in list(table.rows):
         label = row.cells[0].text.strip()
         if not label:
             continue
@@ -76,7 +81,11 @@ def fill_table(table, tab):
             fill_row(row, [f"{tab[m]['sigma2']:.2f}"
                            for m in MODELS if 'sigma2' in tab[m]])
         elif label in LABEL_TO_TERM:
-            fill_row(row, coef_values(tab, LABEL_TO_TERM[label]))
+            values = coef_values(tab, LABEL_TO_TERM[label])
+            if not values:      # term dropped from model (e.g. spending×time) → drop row
+                remove_row(row)
+            else:
+                fill_row(row, values)
 
 
 doc = Document(SRC)

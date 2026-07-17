@@ -13,11 +13,12 @@ Table 2 — DV = inspections (EPA + state), LINEAR time (PI direction, 2026-06):
 
 Table 3 — DV = violations, CUBIC time (2016–2017 spike is asymmetric):
     M1  violations ~ inspections + time + time2 + time3
-    M2  M1 + SPEND_APP_z(+:time) + SPEND_WORK_z(+:time) + lii_2017_z
+    M2  M1 + SPEND_APP_z + SPEND_WORK_z + lii_2017_z
     M3  M2 + h2a_per_farmworker_z + dol_demand_met_pct_z + pct_flc_z + pct_flc_z:time
 
 "Inspections" enters Table 3 as a raw contemporaneous Level-1 count (PI direction).
-The ×time interactions shown are pre-specified by the table, not screened.
+The two spending×time interactions (SPEND_APP_z:time, SPEND_WORK_z:time) were
+dropped per PI direction (2026-07); only the pct_flc_z:time interaction remains.
 
 Variance components (State-to-State σ² and Δ σ²) are reported for M2 and M3 only.
 Δ σ² = % reduction in between-state intercept variance relative to a baseline
@@ -218,9 +219,8 @@ base_terms = ['inspections', 'time', 'time2', 'time3']
 v1, _ = fit('violations', base_terms, df)
 viol['M1'] = extract(v1, base_terms)
 
-# M2: + spending(+:time) + labor
-rhs2v = base_terms + ['SPEND_APP_z', 'SPEND_APP_z:time',
-                      'SPEND_WORK_z', 'SPEND_WORK_z:time'] + Z_LABOR
+# M2: + spending + labor  (spending×time interactions dropped per PI direction 2026-07)
+rhs2v = base_terms + ['SPEND_APP_z', 'SPEND_WORK_z'] + Z_LABOR
 v2, dv2 = fit('violations', rhs2v, df)
 vbase2, _ = fit('violations', base_terms, dv2)           # matched M1-spec baseline
 viol['M2'] = extract(v2, rhs2v)
@@ -270,9 +270,7 @@ show("TABLE 3 — WPS VIOLATIONS", viol, [
     ('Inspections', 'inspections'),
     ('Time', 'time'), ('Time2', 'time2'), ('Time3', 'time3'),
     ('Spending/applicator', 'SPEND_APP_z'),
-    ('Spending/applicator*time', 'SPEND_APP_z:time'),
     ('Spending/farmworker', 'SPEND_WORK_z'),
-    ('Spending/farmworker*time', 'SPEND_WORK_z:time'),
     ('Labor Intensity', 'lii_2017_z'),
     ('H-2A farmworkers:BLS farmworkers', 'h2a_per_farmworker_z'),
     ('H-2A Authorized/H-2A Requested', 'dol_demand_met_pct_z'),
