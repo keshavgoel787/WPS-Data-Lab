@@ -109,7 +109,7 @@ being dominated by a few extreme high-violation state-years that the covariates
 don't predict; compressing those outliers (log/Box-Cox most aggressively) lets the
 same covariates explain a much larger share of what's left.
 
-### 2.3 Paper Table 3, model M3 (cubic time + spend + labor + H-2A + raw inspections, N=320, 39 states)
+### 2.3 Paper Table 3, model M3 (linear time + spend + labor + H-2A + raw inspections, N=320, 39 states)
 
 | Transform | Shapiro W | Shapiro p | Skew | Excess kurtosis | BP-R² | Pseudo-R² |
 |---|---|---|---|---|---|---|
