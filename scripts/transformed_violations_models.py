@@ -125,11 +125,115 @@ def add_transform_columns(df):
 TRANSFORMS = {'raw': 'dv_raw', 'log': 'dv_log', 'sqrt': 'dv_sqrt',
               'anscombe': 'dv_anscombe', 'boxcox': 'dv_boxcox'}
 
-# --- Step 3: sanity-check guardrails (temporary) ---
+# --- sanity-check guardrails ---
 df, BOXCOX_LAMBDA = add_transform_columns(df)
 assert df['state'].nunique() == 50, df['state'].nunique()
 assert len(df) == 450, len(df)                              # 50 states x 9 years
-for col in ['dv_raw', 'dv_log', 'dv_sqrt', 'dv_anscombe', 'dv_boxcox', 'dv_ft']:
-    assert col in df.columns, col
-assert df['dv_log'].min() >= 0
-print(f"OK: df {df.shape}, Box-Cox lambda = {BOXCOX_LAMBDA:.4f}")
+
+# Baseline (cubic time) used for pseudo-R2 of the cubic-time families.
+CUBIC_BASE = ['time', 'time2', 'time3']
+# Paper Table 3 uses LINEAR time + inspections (matches current manuscript spec).
+PAPER_BASE = ['inspections', 'time']
+
+MODEL_SPECS = [
+    # name, rhs, baseline_rhs
+    ('baseline_cubic', CUBIC_BASE, CUBIC_BASE),
+    # Zimmerman one-at-a-time (cubic time + one L2 covariate)
+    ('zim_spend_app', CUBIC_BASE + ['SPEND_APP_z'], CUBIC_BASE),
+    ('zim_spend_work', CUBIC_BASE + ['SPEND_WORK_z'], CUBIC_BASE),
+    ('zim_lii', CUBIC_BASE + ['lii_2017_z'], CUBIC_BASE),
+    ('zim_h2a', CUBIC_BASE + ['h2a_per_farmworker_z'], CUBIC_BASE),
+    ('zim_demandmet', CUBIC_BASE + ['dol_demand_met_pct_z'], CUBIC_BASE),
+    ('zim_flc', CUBIC_BASE + ['pct_flc_z'], CUBIC_BASE),
+    # BLS spending combined (the two FIFRA populations)
+    ('spend_combined', CUBIC_BASE + ['SPEND_APP_z', 'SPEND_WORK_z'], CUBIC_BASE),
+    # Targeted FIFRA (SPEND_AREA_z only if present)
+    ('targeted_fifra', CUBIC_BASE + ['SPEND_WORK_z', 'SPEND_APP_z'], CUBIC_BASE),
+    # Curated final (cubic time + labor block)
+    ('final_labor', CUBIC_BASE + ['lii_2017_z', 'h2a_per_farmworker_z',
+                                   'dol_demand_met_pct_z', 'pct_flc_z'], CUBIC_BASE),
+    # Paper Table 3 build-up (LINEAR time + inspections)
+    ('paper_M1', PAPER_BASE, PAPER_BASE),
+    ('paper_M2', PAPER_BASE + ['SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z'], PAPER_BASE),
+    ('paper_M3', PAPER_BASE + ['SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z',
+                               'h2a_per_farmworker_z', 'dol_demand_met_pct_z',
+                               'pct_flc_z', 'pct_flc_z:time'], PAPER_BASE),
+]
+# Add SPEND_AREA_z to the targeted model only if it exists in the frame.
+if 'SPEND_AREA_z' in df.columns:
+    MODEL_SPECS = [(('targeted_fifra', CUBIC_BASE + ['SPEND_WORK_z', 'SPEND_APP_z',
+                    'SPEND_AREA_z'], CUBIC_BASE) if n == 'targeted_fifra' else (n, r, b))
+                   for (n, r, b) in MODEL_SPECS]
+
+
+def _analytic(dv_col, rhs, data):
+    need = {dv_col} | {t for term in rhs for t in term.split(':')}
+    need = {c for c in need if c in data.columns}
+    d = data.dropna(subset=list(need)).copy()
+    d['state'] = pd.Categorical(d['state'])
+    return d
+
+def fit_spec(dv_col, rhs, data):
+    d = _analytic(dv_col, rhs, data)
+    formula = f"{dv_col} ~ " + " + ".join(rhs)
+    res = MixedLM.from_formula(formula, data=d, groups=d['state'],
+                               re_formula='~time').fit(method='lbfgs')
+    return res, d
+
+def pseudo_r2(res, d, dv_col, baseline_rhs):
+    base, _ = fit_spec(dv_col, baseline_rhs, d)   # matched-N baseline on this sample
+    s_model = float(res.cov_re.iloc[0, 0])
+    s_base = float(base.cov_re.iloc[0, 0])
+    return (s_base - s_model) / s_base * 100.0
+
+def diagnostics(res, d):
+    resid = np.asarray(res.resid)
+    fitted = np.asarray(res.fittedvalues)
+    # Shapiro on residuals (cap n at 5000; here always small)
+    w, p = stats.shapiro(resid)
+    skew = float(stats.skew(resid))
+    kurt = float(stats.kurtosis(resid))          # excess kurtosis
+    # Heteroscedasticity: OLS of resid^2 on fitted -> R^2 * n ~ chi2 (Breusch-Pagan-ish)
+    X = np.column_stack([np.ones_like(fitted), fitted])
+    beta, *_ = np.linalg.lstsq(X, resid ** 2, rcond=None)
+    pred = X @ beta
+    ss_tot = np.sum((resid ** 2 - (resid ** 2).mean()) ** 2)
+    ss_res = np.sum((resid ** 2 - pred) ** 2)
+    bp_r2 = 0.0 if ss_tot == 0 else 1 - ss_res / ss_tot
+    return {'shapiro_w': float(w), 'shapiro_p': float(p),
+            'resid_skew': skew, 'resid_kurtosis': kurt, 'bp_r2': float(bp_r2)}
+
+
+def key_terms(rhs):
+    """Non-time fixed effects worth reporting for stability."""
+    drop = {'time', 'time2', 'time3', 'inspections'}
+    return [t for t in rhs if t not in drop]
+
+records = []
+for name, rhs, base_rhs in MODEL_SPECS:
+    for tkey, dv_col in TRANSFORMS.items():
+        try:
+            res, d = fit_spec(dv_col, rhs, df)
+        except Exception as e:
+            records.append({'model': name, 'transform': tkey, 'error': str(e)})
+            continue
+        diag = diagnostics(res, d)
+        row = {'model': name, 'transform': tkey,
+               'n_obs': len(d), 'n_states': d['state'].nunique(),
+               'pseudo_r2_pct': pseudo_r2(res, d, dv_col, base_rhs), **diag}
+        for t in key_terms(rhs):
+            if t in res.fe_params.index:
+                row[f'b__{t}'] = float(res.fe_params[t])
+                row[f'p__{t}'] = float(res.pvalues[t])
+        records.append(row)
+
+out = pd.DataFrame(records)
+out.to_csv(GEN + 'transform_comparison.csv', index=False)
+print(f"Wrote {GEN}transform_comparison.csv  ({len(out)} rows)")
+print(f"Box-Cox lambda = {BOXCOX_LAMBDA:.4f}")
+
+# Headline diagnostics table to terminal
+head = out[out['model'].isin(['baseline_cubic', 'final_labor', 'paper_M3'])]
+cols = ['model', 'transform', 'shapiro_w', 'shapiro_p', 'resid_skew',
+        'resid_kurtosis', 'bp_r2', 'pseudo_r2_pct']
+print(head[cols].to_string(index=False))
