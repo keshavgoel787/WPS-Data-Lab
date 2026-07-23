@@ -55,7 +55,34 @@ python3 scripts/fill_wps_tables_docx.py     # fills the Word template → docs/W
 python3 scripts/transformed_violations_models.py   # violations suite across log/sqrt/Anscombe/Box-Cox
 python3 scripts/variance_decomposition.py          # full random-effects component breakdown + VPC
 python3 scripts/parameter_walkthrough_models.py    # variable-by-variable rebuild of Tables 2&3 with dropped time terms put back
+
+# Post-meeting corrections (2026-07): full-BLS harvest, year-matched H-2A ratio, log DVs
+# Run in this order (each depends on the previous):
+python3 scripts/harvest_bls_oews_panel.py     # BLS OEWS 2011-2019 (all years) → data/raw/bls_oews_panel_2011_2019.csv
+python3 scripts/harvest_stag_spending.py       # USASpending re-harvest + validation (diagnostic; see notes below)
+python3 scripts/rebuild_spend_bls_multiyear.py # multi-year SPEND denominators + $0 for MS/RI/WV → spend_bls_variables_multiyear.csv
+python3 scripts/build_h2a_ratio_panel.py       # year-matched time-varying H-2A ÷ farmworker ratio → h2a_ratio_panel.csv
+python3 scripts/paper_table_models_corrected.py# CORRECTED Tables 2&3: log(y+1) DVs, N=47 → paper_table_params_corrected.json
 ```
+
+**2026-07 post-meeting corrections (supersede the earlier paper tables).** After Joe's
+meeting the models were rebuilt to fix the 50→39 state drop and adopt log DVs:
+- **Why states dropped**: BLS OEWS suppression in the 2011-only snapshot (8 states) +
+  a spending-window gap (MS/RI/WV had no in-window rows). See
+  `memory/project_wps_missing_states.md`.
+- **BLS**: `harvest_bls_oews_panel.py` pulls all years 2011-2019; farmworker
+  employment (45-2092) is now 50/50, pesticide applicators (37-3012) 47/50 (AK/RI/VT
+  never published by BLS — accepted, PI direction).
+- **Spending**: the master is hand-curated to pesticide-relevant awards, dominated by
+  CFDA 66.700 (Consolidated Pesticide Enforcement Cooperative Agreements). Summing all
+  7 CFDAs inflates spending ~43× (66.605 PPG is $3.95B) — do NOT do that. MS/RI/WV
+  genuinely receive $0 in 66.700 (like HI/TN/UT already coded), so they are $0-coded,
+  not dropped. `harvest_stag_spending.py` is the diagnostic that established this.
+- **H-2A ratio**: now year-matched and time-varying (annual certified H-2A ÷ annual
+  BLS farmworkers), a Level-1 predictor — replaces the frozen-2011-denominator state mean.
+- **DVs**: both modelled as `log(count+1)`; inspections enters the violations table on
+  the same `log(x+1)` scale. Δσ² baselines re-estimated per column on the log scale.
+- **Result**: substantive models N = 47 (was 39).
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
