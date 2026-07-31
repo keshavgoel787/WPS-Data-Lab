@@ -137,30 +137,57 @@ def fit(dv, rhs, data):
 def stars(p):
     return ('***' if p < .001 else '**' if p < .01 else '*' if p < .05 else '+' if p < .10 else '')
 
-def extract(res, terms):
+def extract(res, terms, d, dv):
+    """Fixed-effect estimates + fully standardized beta on this analytic sample.
+
+    beta = b * SD_sample(x) / SD_sample(y). Covariates are z-scored, but listwise
+    deletion drifts their in-sample SD off 1, so recompute rather than assume it.
+    """
+    sd_y = float(d[dv].std())
     out = {}
     for t in terms:
-        if t in res.fe_params.index:
-            out[t] = {'b': float(res.fe_params[t]), 'se': float(res.bse[t]),
-                      'p': float(res.pvalues[t]), 'stars': stars(float(res.pvalues[t]))}
+        if t in res.fe_params.index and t in d.columns:
+            b = float(res.fe_params[t])
+            sd_x = float(d[t].std())
+            out[t] = {'b': b, 'se': float(res.bse[t]),
+                      'p': float(res.pvalues[t]), 'stars': stars(float(res.pvalues[t])),
+                      'beta': b * sd_x / sd_y if sd_y else float('nan')}
     return out
 
 def sig2(res):
     return float(res.cov_re.iloc[0, 0])
 
+def re_components(res):
+    """Full random-effects variance components (intercept + linear-time slope)."""
+    return {'sigma2_u0': float(res.cov_re.iloc[0, 0]),   # between-state intercept var
+            'sigma2_u1': float(res.cov_re.iloc[1, 1]),   # between-state time-slope var
+            'sigma_u01': float(res.cov_re.iloc[0, 1]),   # intercept-slope covariance
+            'sigma2_e':  float(res.scale)}               # within-state residual var
+
 CUBIC = ['time', 'time2', 'time3']
 
 def build(dv, base_terms, tag):
     tab = {}
-    r1, _ = fit(dv, base_terms, df)
-    tab['M1'] = extract(r1, base_terms)
+    # M1: the base (time-only, + log_inspections for violations) model. It is its
+    # own baseline, so original == became (delta 0).
+    r1, d1 = fit(dv, base_terms, df)
+    tab['M1'] = extract(r1, base_terms, d1, dv)
+    comp1 = re_components(r1)
+    tab['M1'].update(comp1)
+    tab['M1'].update({k + '_baseline': v for k, v in comp1.items()})
+    tab['M1']['sigma2'] = comp1['sigma2_u0']
+    tab['M1']['delta_pct'] = 0.0
+    tab['M1']['n_obs'], tab['M1']['n_states'] = len(d1), d1['state'].nunique()
     for m, extra in [('M2', Z_SPEND + Z_LABOR), ('M3', Z_SPEND + Z_LABOR + Z_H2A)]:
         rhs = base_terms + extra
         r, d = fit(dv, rhs, df)
         b, _ = fit(dv, base_terms, d)            # matched baseline on this sample
-        tab[m] = extract(r, rhs)
-        tab[m]['sigma2'] = sig2(r)
-        tab[m]['delta_pct'] = (sig2(b) - sig2(r)) / sig2(b) * 100
+        tab[m] = extract(r, rhs, d, dv)
+        comp, comp_base = re_components(r), re_components(b)
+        tab[m].update(comp)
+        tab[m].update({k + '_baseline': v for k, v in comp_base.items()})
+        tab[m]['sigma2'] = comp['sigma2_u0']                 # kept for back-compat
+        tab[m]['delta_pct'] = (comp_base['sigma2_u0'] - comp['sigma2_u0']) / comp_base['sigma2_u0'] * 100
         tab[m]['n_obs'], tab[m]['n_states'] = len(d), d['state'].nunique()
     return tab
 

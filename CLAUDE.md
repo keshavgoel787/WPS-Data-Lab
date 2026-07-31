@@ -84,6 +84,27 @@ meeting the models were rebuilt to fix the 50→39 state drop and adopt log DVs:
   the same `log(x+1)` scale. Δσ² baselines re-estimated per column on the log scale.
 - **Result**: substantive models N = 47 (was 39).
 
+**2026-07 augmentation (on top of the corrected tables).** Adds three things to the
+corrected pipeline without touching its models; see
+`docs/superpowers/specs/2026-07-31-wps-table-augmentation-design.md`:
+- `paper_table_models_corrected.py` now also emits, per column, the **full random-effects
+  set** (`sigma2_u0`, `sigma2_u1`, `sigma_u01`, `sigma2_e`) for M1/M2/M3 *and* their
+  time-only-baseline counterparts (`*_baseline`), plus a fully standardized `beta`
+  (`b·SD(x)/SD(y)`, SDs on each column's own analytic sample) on every fixed effect.
+- `fill_wps_tables_docx_augmented.py` builds **fresh** tables (not the placeholder shell)
+  with a separate **β column** after each model's b/(SE) and a bottom **State-to-State
+  Variation** block showing every RE component as *baseline → fitted* (original vs became)
+  plus Δσ²_u0 %. Output: `docs/WPS_Table_Sheels_augmented.docx` (the committed
+  `WPS_Table_Sheels_filled_corrected.docx` is left untouched). Run
+  `paper_table_models_corrected.py` first.
+- `spaghetti_plots.py` draws per-outcome trajectory plots: eligibility = ≥1 nonzero DV in
+  EACH of Pre (2011-15) / Spike (2016-17) / Post (2018-19); 15 states drawn at random per
+  outcome (independent seeds); one muted line per state + 15-state mean overlay + endpoint
+  labels. Outputs `figures/fig_spaghetti_inspections.png`, `figures/fig_spaghetti_violations.png`.
+- **Verified (2026-07)**: the −12.5% Δσ²_u0 in Violations Model 2 is a *genuine* estimate
+  (adding SPEND+LII raises between-state intercept variance on the M2 sample via the
+  correlated random slope), not a sign error; σ²_u0 stays positive.
+
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
 Stata ports of three core scripts also live in `scripts/` (`hierarchical_violations_model.do`, `visualize_model_results.do`, `visualize_polynomial_terms.do`), merged from the `stata` branch. They read/write the same `data/` and `figures/` paths as their Python counterparts.
