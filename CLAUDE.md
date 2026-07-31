@@ -106,7 +106,10 @@ corrected pipeline without touching its models; see
   centering year 2017* and trades off against σ²_u1/σ_u01, so its reduction is not bounded to
   [0,1] and can go negative. Coefficients still come from the random-slope model. The JSON
   keeps both: `delta_pct` (random-slope σ²_u0, can be negative) and `delta_pct_ri`
-  (random-intercept, the reported value). The frozen corrected docx still shows `delta_pct`.
+  (random-intercept, the reported value). **Both** docx report the random-intercept values:
+  `fill_wps_tables_docx_corrected.py` and `fill_wps_tables_docx_augmented.py` read
+  `sigma2_u0_ri` / `delta_pct_ri` (M2/M3 columns; the M1 variance column is blank in the
+  corrected shell).
 - `spaghetti_plots.py` draws per-outcome trajectory plots: eligibility = ≥1 nonzero DV in
   EACH of Pre (2011-15) / Spike (2016-17) / Post (2018-19); 15 states drawn at random per
   outcome (independent seeds); one muted line per state + 15-state mean overlay + endpoint

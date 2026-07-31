@@ -90,10 +90,15 @@ def fill_table(table, tab):
         label = row.cells[0].text.strip()
         if not label:
             continue
+        # variance rows use the random-INTERCEPT basis (delta_pct_ri / sigma2_u0_ri):
+        # in the random-slope spec sigma^2_u0 is centered at 2017 and its reduction is
+        # not bounded to [0,1] (Violations M2 read -12.5%); the random-intercept value
+        # is the conventional between-state variance-explained. Template placeholders
+        # exist only for M2/M3 (the M1 variance column is left blank).
         if label.startswith('Δ'):
-            fill_row(row, [f"{tab[m]['delta_pct']:.1f}%" for m in MODELS if 'delta_pct' in tab[m]])
+            fill_row(row, [f"{tab[m]['delta_pct_ri']:.1f}%" for m in ('M2', 'M3')])
         elif 'State-to-State' in label:
-            fill_row(row, [f"{tab[m]['sigma2']:.3f}" for m in MODELS if 'sigma2' in tab[m]])
+            fill_row(row, [f"{tab[m]['sigma2_u0_ri']:.3f}" for m in ('M2', 'M3')])
         elif label in LABEL_TO_TERM:
             term = LABEL_TO_TERM[label]
             if term_present(tab, term):
@@ -130,9 +135,12 @@ note.add_run(
     'models are estimated on 47 states: Alaska, Rhode Island, and Vermont are omitted '
     'from Spending/applicator columns because BLS never publishes pesticide-applicator '
     '(SOC 37-3012) employment for them. Standard errors in parentheses; '
-    '+ p<.10, * p<.05, ** p<.01, *** p<.001. Δ State-to-State σ² is the reduction in '
-    'between-state intercept variance relative to a time-only baseline re-estimated on '
-    'each column’s analytic sample.')
+    '+ p<.10, * p<.05, ** p<.01, *** p<.001. State-to-State σ² and Δ State-to-State σ² '
+    'are read from random-intercept-only refits (baseline and model, same sample): Δ is '
+    'the percent of between-state intercept variance explained. Coefficients come from the '
+    'random-slope specification; the random-intercept basis is used for the variance-'
+    'explained statistic because in the random-slope model σ² is centered at 2017 and its '
+    'reduction is not bounded to [0,1].')
 
 doc.save(OUT)
 print(f"Saved filled tables to {OUT}")
