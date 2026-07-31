@@ -126,12 +126,16 @@ Z_H2A = ['h2a_per_farmworker_z'] + Z_H2A_L2
 # ============================================================
 # [3] FIT HELPERS
 # ============================================================
-def fit(dv, rhs, data):
+def fit(dv, rhs, data, re_formula='~time'):
+    """Fit the mixed model. re_formula='~time' = random intercept + random slope
+    (paper spec, used for coefficients); re_formula=None = random intercept only
+    (used for the between-state variance-explained statistic)."""
     need = {dv} | {t for term in rhs for t in term.split(':')}
     d = data.dropna(subset=[c for c in need if c in data.columns]).copy()
     d['state'] = pd.Categorical(d['state'])
+    kw = {} if re_formula is None else {'re_formula': re_formula}
     res = MixedLM.from_formula(f"{dv} ~ " + " + ".join(rhs), data=d,
-                               groups=d['state'], re_formula='~time').fit(method='lbfgs')
+                               groups=d['state'], **kw).fit(method='lbfgs')
     return res, d
 
 def stars(p):
@@ -166,6 +170,21 @@ def re_components(res):
 
 CUBIC = ['time', 'time2', 'time3']
 
+def ri_decomp(dv, base_terms, rhs, d):
+    """Random-INTERCEPT-only variance-explained on sample d. In a random-slope
+    model sigma^2_u0 is the between-state variance AT time=0 (2017) and trades off
+    with the slope variance/covariance, so its reduction is not bounded to [0,1]
+    and can go negative; the conventional between-state variance-explained is read
+    from random-intercept-only models. Coefficients still come from the random-slope
+    fit -- this basis is used only for the variation block."""
+    r_ri, _ = fit(dv, rhs, d, re_formula=None)
+    b_ri, _ = fit(dv, base_terms, d, re_formula=None)
+    u0_f, u0_b = float(r_ri.cov_re.iloc[0, 0]), float(b_ri.cov_re.iloc[0, 0])
+    return {'sigma2_u0_ri': u0_f, 'sigma2_u0_ri_baseline': u0_b,
+            'sigma2_e_ri': float(r_ri.scale), 'sigma2_e_ri_baseline': float(b_ri.scale),
+            'delta_pct_ri': (u0_b - u0_f) / u0_b * 100}
+
+
 def build(dv, base_terms, tag):
     tab = {}
     # M1: the base (time-only, + log_inspections for violations) model. It is its
@@ -177,6 +196,9 @@ def build(dv, base_terms, tag):
     tab['M1'].update({k + '_baseline': v for k, v in comp1.items()})
     tab['M1']['sigma2'] = comp1['sigma2_u0']
     tab['M1']['delta_pct'] = 0.0
+    ri1 = ri_decomp(dv, base_terms, base_terms, d1)          # baseline == model for M1
+    ri1['delta_pct_ri'] = 0.0
+    tab['M1'].update(ri1)
     tab['M1']['n_obs'], tab['M1']['n_states'] = len(d1), d1['state'].nunique()
     for m, extra in [('M2', Z_SPEND + Z_LABOR), ('M3', Z_SPEND + Z_LABOR + Z_H2A)]:
         rhs = base_terms + extra
@@ -187,7 +209,10 @@ def build(dv, base_terms, tag):
         tab[m].update(comp)
         tab[m].update({k + '_baseline': v for k, v in comp_base.items()})
         tab[m]['sigma2'] = comp['sigma2_u0']                 # kept for back-compat
+        # random-SLOPE sigma^2_u0 reduction (kept for reference; can be negative)
         tab[m]['delta_pct'] = (comp_base['sigma2_u0'] - comp['sigma2_u0']) / comp_base['sigma2_u0'] * 100
+        # random-INTERCEPT variance-explained (reported in the augmented table)
+        tab[m].update(ri_decomp(dv, base_terms, rhs, d))
         tab[m]['n_obs'], tab[m]['n_states'] = len(d), d['state'].nunique()
     return tab
 
@@ -204,9 +229,11 @@ def show(title, tab, order):
         cells = [f"{tab[m][term]['b']:.3f}{tab[m][term]['stars']}" if tab[m].get(term) else ''
                  for m in ['M1', 'M2', 'M3']]
         print(f"{label:32}" + "".join(f"{c:>13}" for c in cells))
-    print(f"{'State sigma^2':32}" + "".join(
-        f"{tab[m].get('sigma2', ''):>13.3f}" if 'sigma2' in tab[m] else f"{'':>13}" for m in ['M1', 'M2', 'M3']))
-    print(f"{'Delta sigma^2':32}" + "".join(
+    print(f"{'State sigma^2_u0 (rand-int)':32}" + "".join(
+        f"{tab[m].get('sigma2_u0_ri', ''):>13.3f}" if 'sigma2_u0_ri' in tab[m] else f"{'':>13}" for m in ['M1', 'M2', 'M3']))
+    print(f"{'Delta sigma^2_u0 (rand-int)':32}" + "".join(
+        f"{tab[m]['delta_pct_ri']:>12.1f}%" if 'delta_pct_ri' in tab[m] else f"{'':>13}" for m in ['M1', 'M2', 'M3']))
+    print(f"{'  [rand-slope sigma^2_u0 delta]':32}" + "".join(
         f"{tab[m]['delta_pct']:>12.1f}%" if 'delta_pct' in tab[m] else f"{'':>13}" for m in ['M1', 'M2', 'M3']))
     for m in ['M2', 'M3']:
         print(f"  {m}: N={tab[m]['n_obs']} obs, {tab[m]['n_states']} states")

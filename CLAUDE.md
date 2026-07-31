@@ -96,17 +96,27 @@ corrected pipeline without touching its models; see
   significance notes (Helvetica 11, "inspections"/"violations" bold-italic; study period
   corrected 2021→2019), then swaps each placeholder table **in place** for a freshly built
   one carrying a separate **β column** after each model's b/(SE) and a bottom **State-to-State
-  Variation** block showing every RE component as *baseline → fitted* (original vs became)
-  plus Δσ²_u0 %. Output: `docs/WPS_Table_Sheels_augmented.docx` (the committed
+  Variation** block (σ²_u0 and σ²_e as *baseline → fitted*, plus Δσ²_u0 %) on the
+  **random-intercept basis**. Output: `docs/WPS_Table_Sheels_augmented.docx` (the committed
   `WPS_Table_Sheels_filled_corrected.docx` is left untouched). Run
   `paper_table_models_corrected.py` first.
+- **Variance-explained basis (2026-07)**: the augmented table's Δσ²_u0 is read from
+  **random-intercept-only** refits (baseline + model, same sample) — `delta_pct_ri` in the
+  JSON — because in the random-SLOPE paper spec σ²_u0 is the between-state variance *at the
+  centering year 2017* and trades off against σ²_u1/σ_u01, so its reduction is not bounded to
+  [0,1] and can go negative. Coefficients still come from the random-slope model. The JSON
+  keeps both: `delta_pct` (random-slope σ²_u0, can be negative) and `delta_pct_ri`
+  (random-intercept, the reported value). The frozen corrected docx still shows `delta_pct`.
 - `spaghetti_plots.py` draws per-outcome trajectory plots: eligibility = ≥1 nonzero DV in
   EACH of Pre (2011-15) / Spike (2016-17) / Post (2018-19); 15 states drawn at random per
   outcome (independent seeds); one muted line per state + 15-state mean overlay + endpoint
   labels. Outputs `figures/fig_spaghetti_inspections.png`, `figures/fig_spaghetti_violations.png`.
-- **Verified (2026-07)**: the −12.5% Δσ²_u0 in Violations Model 2 is a *genuine* estimate
-  (adding SPEND+LII raises between-state intercept variance on the M2 sample via the
-  correlated random slope), not a sign error; σ²_u0 stays positive.
+- **Verified (2026-07)**: the −12.5% Δσ²_u0 in Violations Model 2 was a *genuine* estimate,
+  not a sign error — but it is an artifact of the random-slope centering (σ²_u0 measured at
+  2017 rises when predictors enter). Diagnostic: with a random slope the M2 reduction is
+  −12.5%; random-intercept-only it is +19.2%, and the M2 predictors correlate −0.36/−0.40
+  with state baseline intercepts. The augmented table now reports the random-intercept
+  value (+19.2%). See the `delta_pct_ri` note above.
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 

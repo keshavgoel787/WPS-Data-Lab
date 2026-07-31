@@ -58,12 +58,12 @@ VIOLATIONS_ROWS = [
     ('H-2A Authorized/H-2A Requested', 'dol_demand_met_pct_z'),
     ('%H-2A Authorized to FLC', 'pct_flc_z'),
 ]
-# variance block: (label, base_key, fit_key)
+# variance block: (label, base_key, fit_key) -- random-INTERCEPT basis, so the
+# between-state variance-explained is the conventional [0,1] pseudo-R^2 (the
+# random-slope sigma^2_u0 is centered at 2017 and can rise when predictors enter).
 VAR_ROWS = [
-    ('  σ²_u0  (between-state intercept)', 'sigma2_u0_baseline', 'sigma2_u0'),
-    ('  σ²_u1  (between-state time slope)', 'sigma2_u1_baseline', 'sigma2_u1'),
-    ('  σ_u01  (intercept–slope covariance)', 'sigma_u01_baseline', 'sigma_u01'),
-    ('  σ²_e   (within-state residual)', 'sigma2_e_baseline', 'sigma2_e'),
+    ('  σ²_u0  (between-state intercept)', 'sigma2_u0_ri_baseline', 'sigma2_u0_ri'),
+    ('  σ²_e   (within-state residual)', 'sigma2_e_ri_baseline', 'sigma2_e_ri'),
 ]
 
 
@@ -128,7 +128,8 @@ def make_table(doc, tab, rows):
     merged = vh[0]
     for c in vh[1:]:
         merged = merged.merge(c)
-    set_cell(merged, 'State-to-State Variation  (original → became)', bold=True, align='left')
+    set_cell(merged, 'State-to-State Variation — random-intercept basis  (original → became)',
+             bold=True, align='left')
 
     # variance component rows: one merged cell per model = "baseline -> fitted"
     for label, bkey, fkey in VAR_ROWS:
@@ -139,13 +140,13 @@ def make_table(doc, tab, rows):
             cell = r[base].merge(r[base + 1]).merge(r[base + 2])
             b, fdat = tab[m].get(bkey), tab[m].get(fkey)
             set_cell(cell, f"{b:.3f} → {fdat:.3f}" if b is not None and fdat is not None else '')
-    # delta sigma2_u0 %
+    # delta sigma2_u0 % (random-intercept basis: between-state variance explained)
     r = t.add_row().cells
-    set_cell(r[0], '  Δ σ²_u0 (reduction vs baseline)', align='left')
+    set_cell(r[0], '  Δ σ²_u0 (between-state variance explained)', align='left')
     for i, m in enumerate(MODELS):
         base = 1 + i * 3
         cell = r[base].merge(r[base + 1]).merge(r[base + 2])
-        set_cell(cell, f"{tab[m]['delta_pct']:.1f}%" if 'delta_pct' in tab[m] else '')
+        set_cell(cell, f"{tab[m]['delta_pct_ri']:.1f}%" if 'delta_pct_ri' in tab[m] else '')
 
     # N row
     r = t.add_row().cells
@@ -187,13 +188,16 @@ r1 = note.add_run(
     'Each model reports the unstandardized coefficient b, its standard error (SE), '
     'and the fully standardized coefficient β = b·SD(x)/SD(y), with SDs taken on that '
     "column's own analytic sample. β for the time polynomials and log(Inspections+1) is "
-    'reported for completeness but is of limited interpretive value. The State-to-State '
-    'Variation block shows each random-effects component as the value under a time-only '
-    'baseline (re-estimated on the same sample) → the value under the fitted model; '
-    'Δ σ²_u0 is the percent reduction in between-state intercept variance. A negative '
-    'Δ (e.g., Violations Model 2) means the added Level-2 predictors raised between-state '
-    'intercept variance on that sample — a genuine suppression/reallocation effect given the '
-    'correlated random slope, not a sign error. Both outcomes are log(count+1); the violations '
+    'reported for completeness but is of limited interpretive value. Coefficients (b, SE, β) '
+    'come from the paper spec — a random intercept plus a random linear-time slope by state. '
+    'The State-to-State Variation block is instead read from random-INTERCEPT-only models '
+    '(baseline and fitted, same sample): it shows σ²_u0 and the residual σ²_e as the value '
+    'under a time-only baseline → the value under the fitted model, and Δ σ²_u0 as the '
+    'percent of between-state intercept variance explained. The random-intercept basis is '
+    'used here because in the random-slope model σ²_u0 is the between-state variance at the '
+    'centering year (2017) and trades off against the slope variance/covariance, so its '
+    'reduction is not bounded to [0,1]; the random-intercept statistic is the conventional '
+    'between-state variance-explained. Both outcomes are log(count+1); the violations '
     'model includes log(inspections+1) as a contemporaneous predictor. Spending variables use '
     'mean 2011–2019 STAG obligations over mean 2011–2019 BLS employment; MS/RI/WV (like '
     'HI/TN/UT) received no CFDA 66.700 obligations and are coded $0. AK/RI/VT drop from '
