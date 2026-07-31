@@ -91,8 +91,11 @@ corrected pipeline without touching its models; see
   set** (`sigma2_u0`, `sigma2_u1`, `sigma_u01`, `sigma2_e`) for M1/M2/M3 *and* their
   time-only-baseline counterparts (`*_baseline`), plus a fully standardized `beta`
   (`b·SD(x)/SD(y)`, SDs on each column's own analytic sample) on every fixed effect.
-- `fill_wps_tables_docx_augmented.py` builds **fresh** tables (not the placeholder shell)
-  with a separate **β column** after each model's b/(SE) and a bottom **State-to-State
+- `fill_wps_tables_docx_augmented.py` **opens the original shell** (`~/Downloads/WPS Table
+  Sheels.docx`) so the augmented tables inherit its `Table 2.`/`Table 3.` captions and
+  significance notes (Helvetica 11, "inspections"/"violations" bold-italic; study period
+  corrected 2021→2019), then swaps each placeholder table **in place** for a freshly built
+  one carrying a separate **β column** after each model's b/(SE) and a bottom **State-to-State
   Variation** block showing every RE component as *baseline → fitted* (original vs became)
   plus Δσ²_u0 %. Output: `docs/WPS_Table_Sheels_augmented.docx` (the committed
   `WPS_Table_Sheels_filled_corrected.docx` is left untouched). Run

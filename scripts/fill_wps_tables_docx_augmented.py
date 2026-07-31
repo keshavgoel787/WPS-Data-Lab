@@ -1,8 +1,13 @@
 """
 AUGMENTED WPS Tables 2 & 3 (2026-07).
 
-Builds fresh Word tables from paper_table_params_corrected.json that ADD, on top
-of the corrected b/(SE) shells:
+Opens the original Word shell (~/Downloads/WPS Table Sheels.docx) so the augmented
+tables INHERIT the shell's "Table 2." / "Table 3." captions and significance notes
+(Helvetica 11, "inspections"/"violations" bold-italic), correcting the study period
+2021 -> 2019. It then replaces each placeholder table IN PLACE with a freshly built
+augmented table (kept fresh -- not placeholder-edited -- because the extra beta
+columns and the 4-row variance block change the column grid) that ADDS, on top of
+the corrected b/(SE) shell:
 
   1. a separate standardized-beta column after each model's b / (SE);
   2. a "State-to-State Variation" block reporting the full random-effects set
@@ -10,8 +15,6 @@ of the corrected b/(SE) shells:
      sigma^2_e residual) as ORIGINAL (time-only baseline, same sample) -> FITTED,
      plus the Delta sigma^2_u0 percent.
 
-Fresh tables (not the fixed placeholder shell) because the extra beta columns and
-the 4-row variance block change the column grid beyond safe placeholder edits.
 The committed docs/WPS_Table_Sheels_filled_corrected.docx is left untouched.
 
 Requires paper_table_models_corrected.py to have run.
@@ -22,9 +25,11 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+SRC = '/Users/keshavgoel/Downloads/WPS Table Sheels.docx'
 JSON = '/Users/keshavgoel/Research/data/generated/paper_table_params_corrected.json'
 OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_augmented.docx'
 MODELS = ['M1', 'M2', 'M3']
+FONT = 'Helvetica'          # match the shell's caption/body typeface
 
 with open(JSON) as f:
     P = json.load(f)
@@ -69,6 +74,7 @@ def set_cell(cell, text, bold=False, align='center', size=9):
     run = p.add_run(text)
     run.bold = bold
     run.font.size = Pt(size)
+    run.font.name = FONT           # inherit the shell's typeface
 
 
 def coef_cells(tab, term):
@@ -83,9 +89,12 @@ def coef_cells(tab, term):
     return out
 
 
-def build_table(doc, title, subtitle, tab, rows):
-    doc.add_paragraph().add_run(title).bold = True
-    doc.add_paragraph(subtitle)
+def make_table(doc, tab, rows):
+    """Build the augmented table (appended at doc end) and return the Table.
+
+    No caption/heading paragraphs are added -- the caller relocates this table
+    directly under the shell's own "Table N." caption so that styling is inherited.
+    """
     ncol = 1 + 3 * 3  # label + (b,SE,beta) x 3 models
     t = doc.add_table(rows=0, cols=ncol)
     t.style = 'Table Grid'
@@ -146,23 +155,35 @@ def build_table(doc, title, subtitle, tab, rows):
         cell = r[base].merge(r[base + 1]).merge(r[base + 2])
         no, ns = tab[m].get('n_obs'), tab[m].get('n_states')
         set_cell(cell, f"{no} / {ns}" if no is not None else '')
-    doc.add_paragraph()
+    return t
 
 
-doc = Document()
-doc.add_paragraph().add_run(
-    'WPS Enforcement Multilevel Models, 2011–2019 (augmented)').bold = True
+def replace_table(doc, old_table, tab, rows):
+    """Swap a shell placeholder table for a freshly built augmented one, in place."""
+    new = make_table(doc, tab, rows)                 # appended at doc end
+    old_table._tbl.addprevious(new._tbl)             # move into the old slot
+    old_table._tbl.getparent().remove(old_table._tbl)
 
-build_table(doc, 'Table 2. WPS Inspections',
-            'DV = log(inspections + 1). Random intercept + random linear-time slope by state (REML).',
-            P['inspections'], INSPECTIONS_ROWS)
-build_table(doc, 'Table 3. WPS Violations',
-            'DV = log(violations + 1). Random intercept + random linear-time slope by state (REML).',
-            P['violations'], VIOLATIONS_ROWS)
+
+# Open the shell so captions ("Table 2." / "Table 3.") and significance notes,
+# with their Helvetica styling, are inherited.
+doc = Document(SRC)
+
+# Study period: the data run 2011-2019, not 2021.
+for p in doc.paragraphs:
+    if '2011 to 2021' in p.text:
+        for run in p.runs:
+            run.text = run.text.replace('2011 to 2021', '2011 to 2019')
+
+# Capture the two placeholder tables BEFORE we append new ones.
+shell_insp, shell_viol = doc.tables[0], doc.tables[1]
+replace_table(doc, shell_insp, P['inspections'], INSPECTIONS_ROWS)
+replace_table(doc, shell_viol, P['violations'], VIOLATIONS_ROWS)
 
 note = doc.add_paragraph()
-note.add_run('Note. ').bold = True
-note.add_run(
+r0 = note.add_run('Note. ')
+r0.bold = True
+r1 = note.add_run(
     'Each model reports the unstandardized coefficient b, its standard error (SE), '
     'and the fully standardized coefficient β = b·SD(x)/SD(y), with SDs taken on that '
     "column's own analytic sample. β for the time polynomials and log(Inspections+1) is "
@@ -178,6 +199,9 @@ note.add_run(
     'HI/TN/UT) received no CFDA 66.700 obligations and are coded $0. AK/RI/VT drop from '
     'Spending/applicator columns (BLS never publishes SOC 37-3012 for them), giving N=47 states. '
     '+ p<.10, * p<.05, ** p<.01, *** p<.001.')
+for r in (r0, r1):
+    r.font.name = FONT
+    r.font.size = Pt(9)
 
 doc.save(OUT)
 print(f"Saved augmented tables to {OUT}")
