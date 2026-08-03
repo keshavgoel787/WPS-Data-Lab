@@ -121,39 +121,41 @@ def plot(long, dv, title, seed, outfile, logscale=False):
     fig.patch.set_facecolor(C_SURFACE)
     ax.set_facecolor(C_SURFACE)
 
-    # spike-period wash + period dividers
-    ax.axvspan(2015.5, 2017.5, color=C_SPIKE, alpha=0.055, zorder=0, lw=0)
+    # revised-WPS period: shaded gray band + dividers
+    ax.axvspan(2015.5, 2017.5, color=C_MUTED, alpha=0.16, zorder=0, lw=0)
     for x in (2015.5, 2017.5):
         ax.axvline(x, color=C_BASE, lw=1, ls=(0, (4, 3)), zorder=1)
 
-    # state lines (shared muted neutral -- identity comes from endpoint labels)
+    # distinct per-state colours (team request: individual lines identifiable);
+    # endpoint labels are coloured to match, so identity is doubled (colour + label).
+    palette = list(plt.get_cmap('tab20').colors)
+    state_color = {st: palette[i % len(palette)] for i, st in enumerate(pick)}
     for st in pick:
-        ax.plot(YEARS, wide.loc[st].values, color=C_LINE, lw=1.2, alpha=0.55, zorder=2,
-                solid_capstyle='round')
+        ax.plot(YEARS, wide.loc[st].values, color=state_color[st], lw=1.7, alpha=0.9,
+                zorder=2, solid_capstyle='round')
 
-    # 15-state mean overlay (single accent line)
+    # 15-state mean overlay (thick black, distinct from the coloured state lines)
     mean_traj = wide.mean(axis=0).values
-    ax.plot(YEARS, mean_traj, color=C_ACCENT, lw=2.6, zorder=4,
+    ax.plot(YEARS, mean_traj, color=C_PRIMARY, lw=3.0, zorder=5,
             solid_capstyle='round', label='15-state mean')
 
-    # endpoint direct labels (identity by label, not colour)
+    # endpoint direct labels, coloured to match each line
     ends = wide[2019].values.astype(float)
     ax.set_xlim(2011, 2019.8)
-    ymax = np.nanmax(wide.values) * 1.08
+    ymax = np.nanmax(wide.values) * 1.12
     ax.set_ylim(0, ymax)
     lab_y = spread_labels(ends, ax)
     for st, y0, y1 in zip(pick, ends, lab_y):
         ax.annotate(NAME_TO_ABBREV[st], xy=(2019, y0), xytext=(2019.15, y1),
-                    va='center', ha='left', fontsize=7.5, color=C_SECOND,
-                    annotation_clip=False)
+                    va='center', ha='left', fontsize=7.5, color=state_color[st],
+                    fontweight='bold', annotation_clip=False)
 
-    # period labels along the top
-    for name, xc in [('Pre', 2013), ('Spike', 2016.5), ('Post', 2018.5)]:
-        ax.text(xc, ymax * 0.98, name, ha='center', va='top', fontsize=8.5,
-                color=C_MUTED, style='italic')
+    # period labels along the top (title removed -- Joe drafts his own header)
+    for name, xc in [('Pre', 2013), ('revised WPS', 2016.5), ('Post', 2018.5)]:
+        ax.text(xc, ymax * 0.99, name, ha='center', va='top', fontsize=8.5,
+                color=C_SECOND, style='italic')
 
-    # chrome
-    ax.set_title(title, fontsize=13, color=C_PRIMARY, loc='left', pad=12, fontweight='bold')
+    # chrome (no figure title)
     ax.set_xlabel('Year', fontsize=10, color=C_SECOND)
     ylab = (f'log(1 + {dv})' if logscale else f'{dv.capitalize()} per state-year')
     ax.set_ylabel(ylab, fontsize=10, color=C_SECOND)
@@ -167,7 +169,7 @@ def plot(long, dv, title, seed, outfile, logscale=False):
     ax.legend(loc='upper left', frameon=False, fontsize=9, labelcolor=C_SECOND)
     fig.text(0.012, 0.015,
              '15 states drawn at random from those with >=1 nonzero value in each '
-             'of Pre (2011-15), Spike (2016-17), Post (2018-19).',
+             'of Pre (2011-15), revised WPS (2016-17), Post (2018-19).',
              fontsize=7, color=C_MUTED)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
     fig.savefig(outfile, facecolor=C_SURFACE, bbox_inches='tight')
