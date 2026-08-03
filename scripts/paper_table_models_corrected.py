@@ -214,6 +214,20 @@ def build(dv, base_terms, tag):
         # random-INTERCEPT variance-explained (reported in the augmented table)
         tab[m].update(ri_decomp(dv, base_terms, rhs, d))
         tab[m]['n_obs'], tab[m]['n_states'] = len(d), d['state'].nunique()
+
+    # Team direction (2026-08): report the between-state variance reduction against
+    # a SINGLE Model-1 baseline (M1's random-intercept sigma^2 on its own sample), so
+    # every column "starts from Model 1" rather than from a same-sample refit. The
+    # rigorous same-sample values are retained under *_matched keys -- they avoid the
+    # AK/RI/VT sample-drop confound that inflates the inspections column against M1.
+    ref_u0, ref_e = tab['M1']['sigma2_u0_ri'], tab['M1']['sigma2_e_ri']
+    for m in ('M1', 'M2', 'M3'):
+        tab[m]['sigma2_u0_ri_baseline_matched'] = tab[m]['sigma2_u0_ri_baseline']
+        tab[m]['sigma2_e_ri_baseline_matched'] = tab[m]['sigma2_e_ri_baseline']
+        tab[m]['delta_pct_ri_matched'] = tab[m]['delta_pct_ri']
+        tab[m]['sigma2_u0_ri_baseline'] = ref_u0
+        tab[m]['sigma2_e_ri_baseline'] = ref_e
+        tab[m]['delta_pct_ri'] = (ref_u0 - tab[m]['sigma2_u0_ri']) / ref_u0 * 100
     return tab
 
 insp = build('log_inspections', CUBIC, 'inspections')

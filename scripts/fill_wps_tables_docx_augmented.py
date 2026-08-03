@@ -128,7 +128,7 @@ def make_table(doc, tab, rows):
     merged = vh[0]
     for c in vh[1:]:
         merged = merged.merge(c)
-    set_cell(merged, 'State-to-State Variation — random-intercept basis  (original → became)',
+    set_cell(merged, 'State-to-State Variation — random-intercept basis  (Model 1 baseline → model)',
              bold=True, align='left')
 
     # variance component rows: one merged cell per model = "baseline -> fitted"
@@ -190,14 +190,17 @@ r1 = note.add_run(
     "column's own analytic sample. β for the time polynomials and log(Inspections+1) is "
     'reported for completeness but is of limited interpretive value. Coefficients (b, SE, β) '
     'come from the paper spec — a random intercept plus a random linear-time slope by state. '
-    'The State-to-State Variation block is instead read from random-INTERCEPT-only models '
-    '(baseline and fitted, same sample): it shows σ²_u0 and the residual σ²_e as the value '
-    'under a time-only baseline → the value under the fitted model, and Δ σ²_u0 as the '
-    'percent of between-state intercept variance explained. The random-intercept basis is '
-    'used here because in the random-slope model σ²_u0 is the between-state variance at the '
-    'centering year (2017) and trades off against the slope variance/covariance, so its '
-    'reduction is not bounded to [0,1]; the random-intercept statistic is the conventional '
-    'between-state variance-explained. Both outcomes are log(count+1); the violations '
+    'The State-to-State Variation block is read from random-INTERCEPT-only models. Every '
+    'column is referenced to the same Model 1 baseline (Model 1’s σ²): the σ²_u0 and σ²_e '
+    'rows show that Model 1 value → the value under the fitted model, and Δ σ²_u0 is the '
+    'percent of Model 1 between-state intercept variance explained. The random-intercept '
+    'basis is used because in the random-slope model σ²_u0 is the between-state variance at '
+    'the centering year (2017) and trades off against the slope variance/covariance, so its '
+    'reduction is not bounded to [0,1]. Note: in the inspections table, Models 2–3 omit '
+    'Alaska, Rhode Island, and Vermont (no BLS applicator data), and those three states carry '
+    'much of the between-state inspection variance, so part of that column’s reduction against '
+    'Model 1 reflects the narrower sample as well as the covariates; the violations table is '
+    'unaffected. Both outcomes are log(count+1); the violations '
     'model includes log(inspections+1) as a contemporaneous predictor. Spending variables use '
     'mean 2011–2019 STAG obligations over mean 2011–2019 BLS employment; MS/RI/WV (like '
     'HI/TN/UT) received no CFDA 66.700 obligations and are coded $0. AK/RI/VT drop from '

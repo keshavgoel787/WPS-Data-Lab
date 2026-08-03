@@ -110,10 +110,20 @@ corrected pipeline without touching its models; see
   `fill_wps_tables_docx_corrected.py` and `fill_wps_tables_docx_augmented.py` read
   `sigma2_u0_ri` / `delta_pct_ri` (M2/M3 columns; the M1 variance column is blank in the
   corrected shell).
+- **Model-1 baseline (2026-08 team direction)**: `delta_pct_ri` / `sigma2_u0_ri_baseline`
+  now reference a **single Model-1 baseline** (M1's random-intercept σ² on its own sample) so
+  every column "starts from Model 1" — Inspections M2/M3 = 40.3%/37.5%, Violations = 18.4%/37.8%.
+  The rigorous same-sample refit values are retained under `*_matched` keys (Inspections
+  10.6%/6.4%). **Caveat**: inspections M2/M3 drop AK/RI/VT (no BLS applicator data), which carry
+  much of the between-state inspection variance, so part of that column's reduction against
+  Model 1 reflects the narrower sample, not just the covariates; violations is unaffected. Both
+  docx notes state this.
 - `spaghetti_plots.py` draws per-outcome trajectory plots: eligibility = ≥1 nonzero DV in
-  EACH of Pre (2011-15) / Spike (2016-17) / Post (2018-19); 15 states drawn at random per
-  outcome (independent seeds); one muted line per state + 15-state mean overlay + endpoint
-  labels. Outputs `figures/fig_spaghetti_inspections.png`, `figures/fig_spaghetti_violations.png`.
+  EACH of Pre (2011-15) / revised WPS (2016-17) / Post (2018-19); 15 states drawn at random per
+  outcome (independent seeds); **distinct per-state colors (tab20) with matching bold endpoint
+  labels** + thick black 15-state mean overlay; **no figure title** (Joe drafts his own); the
+  shaded gray band is labeled "revised WPS". Raw-count and log(count+1) variants →
+  `figures/fig_spaghetti_{inspections,violations}{,_log}.png`.
 - **Verified (2026-07)**: the −12.5% Δσ²_u0 in Violations Model 2 was a *genuine* estimate,
   not a sign error — but it is an artifact of the random-slope centering (σ²_u0 measured at
   2017 rises when predictors enter). Diagnostic: with a random slope the M2 reduction is

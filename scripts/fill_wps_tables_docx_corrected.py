@@ -136,11 +136,14 @@ note.add_run(
     'from Spending/applicator columns because BLS never publishes pesticide-applicator '
     '(SOC 37-3012) employment for them. Standard errors in parentheses; '
     '+ p<.10, * p<.05, ** p<.01, *** p<.001. State-to-State σ² and Δ State-to-State σ² '
-    'are read from random-intercept-only refits (baseline and model, same sample): Δ is '
-    'the percent of between-state intercept variance explained. Coefficients come from the '
-    'random-slope specification; the random-intercept basis is used for the variance-'
-    'explained statistic because in the random-slope model σ² is centered at 2017 and its '
-    'reduction is not bounded to [0,1].')
+    'are read from random-intercept-only refits; Δ is the percent of the Model 1 between-'
+    'state intercept variance explained (every column is referenced to Model 1’s σ²). '
+    'Coefficients come from the random-slope specification; the random-intercept basis is '
+    'used for the variance-explained statistic because in the random-slope model σ² is '
+    'centered at 2017 and its reduction is not bounded to [0,1]. In the inspections table, '
+    'Models 2–3 omit Alaska, Rhode Island, and Vermont (no BLS applicator data), which carry '
+    'much of the between-state inspection variance, so part of that reduction reflects the '
+    'narrower sample; the violations table is unaffected.')
 
 doc.save(OUT)
 print(f"Saved filled tables to {OUT}")
