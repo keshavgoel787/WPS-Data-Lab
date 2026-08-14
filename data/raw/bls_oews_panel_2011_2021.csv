@@ -1,0 +1,1558 @@
+year,state,occ_code,occ_title,tot_emp,h_mean,a_mean
+2011,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,12.82,26670.0
+2012,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",290.0,13.47,28020.0
+2013,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",240.0,14.52,30200.0
+2014,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",150.0,14.72,30620.0
+2015,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,15.76,32770.0
+2016,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,16.46,34240.0
+2017,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",180.0,16.93,35220.0
+2018,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,15.93,33140.0
+2019,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,16.74,34820.0
+2020,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,15.5,32230.0
+2021,Alabama,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.89,41370.0
+2011,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,12.6,26200.0
+2012,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,12.94,26920.0
+2013,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,15.62,32490.0
+2014,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,15.44,32120.0
+2015,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",580.0,16.7,34730.0
+2016,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",770.0,17.07,35510.0
+2017,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",700.0,18.54,38560.0
+2018,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,18.55,38580.0
+2019,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,20.02,41650.0
+2020,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",500.0,18.11,37680.0
+2021,Arizona,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,19.62,40800.0
+2011,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,11.06,23000.0
+2012,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",370.0,12.11,25200.0
+2013,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,11.67,24280.0
+2014,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,13.3,27670.0
+2015,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,12.53,26070.0
+2016,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,13.21,27470.0
+2017,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,12.91,26860.0
+2018,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,14.19,29520.0
+2019,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,15.21,31630.0
+2020,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,15.15,31500.0
+2021,Arkansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,15.42,32080.0
+2011,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2670.0,16.99,35330.0
+2012,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2760.0,17.09,35540.0
+2013,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2610.0,16.89,35130.0
+2014,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2800.0,17.09,35550.0
+2015,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2890.0,19.87,41320.0
+2016,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3090.0,20.47,42570.0
+2017,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2720.0,24.26,50460.0
+2018,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2260.0,24.31,50560.0
+2019,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2400.0,26.43,54980.0
+2020,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1830.0,23.51,48900.0
+2021,California,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2300.0,20.97,43610.0
+2011,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,16.48,34270.0
+2012,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,16.64,34620.0
+2013,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,17.5,36390.0
+2014,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",320.0,15.35,31930.0
+2015,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,17.65,36710.0
+2016,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,17.45,36290.0
+2017,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.35,40260.0
+2018,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,18.56,38600.0
+2019,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,20.56,42770.0
+2020,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",500.0,20.05,41710.0
+2021,Colorado,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",380.0,19.97,41540.0
+2011,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,18.28,38020.0
+2012,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,18.99,39500.0
+2013,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,22.05,45860.0
+2014,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,17.44,36270.0
+2015,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,18.57,38630.0
+2016,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,18.58,38640.0
+2017,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,20.66,42980.0
+2018,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.34,40240.0
+2019,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,17.38,36160.0
+2020,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,16.74,34820.0
+2021,Connecticut,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,19.37,40300.0
+2011,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",80.0,15.13,31460.0
+2016,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",50.0,15.64,32520.0
+2017,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,16.3,33910.0
+2018,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",50.0,16.17,33640.0
+2019,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,15.52,32280.0
+2020,Delaware,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,15.71,32670.0
+2011,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3070.0,14.85,30890.0
+2012,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3280.0,15.33,31880.0
+2013,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2630.0,15.28,31770.0
+2014,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3190.0,15.77,32790.0
+2015,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2520.0,15.87,33020.0
+2016,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2610.0,16.16,33610.0
+2017,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",2760.0,15.66,32580.0
+2018,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3110.0,15.28,31790.0
+2019,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3490.0,15.99,33270.0
+2020,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",4090.0,16.36,34030.0
+2021,Florida,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",3930.0,17.84,37120.0
+2011,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,13.22,27490.0
+2012,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",900.0,13.02,27090.0
+2013,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",930.0,13.28,27620.0
+2014,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",730.0,14.48,30120.0
+2015,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",720.0,15.25,31730.0
+2016,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",850.0,16.37,34050.0
+2017,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",720.0,17.22,35820.0
+2018,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",660.0,17.77,36960.0
+2019,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,16.28,33870.0
+2020,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",860.0,15.99,33260.0
+2021,Georgia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",690.0,19.26,40050.0
+2011,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",80.0,16.7,34740.0
+2012,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,17.07,35500.0
+2013,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,17.84,37110.0
+2014,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,18.55,38580.0
+2015,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,19.28,40110.0
+2016,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,17.93,37290.0
+2017,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,19.45,40450.0
+2018,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,19.66,40900.0
+2019,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.72,41010.0
+2020,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.61,40790.0
+2021,Hawaii,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",150.0,21.86,45470.0
+2011,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",190.0,15.06,31320.0
+2012,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,14.68,30540.0
+2013,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,14.72,30610.0
+2014,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,14.85,30880.0
+2015,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,14.24,29620.0
+2016,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,14.92,31040.0
+2017,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,16.22,33730.0
+2018,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",580.0,,
+2019,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",660.0,,
+2020,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",700.0,,
+2021,Idaho,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",570.0,19.68,40930.0
+2011,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1080.0,17.05,35470.0
+2012,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",880.0,14.06,29250.0
+2013,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",920.0,16.69,34710.0
+2014,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1170.0,18.82,39140.0
+2015,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1030.0,20.16,41920.0
+2016,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1350.0,18.98,39480.0
+2017,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1480.0,18.04,37520.0
+2018,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1650.0,19.2,39930.0
+2019,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1160.0,20.95,43570.0
+2020,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",960.0,22.09,45940.0
+2021,Illinois,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1410.0,21.67,45070.0
+2011,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",730.0,16.9,35150.0
+2012,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,15.78,32830.0
+2013,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,16.37,34060.0
+2014,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",570.0,15.26,31740.0
+2015,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,15.99,33250.0
+2016,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1090.0,19.31,40160.0
+2017,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1200.0,20.34,42300.0
+2018,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1050.0,19.8,41180.0
+2019,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",700.0,18.24,37940.0
+2020,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",680.0,18.64,38780.0
+2021,Indiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",880.0,17.39,36170.0
+2011,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",570.0,13.75,28610.0
+2012,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",690.0,14.02,29160.0
+2013,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",820.0,15.36,31950.0
+2014,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1100.0,14.12,29360.0
+2015,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1180.0,14.47,30100.0
+2016,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1170.0,14.8,30780.0
+2017,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1220.0,17.12,35620.0
+2018,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1270.0,17.63,36670.0
+2019,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1220.0,17.94,37310.0
+2020,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,18.84,39180.0
+2021,Iowa,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,19.42,40390.0
+2011,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",560.0,15.92,33110.0
+2012,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",530.0,16.31,33920.0
+2013,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",420.0,16.61,34560.0
+2014,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,16.59,34500.0
+2015,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,17.35,36090.0
+2016,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",500.0,17.54,36480.0
+2017,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",530.0,16.97,35290.0
+2018,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",590.0,16.67,34680.0
+2019,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",680.0,16.83,35000.0
+2020,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,17.37,36120.0
+2021,Kansas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,18.47,38430.0
+2011,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,11.49,23910.0
+2012,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,12.13,25230.0
+2013,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,15.18,31570.0
+2014,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,15.2,31630.0
+2015,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,14.64,30450.0
+2016,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",190.0,14.6,30370.0
+2017,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,14.78,30750.0
+2018,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,15.29,31790.0
+2019,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,16.8,34940.0
+2020,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",120.0,16.33,33960.0
+2021,Kentucky,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,17.32,36030.0
+2011,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,14.22,29570.0
+2012,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,13.88,28870.0
+2013,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,15.32,31870.0
+2014,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,14.64,30450.0
+2015,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,15.21,31640.0
+2016,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",370.0,14.07,29270.0
+2017,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,13.16,27360.0
+2018,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",410.0,14.28,29700.0
+2019,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",370.0,14.99,31190.0
+2020,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",290.0,16.64,34620.0
+2021,Louisiana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,14.73,30640.0
+2011,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",90.0,16.47,34250.0
+2012,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,12.1,25170.0
+2013,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,11.48,23870.0
+2014,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,15.68,32620.0
+2015,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,20.39,42420.0
+2016,Maine,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,21.11,43910.0
+2011,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,15.63,32500.0
+2012,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",90.0,16.63,34580.0
+2013,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,17.24,35850.0
+2014,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,16.4,34100.0
+2015,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",480.0,16.76,34870.0
+2016,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",400.0,17.55,36500.0
+2017,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,18.73,38960.0
+2018,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.5,40560.0
+2019,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,16.97,35310.0
+2020,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,17.98,37400.0
+2021,Maryland,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,19.59,40740.0
+2011,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,19.66,40890.0
+2012,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,19.7,40980.0
+2013,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,18.81,39120.0
+2014,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,17.67,36760.0
+2015,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,17.67,36750.0
+2016,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,20.01,41610.0
+2017,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,16.37,34050.0
+2018,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,15.98,33230.0
+2019,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",450.0,16.21,33720.0
+2020,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,18.98,39480.0
+2021,Massachusetts,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,24.07,50060.0
+2011,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,13.19,27440.0
+2012,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",530.0,13.72,28540.0
+2013,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",600.0,14.14,29410.0
+2014,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",990.0,14.49,30140.0
+2015,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",780.0,15.58,32410.0
+2016,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",860.0,16.04,33370.0
+2017,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",660.0,16.44,34190.0
+2018,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",590.0,15.67,32600.0
+2019,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,16.61,34560.0
+2020,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",590.0,17.77,36970.0
+2021,Michigan,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",690.0,18.53,38550.0
+2011,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1250.0,15.1,31400.0
+2012,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1150.0,15.66,32570.0
+2013,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1010.0,15.62,32490.0
+2014,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",840.0,15.35,31920.0
+2015,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",740.0,16.14,33570.0
+2016,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,17.89,37210.0
+2017,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,19.1,39730.0
+2018,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",580.0,18.86,39220.0
+2019,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1480.0,16.32,33950.0
+2020,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1000.0,17.21,35810.0
+2021,Minnesota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1180.0,20.49,42630.0
+2011,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,13.65,28380.0
+2012,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,12.59,26180.0
+2013,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,12.79,26610.0
+2014,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",90.0,10.25,21310.0
+2015,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,11.28,23450.0
+2016,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,11.73,24410.0
+2018,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",30.0,13.92,28950.0
+2019,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",50.0,15.98,33240.0
+2020,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,16.3,33900.0
+2021,Mississippi,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.06,39650.0
+2011,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,13.11,27270.0
+2012,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",410.0,13.03,27100.0
+2013,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,13.3,27670.0
+2014,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",450.0,14.22,29570.0
+2015,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,15.42,32080.0
+2016,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",510.0,16.81,34960.0
+2017,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",410.0,17.35,36100.0
+2018,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,18.51,38510.0
+2019,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,15.54,32330.0
+2020,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,16.12,33520.0
+2021,Missouri,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,16.97,35310.0
+2011,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",320.0,13.04,27110.0
+2012,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",430.0,13.64,28360.0
+2013,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,13.91,28940.0
+2014,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",420.0,14.27,29690.0
+2015,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,14.06,29240.0
+2016,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,14.73,30640.0
+2017,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",550.0,15.79,32840.0
+2018,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,16.56,34450.0
+2019,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,17.57,36550.0
+2020,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,18.11,37680.0
+2021,Montana,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,18.33,38120.0
+2011,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,14.59,30350.0
+2012,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,14.56,30280.0
+2013,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",250.0,14.29,29720.0
+2014,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,14.08,29290.0
+2015,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",240.0,15.43,32090.0
+2016,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",290.0,16.28,33860.0
+2017,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",180.0,16.98,35310.0
+2018,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,16.77,34880.0
+2019,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,17.2,35770.0
+2020,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",150.0,18.46,38400.0
+2021,Nebraska,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",600.0,17.86,37140.0
+2011,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",30.0,15.92,33120.0
+2015,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",50.0,16.34,33990.0
+2016,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",90.0,15.97,33210.0
+2017,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,15.01,31230.0
+2018,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",130.0,15.36,31960.0
+2019,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,15.69,32630.0
+2020,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",30.0,17.62,36660.0
+2021,Nevada,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",70.0,20.32,42270.0
+2016,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.43,40420.0
+2017,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.97,41530.0
+2018,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",120.0,18.68,38840.0
+2019,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,20.76,43190.0
+2020,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,22.3,46390.0
+2021,New Hampshire,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",120.0,25.04,52080.0
+2011,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,17.22,35820.0
+2012,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",570.0,18.49,38450.0
+2013,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",550.0,19.7,40980.0
+2014,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,20.64,42930.0
+2015,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,18.28,38020.0
+2016,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,16.22,33740.0
+2017,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,16.95,35250.0
+2018,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",180.0,17.78,36970.0
+2019,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",210.0,18.31,38090.0
+2020,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,20.49,42630.0
+2021,New Jersey,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,23.88,49680.0
+2011,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,11.57,24070.0
+2012,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,11.52,23960.0
+2013,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,11.87,24700.0
+2014,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",50.0,14.06,29240.0
+2015,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,16.39,34080.0
+2016,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",110.0,16.52,34360.0
+2017,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,15.84,32950.0
+2018,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",150.0,16.79,34930.0
+2019,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,17.31,36000.0
+2020,New Mexico,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,21.22,44140.0
+2011,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,16.92,35190.0
+2012,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",530.0,15.99,33250.0
+2013,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",550.0,16.29,33880.0
+2014,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,16.76,34870.0
+2015,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",560.0,15.69,32630.0
+2016,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",560.0,15.53,32290.0
+2017,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",790.0,17.85,37120.0
+2018,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,20.45,42530.0
+2019,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,22.17,46110.0
+2020,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.42,40400.0
+2021,New York,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",400.0,19.2,39940.0
+2011,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",500.0,16.39,34100.0
+2012,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",510.0,16.24,33780.0
+2013,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,16.82,34980.0
+2014,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,15.76,32780.0
+2015,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",250.0,14.24,29620.0
+2016,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,14.16,29440.0
+2017,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,15.49,32210.0
+2018,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",240.0,18.01,37470.0
+2019,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,13.23,27520.0
+2020,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,13.04,27130.0
+2021,North Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",900.0,16.69,34710.0
+2011,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,14.25,29650.0
+2012,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,14.18,29490.0
+2013,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,14.38,29900.0
+2014,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,15.14,31480.0
+2015,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,17.95,37330.0
+2016,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,17.55,36510.0
+2017,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,18.08,37600.0
+2018,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,21.07,43820.0
+2019,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",630.0,22.73,47270.0
+2020,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",590.0,24.47,50890.0
+2021,North Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",420.0,20.45,42540.0
+2011,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",710.0,15.53,32310.0
+2012,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,16.08,33450.0
+2013,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",500.0,15.86,32990.0
+2014,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,15.28,31770.0
+2015,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",770.0,15.49,32220.0
+2016,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,15.55,32340.0
+2017,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",790.0,16.35,34020.0
+2018,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",660.0,16.64,34600.0
+2019,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,17.62,36650.0
+2020,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,17.92,37280.0
+2021,Ohio,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,22.94,47720.0
+2011,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,10.04,20890.0
+2012,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",400.0,11.19,23270.0
+2013,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,14.23,29590.0
+2014,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,14.79,30770.0
+2015,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",430.0,16.13,33540.0
+2016,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",490.0,17.2,35780.0
+2017,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,18.63,38750.0
+2018,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,17.9,37220.0
+2019,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",190.0,20.15,41920.0
+2020,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,21.1,43890.0
+2021,Oklahoma,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",180.0,17.2,35770.0
+2011,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",430.0,18.52,38520.0
+2012,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,18.09,37620.0
+2013,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,17.74,36900.0
+2014,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,17.25,35870.0
+2015,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",290.0,17.42,36230.0
+2016,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,18.04,37520.0
+2017,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,21.72,45180.0
+2018,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",250.0,24.54,51040.0
+2019,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,22.14,46040.0
+2020,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,21.4,44510.0
+2021,Oregon,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,21.45,44620.0
+2011,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1060.0,16.15,33590.0
+2012,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,18.04,37530.0
+2013,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",670.0,17.99,37420.0
+2014,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",510.0,18.42,38320.0
+2015,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,18.29,38030.0
+2016,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",960.0,17.4,36190.0
+2017,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",930.0,17.79,37010.0
+2018,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",680.0,18.02,37480.0
+2019,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",430.0,20.0,41610.0
+2020,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,21.01,43690.0
+2021,Pennsylvania,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,21.24,44170.0
+2011,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,13.9,28910.0
+2012,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",210.0,14.03,29180.0
+2013,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",280.0,14.44,30030.0
+2014,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",350.0,13.56,28210.0
+2015,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,13.77,28650.0
+2016,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",290.0,13.48,28040.0
+2017,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,15.39,32020.0
+2018,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,16.79,34930.0
+2019,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",250.0,18.67,38830.0
+2020,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",240.0,18.53,38550.0
+2021,South Carolina,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,15.4,32030.0
+2011,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",710.0,14.32,29780.0
+2012,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",720.0,14.52,30190.0
+2013,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",650.0,14.03,29180.0
+2014,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",630.0,14.19,29510.0
+2015,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",700.0,14.58,30320.0
+2016,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",580.0,14.76,30710.0
+2017,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",610.0,15.74,32740.0
+2018,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",510.0,16.04,33360.0
+2019,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",630.0,17.1,35580.0
+2020,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",670.0,17.3,35990.0
+2021,South Dakota,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",810.0,18.36,38180.0
+2011,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,14.88,30950.0
+2012,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,14.09,29300.0
+2013,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,14.65,30480.0
+2014,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,17.04,35450.0
+2015,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",380.0,14.91,31020.0
+2016,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",590.0,15.7,32650.0
+2017,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",520.0,16.88,35120.0
+2018,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,16.86,35070.0
+2019,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",150.0,13.1,27240.0
+2020,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,12.54,26090.0
+2021,Tennessee,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",580.0,17.66,36740.0
+2011,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",950.0,15.52,32290.0
+2012,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",830.0,16.5,34320.0
+2013,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1190.0,15.86,32980.0
+2014,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1150.0,16.27,33840.0
+2015,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1360.0,17.31,36010.0
+2016,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1160.0,18.61,38710.0
+2017,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1110.0,18.93,39360.0
+2018,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",820.0,17.14,35650.0
+2019,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",930.0,16.75,34840.0
+2020,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1190.0,17.49,36390.0
+2021,Texas,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",1020.0,21.56,44850.0
+2011,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,15.95,33170.0
+2012,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,16.1,33480.0
+2013,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,15.6,32450.0
+2014,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",200.0,15.63,32500.0
+2015,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,15.38,31980.0
+2016,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",270.0,15.33,31880.0
+2017,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",320.0,16.05,33390.0
+2018,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,16.8,34940.0
+2019,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",180.0,17.9,37230.0
+2020,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,18.93,39370.0
+2021,Utah,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",60.0,17.12,35620.0
+2018,Vermont,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,26.21,54520.0
+2011,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,16.84,35030.0
+2012,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",370.0,16.57,34460.0
+2013,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,15.74,32740.0
+2014,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",390.0,15.12,31450.0
+2015,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",400.0,16.12,33540.0
+2016,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",330.0,16.98,35320.0
+2017,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",460.0,16.14,33570.0
+2018,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,17.21,35790.0
+2019,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",440.0,17.32,36030.0
+2020,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,19.18,39890.0
+2021,Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",570.0,19.86,41300.0
+2011,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",740.0,15.44,32120.0
+2012,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",620.0,15.27,31760.0
+2013,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",670.0,15.2,31610.0
+2014,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",490.0,15.48,32190.0
+2015,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,17.02,35400.0
+2016,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",650.0,18.17,37800.0
+2017,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",760.0,18.45,38370.0
+2018,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",710.0,18.23,37920.0
+2019,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",810.0,19.14,39810.0
+2020,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",730.0,20.48,42600.0
+2021,Washington,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",630.0,23.5,48870.0
+2011,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,13.5,28090.0
+2012,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,13.52,28130.0
+2013,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",170.0,15.69,32640.0
+2014,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",160.0,15.96,33210.0
+2015,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,16.96,35280.0
+2016,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",80.0,16.54,34400.0
+2017,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,16.22,33730.0
+2018,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",90.0,16.91,35170.0
+2019,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",100.0,18.07,37590.0
+2020,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",80.0,19.14,39810.0
+2021,West Virginia,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",30.0,17.56,36520.0
+2011,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,16.03,33340.0
+2012,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",310.0,16.44,34190.0
+2013,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",340.0,16.79,34930.0
+2014,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,16.86,35070.0
+2015,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",490.0,17.47,36340.0
+2016,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",540.0,17.28,35930.0
+2017,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",490.0,16.82,34990.0
+2018,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,16.86,35080.0
+2019,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",470.0,18.92,39340.0
+2020,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",360.0,20.66,42980.0
+2021,Wisconsin,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",660.0,22.24,46260.0
+2011,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",140.0,14.61,30380.0
+2012,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",210.0,15.09,31390.0
+2013,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,15.03,31270.0
+2014,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",320.0,16.46,34230.0
+2015,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",230.0,14.44,30040.0
+2016,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,15.9,33080.0
+2017,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",210.0,16.7,34740.0
+2018,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",260.0,18.51,38500.0
+2019,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",300.0,19.04,39600.0
+2020,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",220.0,20.05,41700.0
+2021,Wyoming,37-3012,"Pesticide Handlers, Sprayers, and Applicators, Vegetation",,18.58,38640.0
+2011,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,23.28,48420.0
+2012,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,24.03,49980.0
+2013,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,22.2,46170.0
+2014,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",420.0,23.81,49530.0
+2015,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",380.0,23.23,48310.0
+2016,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,26.41,54930.0
+2017,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,28.46,59190.0
+2018,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,30.45,63350.0
+2019,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,33.19,69040.0
+2020,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,28.57,59410.0
+2021,Alabama,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",420.0,27.37,56920.0
+2014,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,26.24,54580.0
+2015,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,26.6,55320.0
+2016,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,27.99,58220.0
+2018,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,21.42,44550.0
+2019,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,21.98,45720.0
+2020,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,23.99,49890.0
+2021,Alaska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,24.6,51170.0
+2011,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,20.91,43490.0
+2012,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,21.77,45290.0
+2013,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,19.88,41360.0
+2014,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",410.0,20.79,43250.0
+2015,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,21.32,44340.0
+2016,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",530.0,23.48,48830.0
+2017,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",600.0,24.14,50210.0
+2018,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",610.0,24.78,51540.0
+2019,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",570.0,24.95,51890.0
+2020,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",730.0,27.54,57290.0
+2021,Arizona,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",720.0,27.79,57810.0
+2011,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,21.33,44360.0
+2012,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,19.57,40700.0
+2013,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,20.42,42460.0
+2014,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,21.61,44950.0
+2015,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,22.05,45870.0
+2016,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",310.0,21.37,44450.0
+2017,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,21.97,45700.0
+2018,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,22.39,46570.0
+2019,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,25.38,52800.0
+2020,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,28.49,59250.0
+2021,Arkansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,34.46,71680.0
+2011,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",5390.0,20.81,43290.0
+2012,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",5810.0,21.48,44670.0
+2013,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",5050.0,20.61,42870.0
+2014,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",5120.0,20.98,43650.0
+2015,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",4920.0,20.78,43220.0
+2016,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",5430.0,21.28,44260.0
+2017,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",6130.0,22.78,47370.0
+2018,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",6790.0,22.77,47360.0
+2019,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",7450.0,23.52,48920.0
+2020,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",7270.0,24.75,51490.0
+2021,California,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",9180.0,25.29,52610.0
+2011,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,22.53,46870.0
+2012,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,23.28,48420.0
+2013,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,23.63,49150.0
+2014,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,24.76,51500.0
+2015,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,25.95,53980.0
+2016,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,24.63,51230.0
+2017,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,25.47,52970.0
+2018,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,27.56,57330.0
+2019,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,27.78,57780.0
+2020,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",440.0,29.63,61630.0
+2021,Colorado,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",520.0,28.57,59420.0
+2011,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,23.15,48160.0
+2012,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,23.29,48450.0
+2013,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,22.56,46930.0
+2014,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,23.48,48840.0
+2015,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,23.97,49860.0
+2016,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,22.81,47450.0
+2017,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,23.79,49470.0
+2018,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,23.65,49180.0
+2019,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,25.78,53610.0
+2020,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,27.67,57540.0
+2021,Connecticut,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,29.11,60550.0
+2011,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,24.64,51240.0
+2012,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,24.95,51900.0
+2013,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,25.4,52840.0
+2014,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,26.01,54100.0
+2015,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,25.75,53560.0
+2016,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,25.7,53460.0
+2017,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,27.07,56310.0
+2018,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,26.34,54780.0
+2019,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,27.1,56370.0
+2020,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,25.57,53190.0
+2021,Delaware,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,27.28,56740.0
+2011,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1120.0,21.53,44780.0
+2012,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1430.0,20.96,43590.0
+2013,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1500.0,20.89,43450.0
+2014,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1310.0,21.59,44910.0
+2015,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1440.0,22.67,47160.0
+2016,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1410.0,22.56,46920.0
+2017,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1330.0,22.95,47750.0
+2018,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",870.0,22.75,47310.0
+2019,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",910.0,26.38,54870.0
+2020,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1080.0,26.81,55760.0
+2021,Florida,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1180.0,26.92,56000.0
+2011,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",610.0,23.45,48780.0
+2012,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",680.0,23.41,48690.0
+2013,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",660.0,22.91,47650.0
+2014,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",560.0,25.47,52990.0
+2015,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",580.0,23.79,49480.0
+2016,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",650.0,23.42,48720.0
+2017,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",790.0,23.14,48130.0
+2018,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",770.0,24.11,50150.0
+2019,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",720.0,25.56,53170.0
+2020,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",640.0,26.03,54130.0
+2021,Georgia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",740.0,27.32,56820.0
+2011,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,22.61,47040.0
+2012,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,21.41,44540.0
+2013,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,21.86,45460.0
+2014,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,23.53,48940.0
+2015,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,21.71,45160.0
+2016,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,24.83,51640.0
+2017,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,24.6,51170.0
+2018,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,27.14,56440.0
+2019,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,27.5,57210.0
+2020,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,32.96,68570.0
+2021,Hawaii,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,31.59,65720.0
+2011,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,21.98,45710.0
+2012,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,23.03,47910.0
+2013,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,23.47,48810.0
+2014,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,21.52,44760.0
+2015,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,19.6,40760.0
+2016,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,20.49,42610.0
+2017,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,21.61,44940.0
+2018,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,21.75,45230.0
+2019,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,21.73,45190.0
+2020,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,21.55,44810.0
+2021,Idaho,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,27.29,56760.0
+2011,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,23.27,48410.0
+2012,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,23.19,48240.0
+2013,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,26.46,55040.0
+2014,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,25.38,52790.0
+2015,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,22.01,45780.0
+2016,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,20.29,42210.0
+2017,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,20.45,42540.0
+2018,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,23.65,49190.0
+2019,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,24.1,50130.0
+2020,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,32.07,66710.0
+2021,Illinois,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,34.58,71930.0
+2011,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,20.3,42230.0
+2012,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,20.09,41790.0
+2013,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,20.37,42380.0
+2014,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,20.13,41880.0
+2015,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,20.98,43640.0
+2016,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,22.7,47220.0
+2017,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,22.46,46730.0
+2018,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,23.02,47880.0
+2019,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,27.98,58200.0
+2020,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,29.52,61400.0
+2021,Indiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,29.39,61130.0
+2011,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,24.73,51430.0
+2012,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,24.68,51330.0
+2013,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,24.57,51110.0
+2014,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,26.38,54870.0
+2015,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,26.09,54260.0
+2016,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,27.52,57230.0
+2017,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,27.02,56200.0
+2018,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,27.91,58040.0
+2019,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,27.44,57080.0
+2020,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,28.0,58230.0
+2021,Iowa,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,26.86,55870.0
+2011,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,23.1,48050.0
+2012,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,22.9,47630.0
+2013,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,24.1,50140.0
+2014,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,24.04,50000.0
+2015,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,23.3,48460.0
+2016,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,24.91,51810.0
+2017,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,25.13,52280.0
+2018,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,24.15,50230.0
+2019,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,24.4,50750.0
+2020,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,25.03,52060.0
+2021,Kansas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,23.23,48320.0
+2011,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,19.19,39920.0
+2012,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,18.79,39090.0
+2013,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",340.0,18.93,39380.0
+2014,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,21.24,44190.0
+2015,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,22.87,47560.0
+2016,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,23.97,49870.0
+2017,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,22.83,47480.0
+2018,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",310.0,23.77,49440.0
+2019,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,24.94,51870.0
+2020,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,22.4,46580.0
+2021,Kentucky,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,21.86,45470.0
+2011,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,21.83,45410.0
+2012,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,23.68,49260.0
+2013,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,23.1,48040.0
+2014,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",340.0,27.65,57510.0
+2015,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",510.0,26.52,55160.0
+2016,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,27.24,56670.0
+2017,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",540.0,26.23,54570.0
+2018,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,26.36,54830.0
+2019,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,29.01,60350.0
+2020,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",340.0,28.05,58350.0
+2021,Louisiana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,26.35,54810.0
+2011,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,24.15,50240.0
+2012,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,23.73,49360.0
+2013,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,19.97,41550.0
+2014,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,20.46,42550.0
+2015,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,21.27,44240.0
+2016,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,25.77,53610.0
+2017,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,25.85,53770.0
+2018,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,23.62,49120.0
+2019,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,25.1,52220.0
+2020,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,22.27,46320.0
+2021,Maine,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,23.43,48730.0
+2011,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,24.1,50130.0
+2012,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,23.49,48850.0
+2013,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,23.88,49670.0
+2014,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,25.19,52400.0
+2015,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,24.95,51900.0
+2016,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,27.22,56620.0
+2017,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,25.64,53330.0
+2018,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,26.8,55750.0
+2019,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",520.0,24.51,50990.0
+2020,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,25.34,52700.0
+2021,Maryland,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,26.59,55310.0
+2011,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,18.99,39500.0
+2012,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,22.98,47790.0
+2013,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,25.32,52660.0
+2014,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,23.08,48010.0
+2015,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,25.91,53890.0
+2016,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,26.35,54810.0
+2017,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,25.45,52930.0
+2018,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,25.65,53360.0
+2019,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,24.88,51750.0
+2020,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,25.61,53280.0
+2021,Massachusetts,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,24.9,51790.0
+2011,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,26.54,55200.0
+2012,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,26.76,55660.0
+2013,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",340.0,25.26,52530.0
+2014,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,25.89,53860.0
+2015,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,24.34,50620.0
+2016,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,20.83,43320.0
+2017,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,21.27,44240.0
+2018,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,24.07,50060.0
+2019,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,27.68,57580.0
+2020,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,30.61,63660.0
+2021,Michigan,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,27.83,57890.0
+2011,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,22.79,47400.0
+2012,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,22.73,47290.0
+2013,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,22.99,47830.0
+2014,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,25.5,53030.0
+2015,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,24.51,50980.0
+2016,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,25.19,52390.0
+2017,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,29.18,60690.0
+2018,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,31.41,65340.0
+2019,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,35.43,73690.0
+2020,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,29.18,60690.0
+2021,Minnesota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,27.5,57190.0
+2011,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,21.29,44290.0
+2012,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,23.21,48280.0
+2013,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",430.0,22.29,46350.0
+2014,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,22.61,47030.0
+2015,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",550.0,22.15,46070.0
+2016,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",370.0,20.71,43070.0
+2017,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",380.0,20.66,42980.0
+2018,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,,
+2019,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,26.22,54550.0
+2020,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,26.11,54300.0
+2021,Mississippi,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,26.94,56040.0
+2011,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,21.99,45730.0
+2012,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,21.93,45620.0
+2013,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,21.02,43710.0
+2014,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",330.0,20.52,42680.0
+2015,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,21.63,44980.0
+2016,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",380.0,22.34,46480.0
+2017,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",380.0,23.37,48610.0
+2018,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,23.69,49280.0
+2019,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,24.69,51360.0
+2020,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,23.31,48480.0
+2021,Missouri,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,25.95,53980.0
+2011,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,21.57,44870.0
+2012,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,21.54,44800.0
+2013,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,19.76,41100.0
+2014,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,18.58,38650.0
+2015,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,17.78,36970.0
+2016,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,17.33,36040.0
+2017,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,18.69,38880.0
+2018,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,20.18,41980.0
+2019,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,27.07,56300.0
+2020,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,27.27,56730.0
+2021,Montana,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,27.43,57050.0
+2011,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,20.72,43090.0
+2012,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,21.22,44130.0
+2013,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,21.4,44510.0
+2014,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,23.39,48660.0
+2015,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,24.23,50390.0
+2016,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,24.85,51680.0
+2017,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,26.68,55490.0
+2018,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,29.01,60330.0
+2019,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,27.48,57150.0
+2020,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,26.09,54280.0
+2021,Nebraska,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,27.2,56570.0
+2011,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,26.18,54450.0
+2012,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,22.8,47420.0
+2013,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,22.32,46430.0
+2014,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,22.85,47530.0
+2015,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,22.28,46340.0
+2016,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,23.46,48800.0
+2017,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,23.93,49770.0
+2018,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,22.12,46010.0
+2019,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,24.62,51200.0
+2020,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,26.02,54130.0
+2021,Nevada,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,25.13,52280.0
+2011,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,23.33,48520.0
+2012,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,24.79,51560.0
+2013,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,24.76,51500.0
+2014,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,25.97,54010.0
+2015,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,24.78,51550.0
+2016,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,25.44,52920.0
+2017,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,25.68,53410.0
+2018,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,22.32,46430.0
+2019,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,21.71,45150.0
+2020,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,24.82,51620.0
+2021,New Hampshire,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,24.9,51780.0
+2011,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,24.45,50850.0
+2012,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,25.32,52680.0
+2013,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,23.03,47910.0
+2014,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,24.03,49990.0
+2015,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,21.24,44180.0
+2016,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,21.37,44450.0
+2017,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,21.23,44150.0
+2018,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,22.18,46140.0
+2019,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,26.23,54570.0
+2020,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,30.36,63150.0
+2021,New Jersey,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,25.78,53610.0
+2011,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,20.22,42070.0
+2012,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",130.0,17.06,35480.0
+2013,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,17.09,35540.0
+2014,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,17.89,37210.0
+2015,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,19.54,40630.0
+2016,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,17.69,36800.0
+2017,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,20.71,43070.0
+2018,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,19.49,40540.0
+2019,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,20.04,41670.0
+2020,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,18.22,37900.0
+2021,New Mexico,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,21.13,43950.0
+2011,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,24.8,51580.0
+2012,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,25.8,53660.0
+2013,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,25.64,53330.0
+2014,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,25.14,52290.0
+2015,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,27.53,57270.0
+2016,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,27.7,57620.0
+2017,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,28.82,59940.0
+2018,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,27.28,56750.0
+2019,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,30.05,62510.0
+2020,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,31.98,66530.0
+2021,New York,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,29.99,62380.0
+2011,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",660.0,23.46,48800.0
+2012,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",700.0,23.91,49730.0
+2013,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",440.0,25.41,52850.0
+2014,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,24.99,51980.0
+2015,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",500.0,25.73,53510.0
+2016,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",600.0,28.1,58450.0
+2017,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",490.0,30.9,64270.0
+2018,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",620.0,29.09,60510.0
+2019,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",550.0,28.48,59240.0
+2020,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",510.0,29.78,61940.0
+2021,North Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",610.0,26.6,55340.0
+2011,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,21.11,43900.0
+2012,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,22.47,46740.0
+2013,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,24.76,51510.0
+2014,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,25.38,52790.0
+2015,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,25.04,52090.0
+2016,North Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,25.4,52830.0
+2011,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,21.9,45540.0
+2012,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,23.26,48390.0
+2013,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,24.68,51330.0
+2014,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,26.01,54110.0
+2015,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,25.27,52560.0
+2016,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,25.33,52690.0
+2017,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,23.15,48150.0
+2018,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,26.74,55620.0
+2019,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",360.0,27.08,56330.0
+2020,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,27.83,57880.0
+2021,Ohio,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",260.0,27.74,57710.0
+2011,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",300.0,22.21,46200.0
+2012,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,21.04,43770.0
+2013,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",230.0,23.77,49450.0
+2014,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,24.37,50690.0
+2015,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,27.77,57750.0
+2016,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",150.0,28.55,59380.0
+2017,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,25.85,53780.0
+2018,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,26.21,54510.0
+2019,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,25.59,53220.0
+2020,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",250.0,29.69,61760.0
+2021,Oklahoma,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,29.68,61730.0
+2011,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",580.0,24.21,50360.0
+2012,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",480.0,24.84,51670.0
+2013,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",460.0,25.04,52090.0
+2014,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",570.0,26.58,55280.0
+2015,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",570.0,26.95,56050.0
+2016,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",590.0,25.5,53040.0
+2017,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",680.0,24.49,50940.0
+2018,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",800.0,23.85,49610.0
+2019,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",860.0,24.6,51170.0
+2020,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",840.0,25.92,53910.0
+2021,Oregon,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1100.0,25.2,52420.0
+2011,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",410.0,24.58,51130.0
+2012,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",420.0,24.02,49950.0
+2013,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",350.0,25.12,52240.0
+2014,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",440.0,24.24,50420.0
+2015,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,25.48,52990.0
+2016,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",440.0,24.83,51640.0
+2017,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",410.0,26.49,55110.0
+2018,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",460.0,26.04,54160.0
+2019,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,27.67,57550.0
+2020,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",510.0,28.69,59670.0
+2021,Pennsylvania,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",540.0,28.09,58430.0
+2011,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,21.31,44320.0
+2012,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,22.1,45970.0
+2013,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,23.31,48490.0
+2014,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,25.99,54060.0
+2015,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,25.84,53750.0
+2016,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",400.0,27.24,56670.0
+2017,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",390.0,27.08,56340.0
+2018,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,28.02,58270.0
+2019,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",450.0,28.48,59240.0
+2020,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",430.0,28.17,58590.0
+2021,South Carolina,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,26.93,56010.0
+2011,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,19.63,40820.0
+2012,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,20.2,42020.0
+2013,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,22.09,45950.0
+2017,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,20.14,41880.0
+2018,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",,22.13,46030.0
+2019,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,23.36,48590.0
+2020,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,27.61,57420.0
+2021,South Dakota,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,29.08,60480.0
+2011,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,19.99,41580.0
+2012,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",180.0,22.22,46210.0
+2013,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,25.88,53820.0
+2014,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,25.79,53640.0
+2015,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,23.93,49770.0
+2016,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",170.0,20.61,42870.0
+2017,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,20.14,41890.0
+2018,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,21.85,45460.0
+2019,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,23.07,47990.0
+2020,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",320.0,23.32,48500.0
+2021,Tennessee,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,28.6,59490.0
+2011,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",780.0,18.49,38450.0
+2012,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",800.0,19.16,39860.0
+2013,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",890.0,20.42,42470.0
+2014,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1060.0,21.32,44340.0
+2015,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1100.0,23.77,49450.0
+2016,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1160.0,24.33,50610.0
+2017,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1170.0,27.0,56170.0
+2018,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1280.0,25.08,52170.0
+2019,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1200.0,24.66,51290.0
+2020,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1010.0,24.1,50140.0
+2021,Texas,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1210.0,24.95,51890.0
+2011,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,22.94,47710.0
+2012,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,21.76,45270.0
+2013,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,20.85,43380.0
+2014,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,20.01,41610.0
+2015,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,21.76,45260.0
+2016,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,22.51,46820.0
+2017,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,22.98,47810.0
+2018,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,22.17,46110.0
+2021,Utah,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,26.54,55190.0
+2011,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,21.53,44780.0
+2012,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",60.0,19.58,40730.0
+2013,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,20.67,42990.0
+2014,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,21.94,45640.0
+2015,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,22.0,45760.0
+2016,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,21.17,44030.0
+2017,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,23.81,49520.0
+2018,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",120.0,22.96,47750.0
+2019,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",100.0,24.83,51640.0
+2020,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",90.0,20.96,43590.0
+2021,Vermont,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,22.63,47060.0
+2011,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",610.0,23.44,48760.0
+2012,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",620.0,23.26,48380.0
+2013,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",550.0,23.42,48710.0
+2014,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",470.0,24.91,51800.0
+2015,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",610.0,27.13,56430.0
+2016,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",700.0,26.03,54150.0
+2017,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",700.0,25.93,53940.0
+2018,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",680.0,26.05,54190.0
+2019,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",580.0,25.97,54020.0
+2020,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",550.0,26.51,55150.0
+2021,Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",600.0,24.74,51470.0
+2011,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",800.0,23.91,49730.0
+2012,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",810.0,24.63,51230.0
+2013,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",850.0,23.34,48550.0
+2014,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",750.0,25.31,52650.0
+2015,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",800.0,26.75,55650.0
+2016,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",770.0,27.55,57310.0
+2017,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",900.0,25.34,52700.0
+2018,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1010.0,25.94,53950.0
+2019,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1140.0,25.79,53640.0
+2020,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1240.0,27.73,57680.0
+2021,Washington,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",1160.0,26.53,55170.0
+2011,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,18.29,38040.0
+2012,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,17.31,36000.0
+2013,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,17.61,36640.0
+2014,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,18.44,38360.0
+2015,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",40.0,25.09,52190.0
+2016,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,23.39,48650.0
+2017,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",80.0,24.66,51300.0
+2018,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",70.0,21.88,45520.0
+2019,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",110.0,20.6,42840.0
+2020,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",140.0,19.74,41070.0
+2021,West Virginia,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",160.0,21.92,45600.0
+2011,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",380.0,22.51,46820.0
+2012,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",200.0,25.49,53020.0
+2013,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",190.0,23.61,49100.0
+2014,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,24.2,50330.0
+2015,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",290.0,23.99,49890.0
+2016,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,24.88,51750.0
+2017,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",220.0,25.2,52410.0
+2018,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",280.0,25.05,52100.0
+2019,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",270.0,26.0,54090.0
+2020,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",240.0,26.07,54230.0
+2021,Wisconsin,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",210.0,25.15,52310.0
+2020,Wyoming,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",30.0,22.58,46970.0
+2021,Wyoming,45-1011,"First-Line Supervisors of Farming, Fishing, and Forestry Workers",50.0,28.01,58250.0
+2011,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",400.0,11.81,24570.0
+2012,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",330.0,12.1,25170.0
+2013,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",320.0,12.04,25050.0
+2014,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",410.0,11.64,24210.0
+2015,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",440.0,10.35,21540.0
+2016,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",400.0,10.35,21530.0
+2017,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",420.0,10.58,22010.0
+2018,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,10.97,22820.0
+2019,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",750.0,10.77,22400.0
+2020,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1000.0,11.25,23400.0
+2021,Alabama,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",680.0,12.57,26150.0
+2012,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",30.0,12.4,25800.0
+2014,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,11.8,24540.0
+2015,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,12.39,25780.0
+2016,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,14.35,29840.0
+2018,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",50.0,12.52,26030.0
+2019,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",130.0,15.54,32320.0
+2020,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",140.0,15.72,32700.0
+2021,Alaska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,14.43,30010.0
+2011,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9120.0,9.04,18810.0
+2012,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9290.0,9.37,19490.0
+2013,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10670.0,9.04,18800.0
+2014,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",11760.0,9.13,18980.0
+2015,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",13540.0,9.17,19070.0
+2016,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",12390.0,9.97,20750.0
+2017,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10700.0,11.23,23350.0
+2018,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10290.0,12.08,25120.0
+2019,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10350.0,12.92,26880.0
+2020,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10090.0,14.17,29480.0
+2021,Arizona,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",8590.0,14.76,30700.0
+2011,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",620.0,10.33,21480.0
+2012,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",670.0,10.6,22050.0
+2013,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1050.0,11.14,23180.0
+2014,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1150.0,10.78,22430.0
+2015,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1630.0,11.08,23050.0
+2016,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1280.0,11.1,23100.0
+2017,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1020.0,11.84,24620.0
+2018,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",610.0,10.59,22020.0
+2019,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",460.0,10.67,22190.0
+2020,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,11.51,23940.0
+2021,Arkansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",540.0,12.97,26990.0
+2011,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",149680.0,9.24,19220.0
+2012,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",164310.0,9.17,19080.0
+2013,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",171160.0,9.22,19180.0
+2014,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",180040.0,9.59,19950.0
+2015,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",178130.0,10.36,21550.0
+2016,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",182570.0,11.36,23630.0
+2017,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",189930.0,11.96,24870.0
+2018,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",194850.0,12.61,26240.0
+2019,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",201440.0,13.25,27550.0
+2020,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",200130.0,14.6,30370.0
+2021,California,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",186600.0,15.28,31770.0
+2011,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1630.0,11.58,24080.0
+2012,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2020.0,12.44,25870.0
+2013,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2060.0,12.16,25300.0
+2014,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2100.0,12.86,26750.0
+2015,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2550.0,12.31,25610.0
+2016,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2290.0,13.24,27550.0
+2017,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3260.0,13.81,28710.0
+2018,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3840.0,15.32,31870.0
+2019,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3310.0,16.1,33490.0
+2020,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2730.0,16.78,34910.0
+2021,Colorado,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3250.0,16.66,34650.0
+2011,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,13.02,27080.0
+2012,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",500.0,11.13,23150.0
+2013,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",550.0,11.55,24020.0
+2014,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",710.0,11.87,24690.0
+2015,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",700.0,12.01,24970.0
+2016,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,12.67,26360.0
+2017,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,13.39,27850.0
+2018,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,14.31,29760.0
+2019,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,14.34,29820.0
+2020,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",780.0,14.76,30700.0
+2021,Connecticut,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",680.0,16.46,34240.0
+2011,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",50.0,12.56,26110.0
+2012,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,12.97,26970.0
+2013,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,12.01,24980.0
+2014,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",50.0,14.51,30180.0
+2015,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,14.24,29630.0
+2016,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",120.0,14.11,29340.0
+2017,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",160.0,13.42,27910.0
+2018,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",190.0,13.65,28390.0
+2019,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",140.0,14.42,30000.0
+2020,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,12.42,25840.0
+2021,Delaware,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",180.0,14.69,30560.0
+2011,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",23480.0,9.4,19560.0
+2012,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",24110.0,9.6,19960.0
+2013,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",21340.0,9.69,20160.0
+2014,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",16430.0,9.79,20370.0
+2015,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",14650.0,9.93,20650.0
+2016,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",13350.0,10.38,21590.0
+2017,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",13250.0,10.99,22850.0
+2018,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10670.0,11.79,24520.0
+2019,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10070.0,11.99,24930.0
+2020,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9140.0,11.83,24600.0
+2021,Florida,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9080.0,12.66,26320.0
+2011,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2370.0,10.0,20800.0
+2012,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3560.0,9.59,19950.0
+2013,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3600.0,9.92,20630.0
+2014,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3420.0,10.56,21960.0
+2015,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3040.0,11.03,22930.0
+2016,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3390.0,10.43,21690.0
+2017,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3420.0,10.88,22630.0
+2018,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3200.0,11.26,23410.0
+2019,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2880.0,11.88,24720.0
+2020,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2530.0,11.98,24910.0
+2021,Georgia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2740.0,13.17,27390.0
+2011,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",480.0,12.54,26080.0
+2012,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,10.84,22540.0
+2013,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",860.0,10.51,21850.0
+2014,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",900.0,10.66,22170.0
+2015,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",530.0,12.56,26120.0
+2016,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",430.0,13.71,28520.0
+2017,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",300.0,15.13,31470.0
+2018,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,15.74,32740.0
+2019,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",440.0,16.79,34920.0
+2020,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",960.0,18.21,37880.0
+2021,Hawaii,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",850.0,18.12,37700.0
+2011,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1440.0,10.52,21890.0
+2012,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1670.0,11.12,23140.0
+2013,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1940.0,10.54,21930.0
+2014,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1740.0,10.72,22290.0
+2015,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1530.0,10.62,22090.0
+2016,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2280.0,10.34,21510.0
+2017,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2140.0,10.66,22160.0
+2018,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2350.0,11.7,24340.0
+2019,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2180.0,12.49,25970.0
+2020,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2450.0,12.82,26670.0
+2021,Idaho,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2320.0,14.3,29740.0
+2011,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1560.0,11.72,24380.0
+2012,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1670.0,12.1,25160.0
+2013,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1910.0,12.99,27010.0
+2014,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2440.0,14.48,30130.0
+2015,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2670.0,14.57,30310.0
+2016,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2220.0,14.87,30930.0
+2017,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1620.0,13.79,28680.0
+2018,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2030.0,14.43,30020.0
+2019,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2390.0,15.07,31350.0
+2020,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2470.0,16.25,33800.0
+2021,Illinois,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3070.0,17.04,35440.0
+2011,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,11.13,23150.0
+2012,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",880.0,10.88,22630.0
+2013,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1230.0,11.3,23500.0
+2014,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1370.0,11.4,23720.0
+2015,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1450.0,11.86,24660.0
+2016,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1290.0,11.61,24160.0
+2017,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1550.0,11.81,24560.0
+2018,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1220.0,11.94,24820.0
+2019,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1160.0,13.34,27740.0
+2020,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1060.0,14.27,29680.0
+2021,Indiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1100.0,14.6,30380.0
+2011,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",650.0,12.38,25760.0
+2012,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1060.0,12.09,25140.0
+2013,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",990.0,12.76,26530.0
+2014,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",950.0,12.58,26170.0
+2015,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,13.73,28560.0
+2016,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",680.0,13.12,27280.0
+2017,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",850.0,13.32,27700.0
+2018,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1330.0,14.73,30630.0
+2019,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1430.0,15.36,31950.0
+2020,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1380.0,16.37,34040.0
+2021,Iowa,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",640.0,14.19,29500.0
+2011,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",180.0,9.98,20750.0
+2012,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",400.0,11.0,22870.0
+2013,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,11.1,23100.0
+2014,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",690.0,11.45,23820.0
+2015,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",630.0,11.89,24740.0
+2016,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",650.0,12.58,26160.0
+2017,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",650.0,12.83,26690.0
+2018,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",580.0,13.68,28450.0
+2019,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",420.0,14.48,30110.0
+2020,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",460.0,14.9,30990.0
+2021,Kansas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",890.0,13.51,28090.0
+2011,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",640.0,10.56,21960.0
+2012,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,10.27,21360.0
+2013,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",900.0,11.85,24640.0
+2014,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",970.0,12.1,25170.0
+2015,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",940.0,13.43,27930.0
+2016,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,12.51,26020.0
+2017,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",700.0,12.62,26260.0
+2018,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",900.0,13.07,27180.0
+2019,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,13.9,28920.0
+2020,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",530.0,14.16,29440.0
+2021,Kentucky,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",350.0,13.0,27040.0
+2011,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",470.0,10.43,21690.0
+2012,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",570.0,11.14,23160.0
+2013,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",540.0,11.64,24210.0
+2014,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,11.7,24340.0
+2015,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",550.0,12.01,24980.0
+2016,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",660.0,11.47,23870.0
+2017,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1150.0,11.19,23270.0
+2018,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1520.0,12.53,26060.0
+2019,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1290.0,12.16,25290.0
+2020,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1150.0,13.14,27330.0
+2021,Louisiana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",510.0,12.84,26700.0
+2011,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",340.0,11.2,23300.0
+2012,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,11.27,23450.0
+2013,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",290.0,11.46,23850.0
+2014,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",300.0,11.93,24820.0
+2015,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,12.72,26460.0
+2016,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",200.0,13.29,27640.0
+2017,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",270.0,14.11,29340.0
+2018,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,14.19,29520.0
+2019,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",260.0,15.29,31810.0
+2020,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",170.0,15.58,32410.0
+2021,Maine,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",360.0,17.29,35970.0
+2011,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",980.0,11.55,24030.0
+2012,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",600.0,11.96,24870.0
+2013,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",540.0,12.43,25860.0
+2014,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",520.0,12.75,26510.0
+2015,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",700.0,13.61,28310.0
+2016,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",710.0,14.05,29220.0
+2017,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,14.51,30180.0
+2018,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1060.0,15.34,31900.0
+2019,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1120.0,15.82,32890.0
+2020,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1100.0,15.62,32490.0
+2021,Maryland,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2320.0,15.2,31620.0
+2011,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",770.0,13.13,27310.0
+2012,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",670.0,13.02,27080.0
+2013,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,12.34,25680.0
+2014,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,12.08,25120.0
+2015,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",960.0,12.82,26660.0
+2016,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,13.35,27770.0
+2017,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",840.0,14.7,30570.0
+2018,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",860.0,16.59,34500.0
+2019,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1090.0,16.53,34390.0
+2020,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1010.0,16.84,35030.0
+2021,Massachusetts,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1040.0,17.53,36470.0
+2011,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1130.0,10.94,22750.0
+2012,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1310.0,10.6,22050.0
+2013,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1360.0,11.42,23760.0
+2014,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1430.0,11.73,24390.0
+2015,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1600.0,12.83,26680.0
+2016,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2010.0,11.9,24750.0
+2017,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2470.0,11.71,24350.0
+2018,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2650.0,12.08,25130.0
+2019,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2100.0,13.04,27120.0
+2020,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1760.0,13.33,27730.0
+2021,Michigan,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3150.0,14.76,30690.0
+2011,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,11.16,23220.0
+2012,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",680.0,11.93,24820.0
+2013,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,11.72,24380.0
+2014,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",860.0,12.57,26150.0
+2015,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",840.0,12.4,25790.0
+2016,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,13.45,27970.0
+2017,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",780.0,13.84,28780.0
+2018,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1050.0,15.15,31510.0
+2019,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",940.0,16.48,34280.0
+2020,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",880.0,16.98,35320.0
+2021,Minnesota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1390.0,17.26,35900.0
+2011,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",750.0,10.55,21940.0
+2012,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",630.0,9.84,20470.0
+2013,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",720.0,9.15,19020.0
+2014,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",730.0,9.39,19540.0
+2015,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",640.0,9.85,20480.0
+2016,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,10.57,21990.0
+2017,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",530.0,12.29,25570.0
+2018,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",670.0,12.04,25040.0
+2019,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",640.0,12.1,25170.0
+2020,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",400.0,12.07,25100.0
+2021,Mississippi,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,13.78,28650.0
+2011,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,10.91,22690.0
+2012,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,11.05,22980.0
+2013,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1500.0,10.48,21800.0
+2014,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1420.0,11.0,22890.0
+2015,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1240.0,10.59,22030.0
+2016,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",780.0,11.8,24540.0
+2017,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",690.0,13.16,27370.0
+2018,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",880.0,13.95,29010.0
+2019,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1010.0,14.54,30240.0
+2020,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1360.0,14.23,29600.0
+2021,Missouri,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",710.0,13.42,27920.0
+2011,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,11.93,24820.0
+2012,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",260.0,12.13,25220.0
+2013,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",270.0,11.9,24760.0
+2014,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",260.0,11.86,24670.0
+2015,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",300.0,12.07,25120.0
+2016,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",380.0,12.24,25460.0
+2017,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",410.0,12.43,25850.0
+2018,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",330.0,11.95,24850.0
+2019,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,14.25,29630.0
+2020,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,16.9,35160.0
+2021,Montana,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",420.0,16.49,34290.0
+2011,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",650.0,12.96,26960.0
+2012,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,12.65,26320.0
+2013,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",940.0,12.48,25950.0
+2014,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",900.0,12.26,25510.0
+2015,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",950.0,15.67,32590.0
+2016,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",800.0,16.01,33290.0
+2017,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",770.0,17.59,36580.0
+2018,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,15.11,31430.0
+2019,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,15.51,32250.0
+2020,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",600.0,15.21,31640.0
+2021,Nebraska,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",320.0,15.66,32570.0
+2012,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",60.0,13.53,28130.0
+2013,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,16.19,33670.0
+2014,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,15.45,32130.0
+2015,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",150.0,14.34,29830.0
+2016,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",200.0,14.59,30340.0
+2017,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",220.0,13.7,28500.0
+2018,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",390.0,11.88,24720.0
+2019,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,14.12,29380.0
+2020,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",700.0,14.5,30160.0
+2021,Nevada,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1200.0,14.71,30590.0
+2011,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",190.0,11.21,23330.0
+2012,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,11.59,24100.0
+2013,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,12.13,25240.0
+2014,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",180.0,12.36,25700.0
+2015,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",200.0,13.15,27360.0
+2016,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",170.0,13.75,28590.0
+2017,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",180.0,13.29,27640.0
+2018,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",250.0,13.77,28640.0
+2019,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",250.0,14.6,30370.0
+2020,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",220.0,14.6,30380.0
+2021,New Hampshire,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,14.87,30930.0
+2011,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1580.0,11.73,24390.0
+2012,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1660.0,11.72,24370.0
+2013,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1680.0,11.7,24340.0
+2014,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1690.0,12.45,25890.0
+2015,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2580.0,12.21,25390.0
+2016,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3460.0,12.44,25870.0
+2017,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3160.0,12.54,26090.0
+2018,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2400.0,13.37,27810.0
+2019,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3030.0,14.99,31170.0
+2020,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3570.0,15.34,31910.0
+2021,New Jersey,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2830.0,15.19,31600.0
+2011,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1720.0,9.35,19440.0
+2012,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2090.0,9.17,19070.0
+2013,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2040.0,9.18,19100.0
+2014,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2430.0,9.33,19410.0
+2015,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2040.0,9.64,20060.0
+2016,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1780.0,10.41,21660.0
+2017,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1430.0,10.83,22520.0
+2018,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1670.0,10.27,21360.0
+2019,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1570.0,10.49,21820.0
+2020,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1490.0,11.13,23150.0
+2021,New Mexico,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1590.0,12.22,25420.0
+2011,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1310.0,11.4,23710.0
+2012,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1810.0,11.1,23080.0
+2013,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1830.0,11.1,23090.0
+2014,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1800.0,11.52,23960.0
+2015,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1670.0,12.56,26120.0
+2016,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1580.0,13.24,27540.0
+2017,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,15.56,32360.0
+2018,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3040.0,15.73,32720.0
+2019,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2290.0,15.7,32660.0
+2020,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1430.0,15.73,32710.0
+2021,New York,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2540.0,16.05,33370.0
+2011,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2350.0,9.49,19740.0
+2012,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2450.0,9.77,20320.0
+2013,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2640.0,9.97,20740.0
+2014,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2520.0,10.43,21700.0
+2015,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3000.0,10.47,21780.0
+2016,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2820.0,10.97,22810.0
+2017,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2570.0,11.05,22980.0
+2018,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2650.0,11.91,24770.0
+2019,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2680.0,12.24,25460.0
+2020,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2510.0,12.63,26280.0
+2021,North Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2040.0,12.99,27020.0
+2011,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",160.0,11.52,23960.0
+2012,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",220.0,12.32,25620.0
+2013,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,13.51,28100.0
+2014,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,13.58,28240.0
+2015,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,12.82,26670.0
+2016,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,12.89,26820.0
+2017,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",270.0,14.11,29350.0
+2018,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",230.0,14.82,30830.0
+2019,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,15.26,31750.0
+2020,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",190.0,15.99,33260.0
+2021,North Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",160.0,17.62,36640.0
+2011,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1590.0,11.58,24080.0
+2012,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1760.0,11.5,23930.0
+2013,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1950.0,11.75,24450.0
+2014,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1850.0,11.67,24270.0
+2015,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2010.0,12.66,26340.0
+2016,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1850.0,13.6,28280.0
+2017,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2110.0,12.95,26940.0
+2018,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2060.0,12.37,25730.0
+2019,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2290.0,13.34,27740.0
+2020,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2050.0,15.16,31530.0
+2021,Ohio,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2240.0,15.63,32520.0
+2011,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1240.0,10.07,20940.0
+2012,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1110.0,10.23,21290.0
+2013,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",760.0,10.55,21950.0
+2014,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",390.0,11.53,23990.0
+2015,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",550.0,11.6,24120.0
+2016,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,12.39,25770.0
+2017,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",500.0,13.79,28690.0
+2018,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",460.0,14.39,29930.0
+2019,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,13.95,29030.0
+2020,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",580.0,14.12,29370.0
+2021,Oklahoma,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",870.0,14.58,30330.0
+2011,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4570.0,9.82,20430.0
+2012,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5450.0,10.12,21040.0
+2013,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5180.0,9.91,20610.0
+2014,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5830.0,10.26,21340.0
+2015,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5670.0,11.17,23240.0
+2016,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5460.0,12.2,25380.0
+2017,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5160.0,12.61,26230.0
+2018,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5750.0,12.71,26440.0
+2019,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",6040.0,13.52,28130.0
+2020,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",7480.0,14.27,29670.0
+2021,Oregon,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",6880.0,14.84,30870.0
+2011,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2290.0,12.33,25640.0
+2012,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2410.0,12.18,25330.0
+2013,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2280.0,11.86,24680.0
+2014,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1980.0,11.82,24580.0
+2015,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1960.0,11.56,24040.0
+2016,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2200.0,11.66,24250.0
+2017,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2510.0,13.02,27080.0
+2018,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2510.0,14.07,29270.0
+2019,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2730.0,15.42,32070.0
+2020,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",2520.0,15.65,32550.0
+2021,Pennsylvania,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",3150.0,15.59,32420.0
+2011,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,12.95,26940.0
+2012,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,14.58,30320.0
+2013,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,10.14,21080.0
+2014,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,9.93,20650.0
+2015,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,12.91,26850.0
+2017,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,17.24,35860.0
+2019,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,17.36,36100.0
+2020,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,14.8,30790.0
+2021,Rhode Island,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,15.37,31960.0
+2011,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1170.0,8.75,18210.0
+2012,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1010.0,9.54,19840.0
+2013,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",930.0,10.7,22250.0
+2014,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,11.73,24390.0
+2015,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",930.0,11.74,24420.0
+2016,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",930.0,13.56,28210.0
+2017,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1120.0,13.12,27290.0
+2018,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1280.0,13.32,27700.0
+2019,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1400.0,12.92,26860.0
+2020,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1520.0,13.01,27060.0
+2021,South Carolina,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1100.0,14.19,29510.0
+2011,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",140.0,10.51,21860.0
+2012,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",110.0,11.44,23800.0
+2013,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",150.0,11.44,23790.0
+2014,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",130.0,11.18,23260.0
+2015,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",110.0,10.96,22800.0
+2016,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",90.0,10.79,22440.0
+2017,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,12.59,26190.0
+2018,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,13.73,28560.0
+2019,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",100.0,13.92,28960.0
+2020,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,13.55,28180.0
+2021,South Dakota,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",60.0,13.76,28610.0
+2011,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",980.0,10.5,21850.0
+2012,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,10.82,22500.0
+2013,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",720.0,10.54,21910.0
+2014,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",430.0,11.41,23740.0
+2015,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",370.0,10.14,21090.0
+2016,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",480.0,10.26,21350.0
+2017,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",840.0,10.03,20870.0
+2018,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1020.0,10.91,22700.0
+2019,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1590.0,11.71,24360.0
+2021,Tennessee,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",840.0,13.59,28260.0
+2011,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4770.0,10.29,21400.0
+2012,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4380.0,10.22,21260.0
+2013,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4400.0,9.28,19310.0
+2014,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4340.0,9.39,19540.0
+2015,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5850.0,9.54,19850.0
+2016,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5110.0,10.08,20980.0
+2017,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5520.0,9.98,20750.0
+2018,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4540.0,10.64,22120.0
+2019,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4500.0,11.61,24150.0
+2020,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",4670.0,12.55,26100.0
+2021,Texas,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5150.0,13.12,27290.0
+2011,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",450.0,9.93,20660.0
+2012,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,10.79,22440.0
+2013,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",790.0,11.5,23910.0
+2014,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",860.0,11.56,24050.0
+2015,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",740.0,11.37,23650.0
+2016,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",640.0,11.7,24330.0
+2017,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",660.0,11.99,24940.0
+2018,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",390.0,12.92,26870.0
+2019,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",270.0,12.84,26700.0
+2020,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,14.64,30450.0
+2021,Utah,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",410.0,14.97,31130.0
+2011,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",160.0,11.74,24410.0
+2012,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",110.0,12.19,25340.0
+2013,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",100.0,13.61,28320.0
+2014,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",190.0,12.93,26890.0
+2015,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",190.0,13.35,27760.0
+2016,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,13.4,27880.0
+2017,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",560.0,14.77,30720.0
+2018,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",530.0,15.23,31680.0
+2019,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",490.0,16.22,33740.0
+2020,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,17.87,37170.0
+2021,Vermont,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,17.46,36320.0
+2011,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",990.0,11.21,23320.0
+2012,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1010.0,11.32,23540.0
+2013,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1010.0,11.0,22870.0
+2014,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",830.0,11.68,24300.0
+2015,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",890.0,12.0,24960.0
+2016,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,12.56,26120.0
+2017,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,12.68,26370.0
+2018,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,13.42,27910.0
+2019,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1580.0,13.54,28170.0
+2020,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1340.0,14.27,29670.0
+2021,Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1610.0,14.33,29810.0
+2011,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5050.0,12.31,25600.0
+2012,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",5990.0,11.99,24940.0
+2013,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",6310.0,12.05,25070.0
+2014,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",8410.0,12.87,26770.0
+2015,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10160.0,13.07,27180.0
+2016,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",10490.0,13.19,27430.0
+2017,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9710.0,13.94,29000.0
+2018,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",11100.0,14.15,29430.0
+2019,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",12720.0,14.82,30830.0
+2020,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",14850.0,15.73,32710.0
+2021,Washington,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",9570.0,15.92,33120.0
+2011,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",150.0,9.5,19770.0
+2012,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",310.0,8.99,18690.0
+2013,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,9.12,18960.0
+2014,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",280.0,9.31,19360.0
+2015,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",260.0,10.1,21000.0
+2016,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",230.0,10.63,22110.0
+2017,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",220.0,10.93,22730.0
+2018,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",210.0,12.23,25430.0
+2019,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",240.0,12.29,25560.0
+2020,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",270.0,12.7,26420.0
+2021,West Virginia,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,12.3,25580.0
+2011,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",850.0,10.85,22570.0
+2012,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",940.0,10.81,22490.0
+2013,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",920.0,11.47,23850.0
+2014,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1220.0,11.42,23750.0
+2015,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1310.0,11.72,24370.0
+2016,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1120.0,12.73,26480.0
+2017,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1470.0,12.55,26100.0
+2018,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1450.0,12.92,26870.0
+2019,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1850.0,13.08,27200.0
+2020,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1080.0,14.71,30600.0
+2021,Wisconsin,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",1460.0,16.21,33710.0
+2011,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,11.88,24700.0
+2012,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",100.0,11.56,24040.0
+2013,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",120.0,12.03,25020.0
+2014,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,10.99,22850.0
+2015,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",,11.57,24060.0
+2016,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,12.66,26330.0
+2017,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",50.0,16.26,33820.0
+2018,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",50.0,16.95,35260.0
+2019,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",70.0,17.15,35680.0
+2020,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",40.0,17.78,36990.0
+2021,Wyoming,45-2092,"Farmworkers and Laborers, Crop, Nursery, and Greenhouse",80.0,17.28,35950.0

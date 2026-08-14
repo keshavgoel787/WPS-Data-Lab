@@ -131,6 +131,65 @@ corrected pipeline without touching its models; see
   with state baseline intercepts. The augmented table now reports the random-intercept
   value (+19.2%). See the `delta_pct_ri` note above.
 
+**2026-08 extension to 2011–2021 (Joe's request).** Joe asked whether the figures could
+run through 2021 or whether the models were themselves stuck at 2011–2019. They were, and
+the constraint was the DV source. **This is the single most important data fact in the
+project:**
+
+- `data/raw/establishments_data.csv` is the **"establishments" view** of EPA's ECHO State
+  Pesticide Dashboard, and **EPA publishes it only through 2019**. Re-verified against the
+  live dashboard 2026-08-13: last column is `penalties-epa-2019`. There is no 2020/2021 to
+  harvest. Every covariate (STAG spending → 2024, DOL H-2A → 2025, BLS OEWS → present) already
+  ran past 2019, so the DV was the sole binding constraint.
+- `data/raw/wps_data.csv` is the **"WPS" view** of the same dashboard and **does run
+  2011–2021**. Both local files are byte-identical to what the dashboard currently serves.
+- Provenance (previously unrecorded): both files come from that dashboard's download button.
+  The page inlines both CSVs as strings on `drupalSettings.echoDashboards` (`estData` /
+  `wpsData`); there is no data API. One fetch of any `?view=` returns both, all states.
+- **The two views are NOT the same measure.** WPS counts run 2–3× the establishments counts
+  (2,296 vs 967 violations across the 50 states in 2017) and state-level correlation is
+  ~0.4–0.6 in 2011–2016 and ~0 from 2017 on. The 2011–2021 tables are a **re-analysis on a
+  WPS-specific outcome**, not an extension of the 2011–2019 ones, and coefficients are not
+  line-by-line comparable. (It is arguably the better-matched outcome for a WPS paper.)
+
+Extending to 2021 therefore means switching the DV to the WPS view. The 2011–2019 pipeline is
+left fully intact; every extended artifact is written alongside it under a `_2021` name, and
+four scripts now take an optional end-year argument (default reproduces the 2019 outputs
+byte-for-byte — verified). Run in this order:
+
+```bash
+python3 scripts/build_wps_dv_panel.py                  # WPS view → wps_dv_panel_2011_2021.csv (49 states; WY absent)
+python3 scripts/harvest_bls_oews_panel.py 2021         # → data/raw/bls_oews_panel_2011_2021.csv
+python3 scripts/rebuild_spend_bls_multiyear_2021.py    # → spend_bls_variables_multiyear_2021.csv (CPI-U extended)
+python3 scripts/build_h2a_ratio_panel.py 2021          # → h2a_ratio_panel_2011_2021.csv
+python3 scripts/paper_table_models_2021.py             # → paper_table_params_2021.json  (+ COVID robustness)
+python3 scripts/spaghetti_plots.py 2021                # → figures/fig_spaghetti_*_2021.png
+python3 scripts/fill_wps_tables_docx_augmented.py 2021 # → docs/WPS_Table_Sheels_augmented_2021.docx
+```
+
+Model spec is **unchanged** (M1/M2/M3 build-up, cubic time centered 2017, no ×time
+interactions, log(count+1) DVs, random intercept + random slope, REML) — only the window and
+DV source differ. N = 49 states (M1) / 46 (M2–M3, AK/RI/VT lack BLS applicator data);
+Wyoming has no row in the WPS view at all.
+
+- **COVID caveat (important, and it differs by outcome).** 2020–21 are pandemic years; WPS
+  inspections fall ~15% in 2020. `paper_table_models_2021.py` fits and prints a
+  COVID-indicator robustness check. **Inspections:** the dummy is −0.590*** and adding it
+  pushes `time2`/`time3` from null into significance — so the inspections time trend over
+  2011–2021 partly reflects enforcement capacity, not compliance, and the cubic is absorbing
+  the shock. **Violations:** the dummy is −0.183 n.s. and the time terms barely move, so that
+  table is robust as fit. Both docx notes state this.
+- Spending over the wider window tracks the old one closely (SPEND_WORK r=0.963,
+  SPEND_APP r=0.997, median ratio ≈1.00), so the window change does not distort the
+  spending measure.
+- The H-2A ratio rises sharply at the end of the window (state mean 2.68 in 2011 → 4.04 in
+  2020 → 5.30 in 2021): certified H-2A grew while BLS farmworker employment fell.
+- `figures/fig_spaghetti_*_2021.png` extend Post to 2018–2021 and add a dotted divider with a
+  "COVID-19" band label. The 2011–2019 figures are untouched.
+- The 2011–2019 `docs/WPS_Table_Sheels_augmented.docx` was regenerated with **one** added
+  sentence in its Note recording that its outcome comes from the establishments view, which
+  EPA publishes only through 2019. No numbers changed.
+
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
 Stata ports of three core scripts also live in `scripts/` (`hierarchical_violations_model.do`, `visualize_model_results.do`, `visualize_polynomial_terms.do`), merged from the `stata` branch. They read/write the same `data/` and `figures/` paths as their Python counterparts.

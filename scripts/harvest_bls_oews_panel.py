@@ -26,6 +26,7 @@ The original single-year bls_oews_panel.csv is left untouched.
 
 import os
 import subprocess
+import sys
 import zipfile
 import pandas as pd
 import numpy as np
@@ -46,7 +47,13 @@ US_STATES_50 = {
     'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'}
 
 TARGET_OCC = {'37-3012', '45-1011', '45-2092'}
-YEARS = range(2011, 2020)
+
+# End year is overridable so the same harvester serves both study windows:
+#   python3 harvest_bls_oews_panel.py        -> 2011-2019 (original ECHO window)
+#   python3 harvest_bls_oews_panel.py 2021   -> 2011-2021 (WPS-view window)
+# Output filename tracks the range, so neither panel overwrites the other.
+END_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else 2019
+YEARS = range(2011, END_YEAR + 1)
 
 
 def download(year):
@@ -97,7 +104,7 @@ frames = [read_year(y) for y in YEARS]
 panel = pd.concat(frames, ignore_index=True).sort_values(
     ['occ_code', 'state', 'year']).reset_index(drop=True)
 
-out_path = os.path.join(RAW, 'bls_oews_panel_2011_2019.csv')
+out_path = os.path.join(RAW, f'bls_oews_panel_2011_{END_YEAR}.csv')
 panel.to_csv(out_path, index=False)
 
 # ---- coverage report -------------------------------------------------------
@@ -109,4 +116,4 @@ for occ in sorted(TARGET_OCC):
     never = sorted(US_STATES_50 - set(have.index))
     print(f"\nOCC {occ}: {states_any}/50 states have >=1 non-suppressed year")
     if never:
-        print(f"  NEVER reported (all 9 yrs suppressed/absent): {never}")
+        print(f"  NEVER reported (all {len(YEARS)} yrs suppressed/absent): {never}")

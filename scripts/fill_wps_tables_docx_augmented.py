@@ -21,15 +21,51 @@ Requires paper_table_models_corrected.py to have run.
 Output: docs/WPS_Table_Sheels_augmented.docx
 """
 import json
+import sys
+
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+# Study window is selectable:
+#   python3 fill_wps_tables_docx_augmented.py        -> 2011-2019 (ECHO establishments)
+#   python3 fill_wps_tables_docx_augmented.py 2021   -> 2011-2021 (ECHO WPS view)
+# Separate outputs, so the 2011-2019 docx already circulated is never overwritten.
+END_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else 2019
+
 SRC = '/Users/keshavgoel/Downloads/WPS Table Sheels.docx'
-JSON = '/Users/keshavgoel/Research/data/generated/paper_table_params_corrected.json'
-OUT = '/Users/keshavgoel/Research/docs/WPS_Table_Sheels_augmented.docx'
+GEN = '/Users/keshavgoel/Research/data/generated/'
+JSON = GEN + ('paper_table_params_corrected.json' if END_YEAR == 2019
+              else f'paper_table_params_{END_YEAR}.json')
+OUT = ('/Users/keshavgoel/Research/docs/WPS_Table_Sheels_augmented'
+       + ('' if END_YEAR == 2019 else f'_{END_YEAR}') + '.docx')
 MODELS = ['M1', 'M2', 'M3']
 FONT = 'Helvetica'          # match the shell's caption/body typeface
+
+# Window-specific tail of the table Note: outcome source, spending window, sample.
+NOTE_TAIL_2019 = (
+    'Outcomes come from the “establishments” view of EPA’s ECHO State Pesticide '
+    'Dashboard, which EPA publishes only through 2019. Spending variables use '
+    'mean 2011–2019 STAG obligations over mean 2011–2019 BLS employment; MS/RI/WV (like '
+    'HI/TN/UT) received no CFDA 66.700 obligations and are coded $0. AK/RI/VT drop from '
+    'Spending/applicator columns (BLS never publishes SOC 37-3012 for them), giving N=47 states.')
+NOTE_TAIL_2021 = (
+    'Outcomes come from the “WPS” view of EPA’s ECHO State Pesticide Dashboard, which '
+    'reports inspections of, and violations by, WPS-regulated facilities across the ten WPS '
+    'provisions and runs through 2021. This differs from the FIFRA-wide “establishments” view '
+    'used in earlier drafts, which EPA publishes only through 2019; counts on the WPS measure '
+    'run roughly two to three times higher and the two series correlate weakly at the state '
+    'level, so coefficients here are not directly comparable with those tables. Wyoming has no '
+    'row in the WPS view, giving 49 states; Models 2–3 further drop AK/RI/VT from '
+    'Spending/applicator columns (BLS never publishes SOC 37-3012 for them), giving 46 states. '
+    'Spending variables use mean 2011–2021 STAG obligations in 2017 dollars over mean 2011–2021 '
+    'BLS employment; MS/RI/WV (like HI/TN/UT) received no CFDA 66.700 obligations and are coded '
+    '$0. The window includes the 2020–2021 pandemic years, during which WPS inspections fell '
+    'roughly 15 percent; adding a 2020–21 indicator to the inspections model shifts the '
+    'quadratic and cubic time terms into significance, so the inspections time trend over this '
+    'window should be read as partly reflecting enforcement capacity. The violations model is '
+    'robust to that indicator.')
+NOTE_TAIL = NOTE_TAIL_2019 if END_YEAR == 2019 else NOTE_TAIL_2021
 
 with open(JSON) as f:
     P = json.load(f)
@@ -170,11 +206,13 @@ def replace_table(doc, old_table, tab, rows):
 # with their Helvetica styling, are inherited.
 doc = Document(SRC)
 
-# Study period: the data run 2011-2019, not 2021.
-for p in doc.paragraphs:
-    if '2011 to 2021' in p.text:
-        for run in p.runs:
-            run.text = run.text.replace('2011 to 2021', '2011 to 2019')
+# Study period. The shell says "2011 to 2021"; that is correct only for the
+# extended WPS-view build, so it is rewritten for the 2011-2019 ECHO build.
+if END_YEAR == 2019:
+    for p in doc.paragraphs:
+        if '2011 to 2021' in p.text:
+            for run in p.runs:
+                run.text = run.text.replace('2011 to 2021', '2011 to 2019')
 
 # Capture the two placeholder tables BEFORE we append new ones.
 shell_insp, shell_viol = doc.tables[0], doc.tables[1]
@@ -201,11 +239,8 @@ r1 = note.add_run(
     'much of the between-state inspection variance, so part of that column’s reduction against '
     'Model 1 reflects the narrower sample as well as the covariates; the violations table is '
     'unaffected. Both outcomes are log(count+1); the violations '
-    'model includes log(inspections+1) as a contemporaneous predictor. Spending variables use '
-    'mean 2011–2019 STAG obligations over mean 2011–2019 BLS employment; MS/RI/WV (like '
-    'HI/TN/UT) received no CFDA 66.700 obligations and are coded $0. AK/RI/VT drop from '
-    'Spending/applicator columns (BLS never publishes SOC 37-3012 for them), giving N=47 states. '
-    '+ p<.10, * p<.05, ** p<.01, *** p<.001.')
+    'model includes log(inspections+1) as a contemporaneous predictor. ' + NOTE_TAIL +
+    ' + p<.10, * p<.05, ** p<.01, *** p<.001.')
 for r in (r0, r1):
     r.font.name = FONT
     r.font.size = Pt(9)

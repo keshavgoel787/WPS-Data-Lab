@@ -1,5 +1,23 @@
 """
-Spaghetti plots of WPS enforcement trajectories, 2011-2019.
+Spaghetti plots of WPS enforcement trajectories.
+
+Two study windows, selected by argument:
+    python3 spaghetti_plots.py         -> 2011-2019, ECHO establishments view
+                                          (data/raw/establishments_data.csv)
+                                          -> figures/fig_spaghetti_*.png
+    python3 spaghetti_plots.py 2021    -> 2011-2021, ECHO **WPS** view
+                                          (data/generated/wps_dv_panel_2011_2021.csv)
+                                          -> figures/fig_spaghetti_*_2021.png
+
+The 2021 window exists because EPA publishes the establishments view only through
+2019; the WPS view runs to 2021. It is a WPS-specific measure rather than a longer
+version of the same one, so the two sets of figures are NOT directly comparable --
+counts run 2-3x higher. See build_wps_dv_panel.py. Output names differ so the
+2011-2019 figures already placed in the manuscript are never overwritten.
+
+In the 2021 window the Post period spans 2018-2021 and a dotted divider marks the
+2020-21 pandemic years, during which WPS inspections fall ~15% for reasons of
+enforcement capacity rather than compliance.
 
 For each outcome (inspections = EPA + state, and violations) independently:
   - eligibility: a state must have >=1 NONZERO value in EACH of the three study
@@ -15,6 +33,8 @@ Outputs:
   figures/fig_spaghetti_inspections.png
   figures/fig_spaghetti_violations.png
 """
+import sys
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -22,7 +42,11 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 RAW = '/Users/keshavgoel/Research/data/raw/'
+GEN = '/Users/keshavgoel/Research/data/generated/'
 FIG = '/Users/keshavgoel/Research/figures/'
+
+END_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else 2019
+SUFFIX = '' if END_YEAR == 2019 else f'_{END_YEAR}'
 
 US_STATES_50 = [
     'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
@@ -51,9 +75,10 @@ NAME_TO_ABBREV = {
     'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
     'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'}
 
-# Pre / Spike / Post
-PERIODS = {'Pre': range(2011, 2016), 'Spike': range(2016, 2018), 'Post': range(2018, 2020)}
-YEARS = list(range(2011, 2020))
+# Pre / Spike / Post -- Post absorbs the extra years in the 2021 window
+PERIODS = {'Pre': range(2011, 2016), 'Spike': range(2016, 2018),
+           'Post': range(2018, END_YEAR + 1)}
+YEARS = list(range(2011, END_YEAR + 1))
 
 # dataviz reference palette (light surface)
 C_SURFACE = '#fcfcfb'
@@ -68,6 +93,14 @@ C_SPIKE = '#2a78d6'     # faint wash marking the Spike period
 
 
 def build_panel():
+    if END_YEAR != 2019:
+        # WPS view -- already a tidy state-year panel, just rename to the DV names
+        # the plotting code expects.
+        wps = pd.read_csv(GEN + f'wps_dv_panel_2011_{END_YEAR}.csv')
+        wps = wps.rename(columns={'wps_inspections': 'inspections',
+                                  'wps_violations': 'violations'})
+        return wps[['state', 'year', 'inspections', 'violations']]
+
     echo = pd.read_csv(RAW + 'establishments_data.csv', index_col=0)
     echo.index = echo.index.str.strip().map(lambda x: STATE_NAME_MAPPING.get(x, x))
     frames = []
@@ -140,18 +173,26 @@ def plot(long, dv, title, seed, outfile, logscale=False):
             solid_capstyle='round', label='15-state mean')
 
     # endpoint direct labels, coloured to match each line
-    ends = wide[2019].values.astype(float)
-    ax.set_xlim(2011, 2019.8)
+    ends = wide[END_YEAR].values.astype(float)
+    ax.set_xlim(2011, END_YEAR + 0.8)
     ymax = np.nanmax(wide.values) * 1.12
     ax.set_ylim(0, ymax)
     lab_y = spread_labels(ends, ax)
     for st, y0, y1 in zip(pick, ends, lab_y):
-        ax.annotate(NAME_TO_ABBREV[st], xy=(2019, y0), xytext=(2019.15, y1),
+        ax.annotate(NAME_TO_ABBREV[st], xy=(END_YEAR, y0), xytext=(END_YEAR + 0.15, y1),
                     va='center', ha='left', fontsize=7.5, color=state_color[st],
                     fontweight='bold', annotation_clip=False)
 
     # period labels along the top (title removed -- Joe drafts his own header)
-    for name, xc in [('Pre', 2013), ('revised WPS', 2016.5), ('Post', 2018.5)]:
+    post_mid = (2018 + END_YEAR) / 2
+    bands = [('Pre', 2013), ('revised WPS', 2016.5), ('Post', post_mid)]
+    if END_YEAR >= 2020:
+        # Mark the pandemic years: the inspection drop there is enforcement
+        # capacity, not compliance, so it should not read as part of the trend.
+        ax.axvline(2019.5, color=C_BASE, lw=1, ls=(0, (1, 3)), zorder=1)
+        bands = [('Pre', 2013), ('revised WPS', 2016.5), ('Post', 2018.75),
+                 ('COVID-19', (2020 + END_YEAR) / 2)]
+    for name, xc in bands:
         ax.text(xc, ymax * 0.99, name, ha='center', va='top', fontsize=8.5,
                 color=C_SECOND, style='italic')
 
@@ -169,7 +210,7 @@ def plot(long, dv, title, seed, outfile, logscale=False):
     ax.legend(loc='upper left', frameon=False, fontsize=9, labelcolor=C_SECOND)
     fig.text(0.012, 0.015,
              '15 states drawn at random from those with >=1 nonzero value in each '
-             'of Pre (2011-15), revised WPS (2016-17), Post (2018-19).',
+             f'of Pre (2011-15), revised WPS (2016-17), Post (2018-{END_YEAR % 100:02d}).',
              fontsize=7, color=C_MUTED)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
     fig.savefig(outfile, facecolor=C_SURFACE, bbox_inches='tight')
@@ -181,11 +222,12 @@ if __name__ == '__main__':
     long = build_panel()
     # raw-count and model-scale (log) versions share the seed per outcome, so the
     # SAME 15 states appear in both scales of a given outcome.
-    plot(long, 'inspections', 'WPS Inspections by State, 2011-2019',
-         seed=20110, outfile=FIG + 'fig_spaghetti_inspections.png')
-    plot(long, 'inspections', 'WPS Inspections by State, 2011-2019 (log scale)',
-         seed=20110, outfile=FIG + 'fig_spaghetti_inspections_log.png', logscale=True)
-    plot(long, 'violations', 'WPS Violations by State, 2011-2019',
-         seed=20190, outfile=FIG + 'fig_spaghetti_violations.png')
-    plot(long, 'violations', 'WPS Violations by State, 2011-2019 (log scale)',
-         seed=20190, outfile=FIG + 'fig_spaghetti_violations_log.png', logscale=True)
+    span = f'2011-{END_YEAR}'
+    plot(long, 'inspections', f'WPS Inspections by State, {span}',
+         seed=20110, outfile=FIG + f'fig_spaghetti_inspections{SUFFIX}.png')
+    plot(long, 'inspections', f'WPS Inspections by State, {span} (log scale)',
+         seed=20110, outfile=FIG + f'fig_spaghetti_inspections_log{SUFFIX}.png', logscale=True)
+    plot(long, 'violations', f'WPS Violations by State, {span}',
+         seed=20190, outfile=FIG + f'fig_spaghetti_violations{SUFFIX}.png')
+    plot(long, 'violations', f'WPS Violations by State, {span} (log scale)',
+         seed=20190, outfile=FIG + f'fig_spaghetti_violations_log{SUFFIX}.png', logscale=True)

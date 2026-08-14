@@ -21,12 +21,23 @@ Output: data/generated/h2a_ratio_panel.csv
              h2a_per_farmworker, h2a_per_farmworker_z
 """
 
+import sys
+
 import pandas as pd
 import numpy as np
 
 RAW = '/Users/keshavgoel/Research/data/raw/'
 GEN = '/Users/keshavgoel/Research/data/generated/'
-YEARS = list(range(2011, 2020))
+
+# End year is overridable so one builder serves both study windows:
+#   python3 build_h2a_ratio_panel.py        -> 2011-2019 -> h2a_ratio_panel.csv
+#   python3 build_h2a_ratio_panel.py 2021   -> 2011-2021 -> h2a_ratio_panel_2011_2021.csv
+# The default output name is unchanged so paper_table_models_corrected.py still works.
+END_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else 2019
+YEARS = list(range(2011, END_YEAR + 1))
+BLS_PANEL = f'bls_oews_panel_2011_{END_YEAR}.csv'
+OUT_NAME = ('h2a_ratio_panel.csv' if END_YEAR == 2019
+            else f'h2a_ratio_panel_2011_{END_YEAR}.csv')
 
 STATE_ABBREV_TO_NAME = {
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
@@ -51,11 +62,11 @@ grid = pd.MultiIndex.from_product([US_STATES_50, YEARS],
 # ---- numerator: DOL certified H-2A workers, year-matched --------------------
 dol = pd.read_csv(RAW + 'dol_var1_workers_by_state_annual.csv')
 dol['state'] = dol['state'].map(STATE_ABBREV_TO_NAME)
-dol = dol[dol['state'].isin(US_STATES_50) & dol['year'].between(2011, 2019)]
+dol = dol[dol['state'].isin(US_STATES_50) & dol['year'].between(2011, END_YEAR)]
 num = grid.merge(dol[['state', 'year', 'workers_certified']], on=['state', 'year'], how='left')
 
 # ---- denominator: BLS farmworkers 45-2092, year-matched ---------------------
-bls = pd.read_csv(RAW + 'bls_oews_panel_2011_2019.csv')
+bls = pd.read_csv(RAW + BLS_PANEL)
 fw = bls[bls['occ_code'] == '45-2092'][['state', 'year', 'tot_emp']].rename(
     columns={'tot_emp': 'emp_farmworker'})
 den = num.merge(fw, on=['state', 'year'], how='left').sort_values(['state', 'year'])
@@ -78,9 +89,9 @@ panel['h2a_per_farmworker_z'] = (panel['h2a_per_farmworker'] - m) / s
 
 panel = panel[['state', 'year', 'h2a_workers_cert', 'emp_farmworker',
                'h2a_per_farmworker', 'h2a_per_farmworker_z']]
-panel.to_csv(GEN + 'h2a_ratio_panel.csv', index=False)
+panel.to_csv(GEN + OUT_NAME, index=False)
 
-print(f"Wrote {GEN}h2a_ratio_panel.csv: {len(panel)} state-years, "
+print(f"Wrote {GEN}{OUT_NAME}: {len(panel)} state-years, "
       f"{panel['state'].nunique()} states, {panel['year'].nunique()} years")
 print(f"Complete (no NaN ratio): {panel['h2a_per_farmworker'].notna().all()}")
 print("\nRatio by year (mean across states):")
