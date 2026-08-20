@@ -33,6 +33,13 @@ would silently produce a wrong table if transcribed):
     every "better zero-fit" comparison.
   - AIC/LRT comparisons are only ever drawn within one (cell, model, re_tier)
     group, after checking n_obs is constant there.
+  - CSV ROUND-TRIP TRAP for any downstream consumer (including Task 7):
+    select the 30 LRT rows via `lrt_p.notna()`, never `lrt_vs != ''` -- the
+    empty-string sentinel for "no LRT" becomes NaN through a to_csv/read_csv
+    round-trip, and `NaN != ''` is True, so that selector would silently
+    return all 95 rows instead of 30 once read back from disk. See
+    `selection_table()`'s docstring and the round-trip check in
+    validate_count_models.py [4].
   - The nearest clean competitor is reported unconditionally (no delta_aic
     <= 10 cutoff) -- viol_cov_2021's nearest clean competitor sits at ~10.74
     AIC, just past that cutoff, and is exactly the decision-relevant case.
@@ -64,7 +71,7 @@ Selection protocol (spec 5.4): AIC/BIC across the six families available at
 each tier, LRTs on the nested pairs ONLY -- Poisson subset NB2 (dispersion ->
 infinity boundary), NB2 subset ZINB (zero-inflation probability -> 0
 boundary), and ZINB subset ZINB+ZI-RE (zero-inflation random-effect variance
--> 0 boundary, 8 of the 30 LRTs here, including the two borderline p-values
+-> 0 boundary, 6 of the 30 LRTs here, including the two borderline p-values
 in the whole set: insp_2019 M1/M3 at p=0.0138/0.0141). NB1 is not nested in
 NB2 and gets AIC/BIC only, no LRT. ALL THREE pairs are boundary tests: the
 true null-distribution reference is a 1/2 chi-sq_0 + 1/2 chi-sq_1 mixture, not
@@ -154,6 +161,16 @@ def selection_table(raw):
     and adds nested-pair boundary LRTs, computed only within
     (cell, model, re_tier) between converged, non-degenerate, non-collapsed,
     selection-eligible fits.
+
+    SELECTOR WARNING for downstream consumers (including Task 7, which reads
+    count_model_comparison.csv from disk): to select the 30 rows that carry a
+    computed LRT, use `lrt_p.notna()`, NEVER `lrt_vs != ''`. In this
+    in-memory DataFrame `lrt_vs` is the empty string '' on the other 65 rows,
+    but pandas' `to_csv`/`read_csv` round-trip turns that '' into NaN for an
+    object column -- and `NaN != ''` evaluates True, so a CSV-based
+    `df[df.lrt_vs != '']` silently selects all 95 rows instead of 30.
+    `lrt_p` is numeric and NaN both in memory and after the round-trip, so
+    `.notna()` on it is the one selector that is correct in both contexts.
     """
     rows = []
     for key, f in raw.items():

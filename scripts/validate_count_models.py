@@ -1235,9 +1235,16 @@ def validate_selection():
                   zi_block[zi_block['term'] == 'ZI: Intercept']['M3_b'].iloc[0],
                   raw['insp_2019__M3__zinb_re']['zi']['(Intercept)']['b'], rtol=1e-9))
     ct_no_zi = coefficient_table(raw, 'viol_cov_2019', 'rs')  # winner: nbinom2
-    check("coefficient_table for a non-ZI winner (viol_cov_2019, nbinom2) "
-          "has NO zero-inflation-part rows",
-          ct_no_zi.empty or bool((ct_no_zi['section'] == 'count').all()))
+    # Explicit precondition, not an "X.empty or ..." fallback: viol_cov_2019's
+    # rs-tier coefficient table is known to be non-empty (nbinom2 has cond
+    # terms), so asserting that directly turns a would-be silent skip into a
+    # real failure if the table ever came back empty.
+    check("coefficient_table for a non-ZI winner (viol_cov_2019, nbinom2) is non-empty",
+          not ct_no_zi.empty)
+    if not ct_no_zi.empty:
+        check("coefficient_table for a non-ZI winner (viol_cov_2019, nbinom2) "
+              "has NO zero-inflation-part rows",
+              bool((ct_no_zi['section'] == 'count').all()))
 
     # -- M2 quality guard: exercised with a SYNTHETIC duplicate so the guard
     # is proven to do something, not merely "pass because real data never
@@ -1313,6 +1320,24 @@ def validate_selection():
         for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e', 'exp_zeros_se',
                     'lrt_boundary', 'lrt_boundary_kind', 'is_m3_winner'):
             check(f"count_model_comparison.csv carries column {col!r}", col in written.columns)
+
+        # -- ROUND-TRIP assertion (not an in-memory one): `lrt_vs` is '' in
+        # memory but becomes NaN through to_csv/read_csv, and `NaN != ''` is
+        # True for every row -- so `df[df.lrt_vs != '']` on the FILE, not the
+        # in-memory DataFrame, would silently select all 95 rows instead of
+        # 30. Read the file back and confirm the documented selector
+        # (`lrt_p.notna()`) gives 30 while the naive one does not.
+        n_lrt_from_file = int(written['lrt_p'].notna().sum())
+        check("count_model_comparison.csv (read from disk): lrt_p.notna() "
+              "selects exactly 30 LRT rows -- the documented, round-trip-safe "
+              "selector", n_lrt_from_file == 30, f"got {n_lrt_from_file}")
+        if 'lrt_vs' in written.columns:
+            n_naive_from_file = int((written['lrt_vs'] != '').sum())
+            check("count_model_comparison.csv (read from disk): the naive "
+                  "`lrt_vs != ''` selector is BROKEN by the CSV round-trip "
+                  "(selects all 95 rows, not 30) -- proves why lrt_p.notna() "
+                  "must be used instead, not merely asserts it once",
+                  n_naive_from_file == len(written), f"got {n_naive_from_file}")
 
 
 def main():
