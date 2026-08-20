@@ -65,6 +65,15 @@ def _dv_frame_2019():
         rows.append(pd.DataFrame({
             'state': echo.index, 'year': year,
             'violations': pd.to_numeric(echo[f'violations-{year}'], errors='coerce').values,
+            # NOTE (deliberate, inherited from paper_table_models_corrected.py -- do
+            # not remove for "consistency" with violations): fillna(0) on each
+            # inspections component before summing manufactures a 0 for any
+            # state-year missing BOTH the epa and state component, rather than
+            # propagating NaN. Violations has no such fillna and keeps its NaNs.
+            # This is required for comparability with the published tables, but it
+            # means 2019 inspection zeros are ambiguous -- true zero vs. missing --
+            # in a way 2019 violation NaNs/zeros are not. See the asymmetry
+            # assertion in validate_count_models.py.
             'inspections': (pd.to_numeric(echo[f'inspections-epa-{year}'], errors='coerce').fillna(0).values
                             + pd.to_numeric(echo[f'inspections-state-{year}'], errors='coerce').fillna(0).values),
         }))
