@@ -120,8 +120,143 @@ def validate_panels():
             check(f"{name} {z} present", z in p.columns)
 
 
+# ============================================================
+# [2] GAUSSIAN ROUND-TRIP: glmmTMB must reproduce statsmodels.MixedLM
+# ============================================================
+# Reference values captured 2026-08-20 from paper_table_models_2021.py, whose
+# output is what the current manuscript tables report. Tolerances are loose
+# enough for optimizer differences (lbfgs vs TMB) and tight enough that a real
+# specification difference -- wrong sample, wrong RE structure, ML instead of
+# REML -- cannot slip through.
+#
+# viol_M1_gaussian CORRECTION (2026-08-20, same day, after independent audit):
+# the values originally copied here from paper_table_params_2021.json are NOT
+# the REML optimum -- they come from a statsmodels.MixedLM.fit(method='lbfgs')
+# run that itself raised `ConvergenceWarning: Gradient optimization failed,
+# |grad| = 76.823601` (log-likelihood -737.6671). paper_table_models_2021.py
+# has a module-level `warnings.filterwarnings('ignore')` that silently
+# swallowed that warning before the non-converged coefficients were written
+# to the published JSON. Refitting the identical analytic sample with
+# method='cg' (or 'powell') converges cleanly with NO warning to a strictly
+# higher log-likelihood (-729.5318, a gap of 8.14) at materially different
+# values -- and that is exactly what glmmTMB's REML fit reproduces. The
+# values below are the 'cg' solution, cross-checked against 'powell'
+# (max delta 5.1e-5 across b, se, and both variance components -- see
+# task-3-report.md). insp_M1_gaussian is untouched: its own 'lbfgs' fit
+# raises no such warning and is the genuine optimum.
+GAUSSIAN_REFERENCE = {
+    'insp_M1_gaussian': {
+        'n_obs': 539, 'n_states': 49,
+        'cond': {'time': -0.063369, 'time2': -0.001913, 'time3': 0.000092},
+        'se': {'time': 0.021949, 'time2': 0.004265, 'time3': 0.001060},
+        'sigma2_u0': 1.118142, 'sigma2_e': 0.339958,
+    },
+    'viol_M1_gaussian': {
+        'n_obs': 533, 'n_states': 49,
+        'cond': {'log_inspections': 0.518338, 'time': 0.065731,
+                 'time2': -0.017235, 'time3': -0.005587},
+        'se': {'log_inspections': 0.055738, 'time': 0.030008,
+               'time2': 0.005578, 'time3': 0.001412},
+        'sigma2_u0': 1.217723, 'sigma2_e': 0.581066,
+    },
+}
+
+# Which optimizer paper_table_models_2021.py's fit() should be run with to
+# reach the reference each GAUSSIAN_REFERENCE cell above actually encodes.
+# insp_M1 uses the published 'lbfgs' (it converges there); viol_M1 uses the
+# corrected 'cg' (see the note above -- 'lbfgs' does not converge for it).
+REFERENCE_SPEC = {
+    'insp_M1_gaussian': ('log_inspections', ['time', 'time2', 'time3'], 'lbfgs'),
+    'viol_M1_gaussian': ('log_violations',
+                          ['log_inspections', 'time', 'time2', 'time3'], 'cg'),
+}
+
+
+def _fit_statsmodels_reference(dv, rhs, method):
+    """Refit the exact statsmodels.MixedLM spec paper_table_models_2021.py
+    uses (same dropna, same '~time' random slope, same REML default), so the
+    reference values above can be checked for convergence live rather than
+    trusted as hand-copied numbers. Returns (result, warning_messages)."""
+    import warnings as _warnings
+
+    from build_count_model_panel import build_panel
+    from statsmodels.regression.mixed_linear_model import MixedLM
+
+    df = build_panel(2021)
+    d = df.dropna(subset=[dv] + rhs).copy()
+    d['state'] = pd.Categorical(d['state'])
+    formula = f"{dv} ~ " + " + ".join(rhs)
+    with _warnings.catch_warnings(record=True) as wrec:
+        _warnings.simplefilter('always')
+        res = MixedLM.from_formula(formula, data=d, groups=d['state'],
+                                    re_formula='~time').fit(method=method)
+    return res, [str(w.message) for w in wrec]
+
+
+def validate_reference_convergence():
+    # Guard against the exact failure mode this project just found: a
+    # statsmodels ConvergenceWarning silently swallowed by a blanket
+    # `warnings.filterwarnings('ignore')`, letting a non-converged fit become
+    # "ground truth". This project's pipeline must NEVER add that idiom --
+    # this check fits the references live and asserts none is hiding.
+    import re as _re
+
+    print("\n[2a] Reference-fit convergence guard (statsmodels, live refit)")
+    for cell, (dv, rhs, method) in REFERENCE_SPEC.items():
+        res, warns = _fit_statsmodels_reference(dv, rhs, method)
+        conv_warns = [w for w in warns if 'onverg' in w or 'grad' in w.lower()]
+        check(f"{cell} reference fit (method={method!r}) raised no convergence warning",
+              len(conv_warns) == 0, f"warnings: {conv_warns}")
+        grads = [float(m.group(1)) for w in conv_warns
+                 for m in [_re.search(r'\|grad\|\s*=\s*([0-9.eE+-]+)', w)] if m]
+        if grads:
+            check(f"{cell} reference fit (method={method!r}) |grad| < 1.0",
+                  max(grads) < 1.0, f"|grad| values seen: {grads}")
+
+
+def validate_gaussian_roundtrip():
+    import json
+    import subprocess
+    import tempfile
+    import os
+
+    print("\n[2b] Gaussian round-trip (glmmTMB REML vs statsmodels MixedLM)")
+    out = os.path.join(tempfile.mkdtemp(), 'gaussian_roundtrip.json')
+    proc = subprocess.run(
+        ['Rscript', '/Users/keshavgoel/Research/scripts/count_models_zinb.R',
+         GEN + 'count_model_panel_2021.csv', out, '--gaussian-only'],
+        capture_output=True, text=True)
+    if proc.returncode != 0:
+        check("R script ran", False, proc.stderr.strip()[-500:])
+        return
+    check("R script ran", True)
+
+    fits = json.load(open(out))
+    for cell, ref in GAUSSIAN_REFERENCE.items():
+        fit = fits.get(cell)
+        if fit is None:
+            check(f"{cell} present in output", False, f"keys: {sorted(fits)}")
+            continue
+        check(f"{cell} converged", fit['converged'] is True, fit.get('message', ''))
+        check(f"{cell} n_obs == {ref['n_obs']}", fit['n_obs'] == ref['n_obs'], f"got {fit['n_obs']}")
+        check(f"{cell} n_states == {ref['n_states']}", fit['n_states'] == ref['n_states'],
+              f"got {fit['n_states']}")
+        for term, want in ref['cond'].items():
+            got = fit['cond'].get(term, {}).get('b')
+            if got is None:
+                check(f"{cell} {term} estimated", False, f"terms: {sorted(fit['cond'])}")
+                continue
+            check_close(f"{cell} b[{term}]", got, want, 1e-3)
+            check_close(f"{cell} se[{term}]", fit['cond'][term]['se'], ref['se'][term], 5e-3)
+        # Variance components come from a different optimizer path, so relative.
+        check_close(f"{cell} sigma2_u0", fit['sigma2_u0'], ref['sigma2_u0'], 2e-2, kind='rel')
+        check_close(f"{cell} sigma2_e", fit['sigma2_e'], ref['sigma2_e'], 2e-2, kind='rel')
+
+
 def main():
     validate_panels()
+    validate_reference_convergence()
+    validate_gaussian_roundtrip()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")
