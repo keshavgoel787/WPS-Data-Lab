@@ -140,4 +140,103 @@ if (gaussian_only) {
   quit(status = 0)
 }
 
-stop("count ladder not implemented yet -- Task 4")
+# ------------------------------------------------------------
+# The distribution ladder (spec 5.2)
+# ------------------------------------------------------------
+LADDER <- list(
+  list(tag = "poisson",  family = poisson,  zi = ~0),
+  list(tag = "nbinom1",  family = nbinom1,  zi = ~0),
+  list(tag = "nbinom2",  family = nbinom2,  zi = ~0),
+  list(tag = "zip",      family = poisson,  zi = ~1),
+  list(tag = "zinb",     family = nbinom2,  zi = ~1),
+  list(tag = "zinb_re",  family = nbinom2,  zi = ~ 1 + (1 | state))
+)
+
+# Fallback ladder (spec 6). Tried in order until one converges.
+RE_FALLBACK <- c("(1 + time | state)", "(1 | state)")
+
+fit_with_fallback <- function(d, dv, rhs, family, zi, offset_col) {
+  last <- NULL
+  for (re in RE_FALLBACK) {
+    # zinb_re's ZI random intercept is the first thing to go: with 49 states and
+    # 93 zeros it is the least identified part of the model.
+    zi_try <- zi
+    res <- fit_spec(d, dv, rhs, family, zi = zi_try, offset_col = offset_col, re = re)
+    res$re_used <- re
+    if (isTRUE(res$converged)) return(res)
+    if (!identical(deparse1(zi_try), deparse1(~0)) &&
+        grepl("state", deparse1(zi_try), fixed = TRUE)) {
+      res2 <- fit_spec(d, dv, rhs, family, zi = ~1, offset_col = offset_col, re = re)
+      res2$re_used <- re
+      res2$zi_downgraded <- TRUE
+      if (isTRUE(res2$converged)) return(res2)
+      last <- res2
+    } else {
+      last <- res
+    }
+  }
+  last
+}
+
+M2_ADD <- c("SPEND_APP_z", "SPEND_WORK_z", "lii_2017_z")
+M3_ADD <- c(M2_ADD, "h2a_per_farmworker_z", "dol_demand_met_pct_z", "pct_flc_z")
+
+# One cell = one outcome x window x exposure variant.
+build_cells <- function() {
+  cells <- list()
+  for (yr in c(2021L, 2019L)) {
+    csv <- sprintf("/Users/keshavgoel/Research/data/generated/count_model_panel_%d.csv", yr)
+    d <- read.csv(csv, stringsAsFactors = FALSE)
+    cells[[sprintf("insp_%d", yr)]] <- list(
+      d = d, dv = "inspections", base = CUBIC, offset_col = NULL,
+      window = yr, outcome = "inspections", exposure = "none")
+    cells[[sprintf("viol_off_%d", yr)]] <- list(
+      d = d, dv = "violations", base = CUBIC, offset_col = "inspections",
+      window = yr, outcome = "violations", exposure = "offset")
+    cells[[sprintf("viol_cov_%d", yr)]] <- list(
+      d = d, dv = "violations", base = c("log_inspections", CUBIC), offset_col = NULL,
+      window = yr, outcome = "violations", exposure = "covariate")
+  }
+  cells
+}
+
+cells <- build_cells()
+
+for (cell_name in names(cells)) {
+  cl <- cells[[cell_name]]
+  specs <- list(M1 = cl$base, M3 = c(cl$base, M3_ADD))
+
+  # Full ladder at M3 (the model a family must survive with every covariate
+  # present) and at M1 (stability check -- a flipped winner gets reported).
+  for (model in c("M1", "M3")) {
+    for (rung in LADDER) {
+      key <- sprintf("%s__%s__%s", cell_name, model, rung$tag)
+      cat("fitting", key, "\n")
+      res <- fit_with_fallback(cl$d, cl$dv, specs[[model]],
+                               rung$family, rung$zi, cl$offset_col)
+      res$cell <- cell_name; res$model <- model; res$family_tag <- rung$tag
+      res$window <- cl$window; res$outcome <- cl$outcome; res$exposure <- cl$exposure
+      results[[key]] <- res
+    }
+  }
+
+  # M2 under the winning family only. Winner = lowest AIC among CONVERGED
+  # models at M3; ties and non-convergence fall back to nbinom2.
+  m3 <- results[grepl(sprintf("^%s__M3__", cell_name), names(results))]
+  conv <- Filter(function(r) isTRUE(r$converged) && is.finite(r$aic), m3)
+  win_tag <- if (length(conv) == 0) "nbinom2" else
+    conv[[which.min(vapply(conv, function(r) r$aic, numeric(1)))]]$family_tag
+  win <- Filter(function(r) r$tag == win_tag, LADDER)[[1]]
+  key <- sprintf("%s__M2__%s", cell_name, win_tag)
+  cat("fitting", key, "(winning family at M3)\n")
+  res <- fit_with_fallback(cl$d, cl$dv, c(cl$base, M2_ADD),
+                           win$family, win$zi, cl$offset_col)
+  res$cell <- cell_name; res$model <- "M2"; res$family_tag <- win_tag
+  res$window <- cl$window; res$outcome <- cl$outcome; res$exposure <- cl$exposure
+  results[[key]] <- res
+}
+
+write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
+cat("\nWrote", length(results), "fits to", out_json, "\n")
+n_bad <- sum(!vapply(results, function(r) isTRUE(r$converged), logical(1)))
+if (n_bad > 0) cat("WARNING:", n_bad, "fit(s) did not converge -- see 'converged' flags\n")

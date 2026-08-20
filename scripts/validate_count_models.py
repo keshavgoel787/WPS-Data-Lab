@@ -354,10 +354,92 @@ def validate_gaussian_roundtrip():
         check_close(f"{cell} sigma2_e", fit['sigma2_e'], ref['sigma2_e'], 2e-2, kind='rel')
 
 
+# ============================================================
+# [3] LADDER STRUCTURE AND CONVERGENCE
+# ============================================================
+CELLS = ['insp_2021', 'insp_2019', 'viol_off_2021', 'viol_off_2019',
+         'viol_cov_2021', 'viol_cov_2019']
+FAMILY_TAGS = ['poisson', 'nbinom1', 'nbinom2', 'zip', 'zinb', 'zinb_re']
+
+
+def validate_ladder():
+    import json
+    import os
+
+    print("\n[3] Count-model ladder")
+    path = GEN + 'count_model_results.json'
+    if not os.path.exists(path):
+        check("count_model_results.json exists", False,
+              "run: Rscript scripts/count_models_zinb.R "
+              "data/generated/count_model_panel_2021.csv "
+              "data/generated/count_model_results.json")
+        return
+    fits = json.load(open(path))
+    check("count_model_results.json exists", True)
+
+    # Ruling 1: the ladder itself is 6 cells x 13 fits (M1 full ladder + M3 full
+    # ladder + M2 winner-only) = 78. The same write_json call also carries the
+    # 2 Gaussian round-trip entries (insp_M1_gaussian, viol_M1_gaussian) written
+    # earlier in the script, so the file on disk holds 80 entries total. Both
+    # counts are checked explicitly against their own population so neither
+    # number silently drifts into standing for the other.
+    ladder_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)]
+    check("80 total entries in count_model_results.json (78 ladder + 2 Gaussian round-trip)",
+          len(fits) == 80, f"got {len(fits)}")
+    check("78 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
+          len(ladder_keys) == 78, f"got {len(ladder_keys)}")
+
+    # Spec 5.3: full ladder at M3 and M1 (stability check), winner only at M2.
+    for cell in CELLS:
+        for model in ('M1', 'M3'):
+            missing = [t for t in FAMILY_TAGS
+                       if f'{cell}__{model}__{t}' not in fits]
+            check(f"{cell} {model}: all 6 families present", not missing,
+                  f"missing {missing}")
+        m2 = [k for k in fits if k.startswith(f'{cell}__M2__')]
+        check(f"{cell} M2: exactly one family fit", len(m2) == 1, f"got {m2}")
+
+    # At least one NB-family model must converge per cell, or the cell is unusable.
+    for cell in CELLS:
+        nb = [k for k in fits if k.startswith(cell + '__')
+              and k.rsplit('__', 1)[1] in ('nbinom1', 'nbinom2', 'zinb', 'zinb_re')
+              and fits[k].get('converged')]
+        check(f"{cell}: at least one NB-family model converged", bool(nb))
+
+    # The offset specification must drop the 7 zero-inspection state-years.
+    off = fits.get('viol_off_2021__M1__nbinom2')
+    cov = fits.get('viol_cov_2021__M1__nbinom2')
+    if off and cov:
+        check("2021 offset spec drops the 7 zero-inspection state-years",
+              cov['n_obs'] - off['n_obs'] == 7,
+              f"covariate n={cov['n_obs']}, offset n={off['n_obs']}")
+
+    # Poisson must fit worse than NB2 on these data -- variance is ~158x the mean.
+    for cell in CELLS:
+        p, nb2 = fits.get(f'{cell}__M3__poisson'), fits.get(f'{cell}__M3__nbinom2')
+        if p and nb2 and p.get('converged') and nb2.get('converged'):
+            check(f"{cell} M3: NB2 beats Poisson on AIC",
+                  nb2['aic'] < p['aic'], f"poisson {p['aic']:.1f}, nb2 {nb2['aic']:.1f}")
+
+    # Ruling 2: the brief's original last check compared exp_zeros to itself,
+    # which can never fail. Replaced with a real assertion: for every converged
+    # non-Gaussian fit, exp_zeros must actually be present, finite, and >= 0 --
+    # i.e. the zero-inflation simulation in fit_spec() ran and produced a
+    # sensible count, not NaN/Inf/negative from a degenerate simulate() call.
+    for k, f in fits.items():
+        if k in GAUSSIAN_REFERENCE:
+            continue
+        if f.get('converged'):
+            ez = f.get('exp_zeros')
+            ok = ez is not None and np.isfinite(ez) and ez >= 0
+            check(f"{k}: exp_zeros is present, finite, and >= 0", ok, f"got {ez!r}")
+
+
 def main():
     validate_panels()
     validate_reference_convergence()
     validate_gaussian_roundtrip()
+    validate_ladder()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")
