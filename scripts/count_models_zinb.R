@@ -225,6 +225,64 @@ pick_best_zero_fit <- function(fit_list) {
   eligible[[which.min(vapply(eligible, function(r) r$zero_fit_discrepancy, numeric(1)))]]$family_tag
 }
 
+# Ruling R15 (supersedes R13's flag): "is the AIC winner also the best
+# zero-fit family" fired False against comparators no one would ever report
+# (e.g. ZIP beating the AIC winner by fitting only the zero count, at a cost
+# of +2000 AIC). Restrict the comparison to a CREDIBLE set: only fits within
+# `delta_aic` of the winner are eligible to "beat" it on zero-fit. Returns the
+# winner's own zero-fit facts plus, only if a credible competitor is actually
+# better, that competitor's tag.
+credible_better_zero_fit <- function(winner_tag, candidates, delta_aic = 10) {
+  winner <- Find(function(r) identical(r$family_tag, winner_tag), candidates)
+  out <- list(zero_signed = NA_real_, zero_signed_rel = NA_real_,
+              zero_discrepancy = NA_real_, better_tag = NA_character_,
+              better_discrepancy = NA_real_, has_better = FALSE)
+  if (is.null(winner) || is.null(winner$obs_zeros) || is.null(winner$exp_zeros) ||
+      is.na(winner$obs_zeros) || is.na(winner$exp_zeros)) return(out)
+  out$zero_signed <- winner$exp_zeros - winner$obs_zeros
+  out$zero_signed_rel <- out$zero_signed / max(winner$obs_zeros, 1)
+  out$zero_discrepancy <- winner$zero_fit_discrepancy
+  if (!is.finite(out$zero_discrepancy)) return(out)
+  pool <- Filter(function(r) !identical(r$family_tag, winner_tag) &&
+                    isTRUE(r$converged) && is.finite(r$aic) && is.finite(r$zero_fit_discrepancy) &&
+                    is.null(r$collapsed_to) && (r$aic - winner$aic) <= delta_aic,
+                 candidates)
+  if (length(pool) == 0) return(out)
+  best <- pool[[which.min(vapply(pool, function(r) r$zero_fit_discrepancy, numeric(1)))]]
+  if (best$zero_fit_discrepancy < out$zero_discrepancy) {
+    out$better_tag <- best$family_tag
+    out$better_discrepancy <- best$zero_fit_discrepancy
+    out$has_better <- TRUE
+  }
+  out
+}
+
+# Ruling R16: tier membership is read from `re_tier`, NEVER parsed from the
+# key string -- the "__ri2" suffix exists only to avoid a dict-key collision
+# when a family has two genuinely different fits (one per tier); it carries no
+# meaning by itself. If a family's tier-1 attempt already fell back to
+# `(1 | state)`, that IS its (1 | state) fit already -- looked up here by
+# checking `re_tier`, not by whether a "__ri2" key happens to exist.
+tier_fit <- function(cell_name, model, tag, tier) {
+  plain <- results[[sprintf("%s__%s__%s", cell_name, model, tag)]]
+  if (!is.null(plain) && identical(plain$re_tier, tier)) return(plain)
+  if (identical(tier, "ri")) {
+    ri2 <- results[[sprintf("%s__%s__%s__ri2", cell_name, model, tag)]]
+    if (!is.null(ri2) && identical(ri2$re_tier, "ri")) return(ri2)
+  }
+  NULL
+}
+
+# Family tags that actually achieved a given tier (converged, not a collapsed
+# duplicate) -- so the per-tier candidate SET is itself visible, not just the
+# winner. This is what makes an M1-vs-M3 "winner change" interpretable as
+# either a preference reversal or (as in viol_off_2021) a change in which
+# families could even reach that tier.
+eligible_tags <- function(fit_list) {
+  ok <- Filter(function(r) isTRUE(r$converged) && is.null(r$collapsed_to), fit_list)
+  sort(vapply(ok, function(r) r$family_tag, character(1)))
+}
+
 M2_ADD <- c("SPEND_APP_z", "SPEND_WORK_z", "lii_2017_z")
 M3_ADD <- c(M2_ADD, "h2a_per_farmworker_z", "dol_demand_met_pct_z", "pct_flc_z")
 FAMILY_TAGS_R <- vapply(LADDER, `[[`, "", "tag")
@@ -285,10 +343,20 @@ for (cell_name in names(cells)) {
 
   # ---- Tier 2 (only when needed): force ALL SIX families to (1 | state), so
   # this tier is internally apples-to-apples even though tier 1 is not. ----
+  # Ruling R16: a family whose tier-1 attempt ALREADY fell back to
+  # `(1 | state)` already IS this tier's fit for that family -- refitting it
+  # again under a "__ri2" key would store the identical fit twice. Skip those
+  # and reuse the tier-1 record (tier membership is read from `re_tier`, so
+  # `tier_fit()` finds it either way regardless of which key holds it).
   if (needs_tier2) {
     for (model in c("M1", "M3")) {
       zinb_res2 <- NULL
       for (rung in LADDER) {
+        tier1_rec <- results[[sprintf("%s__%s__%s", cell_name, model, rung$tag)]]
+        if (!is.null(tier1_rec) && identical(tier1_rec$re_tier, "ri")) {
+          if (rung$tag == "zinb") zinb_res2 <- tier1_rec
+          next
+        }
         key <- sprintf("%s__%s__%s__ri2", cell_name, model, rung$tag)
         cat("fitting", key, "(tier-2, forced (1 | state))\n")
         res <- fit_with_fallback(cl$d, cl$dv, specs[[model]],
@@ -317,30 +385,36 @@ for (cell_name in names(cells)) {
   w_rs_m1 <- pick_winner(m1_rs)$tag
   best_zero_rs <- pick_best_zero_fit(m3_rs)
 
-  w_ri_m3 <- NA_character_; w_ri_m1 <- NA_character_; best_zero_ri <- NA_character_
+  w_ri_m3 <- NA_character_; w_ri_m1 <- NA_character_
   stable_ri <- NA
+  eligible_ri_m1 <- character(0); eligible_ri_m3 <- character(0)
   if (needs_tier2) {
-    m3_ri <- results[sprintf("%s__M3__%s__ri2", cell_name, FAMILY_TAGS_R)]
-    m1_ri <- results[sprintf("%s__M1__%s__ri2", cell_name, FAMILY_TAGS_R)]
+    m3_ri <- Filter(Negate(is.null), lapply(FAMILY_TAGS_R, function(t) tier_fit(cell_name, "M3", t, "ri")))
+    m1_ri <- Filter(Negate(is.null), lapply(FAMILY_TAGS_R, function(t) tier_fit(cell_name, "M1", t, "ri")))
     w_ri_m3 <- pick_winner(m3_ri)$tag
     w_ri_m1 <- pick_winner(m1_ri)$tag
-    best_zero_ri <- pick_best_zero_fit(m3_ri)
     stable_ri <- identical(w_ri_m1, w_ri_m3)
+    eligible_ri_m1 <- eligible_tags(m1_ri)
+    eligible_ri_m3 <- eligible_tags(m3_ri)
   }
 
-  # Ruling R13: is the AIC winner ALSO the best zero-fit family? An explicit,
-  # visible flag per tier so a later task does not have to re-derive it.
-  winner_rs_is_best_zero_fit <- !is.na(best_zero_rs) && identical(best_zero_rs, w_rs_m3)
-  winner_ri_is_best_zero_fit <- if (needs_tier2)
-    (!is.na(best_zero_ri) && identical(best_zero_ri, w_ri_m3)) else NA
+  # Ruling R15 (supersedes R13's defective flag): report the WINNER's own
+  # zero-fit facts unconditionally, and only flag a "better zero-fit exists"
+  # competitor if one is within delta_aic=10 of the winner -- a model far off
+  # on AIC is not a credible alternative just because it happens to fit zeros
+  # well (e.g. ZIP, +2000 AIC, is never a credible comparator in this data).
+  cbz_rs <- credible_better_zero_fit(w_rs_m3, m3_rs)
+  cbz_ri <- if (needs_tier2) credible_better_zero_fit(w_ri_m3, m3_ri) else
+    list(zero_signed = NA_real_, zero_signed_rel = NA_real_, zero_discrepancy = NA_real_,
+         better_tag = NA_character_, better_discrepancy = NA_real_, has_better = FALSE)
 
-  if (!winner_rs_is_best_zero_fit) {
-    cat(sprintf("NOTE [%s]: AIC winner at (1+time|state) is '%s' but best zero-fit family is '%s' -- AIC and zero-count evidence disagree.\n",
-                cell_name, w_rs_m3, best_zero_rs))
+  if (cbz_rs$has_better) {
+    cat(sprintf("NOTE [%s]: within 10 AIC of the (1+time|state) winner '%s' (disc %.3f), '%s' fits zeros credibly better (disc %.3f).\n",
+                cell_name, w_rs_m3, cbz_rs$zero_discrepancy, cbz_rs$better_tag, cbz_rs$better_discrepancy))
   }
-  if (needs_tier2 && !isTRUE(winner_ri_is_best_zero_fit)) {
-    cat(sprintf("NOTE [%s]: AIC winner at (1|state) is '%s' but best zero-fit family is '%s' -- AIC and zero-count evidence disagree.\n",
-                cell_name, w_ri_m3, best_zero_ri))
+  if (needs_tier2 && cbz_ri$has_better) {
+    cat(sprintf("NOTE [%s]: within 10 AIC of the (1|state) winner '%s' (disc %.3f), '%s' fits zeros credibly better (disc %.3f).\n",
+                cell_name, w_ri_m3, cbz_ri$zero_discrepancy, cbz_ri$better_tag, cbz_ri$better_discrepancy))
   }
 
   results[[sprintf("%s__meta", cell_name)]] <- list(
@@ -348,9 +422,21 @@ for (cell_name in names(cells)) {
     m1_winner_rs = w_rs_m1, m3_winner_rs = w_rs_m3, stable_rs = identical(w_rs_m1, w_rs_m3),
     m1_winner_ri = w_ri_m1, m3_winner_ri = w_ri_m3, stable_ri = stable_ri,
     m2_family = w_rs_m3,
-    best_zero_fit_rs = best_zero_rs, best_zero_fit_ri = best_zero_ri,
-    winner_rs_is_best_zero_fit = winner_rs_is_best_zero_fit,
-    winner_ri_is_best_zero_fit = winner_ri_is_best_zero_fit
+    # Documents the CANDIDATE SET per tier/model (R16 follow-up), so an
+    # M1-vs-M3 winner change is interpretable as a preference reversal vs. a
+    # change in which families could even reach that tier (see viol_off_2021).
+    eligible_rs_m1 = eligible_tags(m1_rs), eligible_rs_m3 = eligible_tags(m3_rs),
+    eligible_ri_m1 = eligible_ri_m1, eligible_ri_m3 = eligible_ri_m3,
+    # R15: the winner's own zero-fit facts, always reported, plus a credible-
+    # set-only "better zero-fit exists" flag/name.
+    winner_rs_zero_signed = cbz_rs$zero_signed, winner_rs_zero_signed_rel = cbz_rs$zero_signed_rel,
+    winner_rs_zero_discrepancy = cbz_rs$zero_discrepancy,
+    credible_better_zero_fit_rs = cbz_rs$better_tag, has_better_zero_fit_rs = cbz_rs$has_better,
+    credible_better_zero_fit_rs_discrepancy = cbz_rs$better_discrepancy,
+    winner_ri_zero_signed = cbz_ri$zero_signed, winner_ri_zero_signed_rel = cbz_ri$zero_signed_rel,
+    winner_ri_zero_discrepancy = cbz_ri$zero_discrepancy,
+    credible_better_zero_fit_ri = cbz_ri$better_tag, has_better_zero_fit_ri = cbz_ri$has_better,
+    credible_better_zero_fit_ri_discrepancy = cbz_ri$better_discrepancy
   )
 
   # M2 under winner_rs only (spec: M2 fit under the single winning family).

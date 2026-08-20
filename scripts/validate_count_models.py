@@ -377,30 +377,60 @@ def validate_ladder():
     fits = json.load(open(path))
     check("count_model_results.json exists", True)
 
-    # Ruling 1 (original) + 2026-08-20 coordinator review (R12/R13/R14): the
-    # tier-1 ladder itself is still 6 cells x 13 fits (M1 full ladder + M3 full
-    # ladder + M2 winner-only) = 78. R12 added a second, RE-homogeneous tier
-    # (all 6 families forced to `(1 | state)`) for any cell where at least one
-    # tier-1 rung could not reach the constraint-compliant `(1 + time | state)`
-    # structure -- in this run that is exactly 2 cells x 2 models x 6 families
-    # = 24 extra fits, keyed `{cell}__{model}__{tag}__ri2`. Each cell also gets
-    # one `{cell}__meta` record (not a fit) carrying the per-tier winners and
-    # the R13 zero-fit-disagreement flags. Total: 78 + 24 + 6 + 2 Gaussian
-    # round-trip = 110. Every population is counted separately so none of these
-    # numbers can silently stand in for another.
+    # Ruling 1 (original) + 2026-08-20 coordinator review (R12/R13/R14, then
+    # R15/R16): the tier-1 ladder itself is still 6 cells x 13 fits (M1 full
+    # ladder + M3 full ladder + M2 winner-only) = 78. R12 added a second,
+    # RE-homogeneous tier (all 6 families forced to `(1 | state)`) for any cell
+    # where at least one tier-1 rung could not reach the constraint-compliant
+    # `(1 + time | state)` structure -- 2 cells x 2 models x 6 families = 24
+    # possible extra fits, keyed `{cell}__{model}__{tag}__ri2`. R16: a family
+    # whose tier-1 attempt ALREADY fell back to `(1 | state)` already IS that
+    # tier's fit, so it is not refit under `__ri2` -- 7 such fits are skipped,
+    # leaving 24 - 7 = 17 tier-2 keys. Each cell also gets one `{cell}__meta`
+    # record (not a fit) carrying the per-tier winners and the R15 zero-fit
+    # evidence. Total: 78 + 17 + 6 + 2 Gaussian round-trip = 103. Every
+    # population is counted separately so none of these numbers can silently
+    # stand in for another.
     tier1_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)
                   and not k.endswith('__ri2') and not k.endswith('__meta')]
     tier2_keys = [k for k in fits if k.endswith('__ri2')]
     meta_keys = [k for k in fits if k.endswith('__meta')]
     check("78 tier-1 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
           len(tier1_keys) == 78, f"got {len(tier1_keys)}")
-    check("24 tier-2 (1 | state) ladder fits (2 cells x 2 models x 6 families)",
-          len(tier2_keys) == 24, f"got {len(tier2_keys)}")
+    check("17 tier-2 (1 | state) ladder fits (24 possible - 7 de-duplicated per R16)",
+          len(tier2_keys) == 17, f"got {len(tier2_keys)}")
     check("6 per-cell meta records (one per cell)",
           len(meta_keys) == 6, f"got {len(meta_keys)}")
-    check("110 total entries in count_model_results.json "
-          "(78 tier-1 + 24 tier-2 + 6 meta + 2 Gaussian round-trip)",
-          len(fits) == 110, f"got {len(fits)}")
+    check("103 total entries in count_model_results.json "
+          "(78 tier-1 + 17 tier-2 + 6 meta + 2 Gaussian round-trip)",
+          len(fits) == 103, f"got {len(fits)}")
+
+    # R16: tier membership must be readable from `re_tier` alone -- mirrors
+    # `tier_fit()` in the R script. Looks up the plain key first (valid if its
+    # own re_tier matches); only falls through to the `__ri2` key for "ri".
+    def tier_fit(cell, model, tag, tier):
+        plain = fits.get(f'{cell}__{model}__{tag}')
+        if plain is not None and plain.get('re_tier') == tier:
+            return plain
+        if tier == 'ri':
+            ri2 = fits.get(f'{cell}__{model}__{tag}__ri2')
+            if ri2 is not None and ri2.get('re_tier') == 'ri':
+                return ri2
+        return None
+
+    # R16: no two stored fits should represent the same (cell, model,
+    # family_tag, re_tier) -- that would be the exact duplication this ruling
+    # eliminated. Gaussian round-trip and meta entries are excluded: they
+    # carry no (or non-comparable) identity fields.
+    import collections
+    groups = collections.defaultdict(list)
+    for k, f in fits.items():
+        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+            continue
+        groups[(f.get('cell'), f.get('model'), f.get('family_tag'), f.get('re_tier'))].append(k)
+    dup_groups = {ident: keys for ident, keys in groups.items() if len(keys) > 1}
+    check("no two fits share the same (cell, model, family_tag, re_tier)",
+          len(dup_groups) == 0, f"duplicates: {dup_groups}")
 
     # Spec 5.3: full ladder at M3 and M1 (stability check), winner only at M2.
     for cell in CELLS:
@@ -476,28 +506,63 @@ def validate_ladder():
                   not winner_fit.get('collapsed_to'),
                   f"collapsed_to={winner_fit.get('collapsed_to')!r}")
 
-        # R13: the AIC-vs-zero-fit disagreement flag must exist (as an actual
-        # boolean, not merely truthy/falsy) for every cell, visible without
-        # re-deriving it from obs_zeros/exp_zeros in a later task.
-        check(f"{cell}: winner_rs_is_best_zero_fit flag present and boolean",
-              isinstance(meta.get('winner_rs_is_best_zero_fit'), bool))
+        # R15 (supersedes R13's defective flag): the winner's own zero-fit
+        # facts must always be reported, and the "better zero-fit exists"
+        # flag must be a real boolean, visible without re-deriving it later.
+        check(f"{cell}: winner_rs_zero_discrepancy present and finite",
+              isinstance(meta.get('winner_rs_zero_discrepancy'), (int, float))
+              and np.isfinite(meta.get('winner_rs_zero_discrepancy')))
+        check(f"{cell}: has_better_zero_fit_rs flag present and boolean",
+              isinstance(meta.get('has_better_zero_fit_rs'), bool))
+        # If a credible competitor was named, it must actually beat the
+        # winner's discrepancy and be within delta_aic=10 -- i.e. the flag is
+        # not just present but internally consistent with the raw per-fit data.
+        if meta.get('has_better_zero_fit_rs'):
+            comp_tag = meta.get('credible_better_zero_fit_rs')
+            comp_fit = tier_fit(cell, 'M3', comp_tag, 'rs')
+            winner_fit_rs = fits.get(f"{cell}__M3__{meta.get('m3_winner_rs')}")
+            check(f"{cell}: credible competitor '{comp_tag}' fit exists at rs tier",
+                  comp_fit is not None)
+            if comp_fit is not None and winner_fit_rs is not None:
+                check(f"{cell}: credible competitor is within 10 AIC of the rs winner",
+                      (comp_fit['aic'] - winner_fit_rs['aic']) <= 10,
+                      f"delta AIC = {comp_fit['aic'] - winner_fit_rs['aic']:.2f}")
+                check(f"{cell}: credible competitor's zero-fit discrepancy is strictly better",
+                      comp_fit['zero_fit_discrepancy'] < meta['winner_rs_zero_discrepancy'],
+                      f"competitor {comp_fit['zero_fit_discrepancy']!r} vs "
+                      f"winner {meta['winner_rs_zero_discrepancy']!r}")
+
+        # R16 follow-up: per-tier, per-model eligible-family sets must be
+        # present, so an M1-vs-M3 winner change is interpretable (preference
+        # reversal vs. a change in which families reached that tier).
+        for key in ('eligible_rs_m1', 'eligible_rs_m3'):
+            check(f"{cell}: {key} present", key in meta)
 
         # R12: where a tier-2 ladder was needed, it must be a full,
         # internally-consistent six-family ladder -- RE tier alone should not
         # change the analytic sample, so all six share one n_obs per model.
+        # Membership is resolved via tier_fit() (re_tier), never key-parsing
+        # (R16) -- a de-duplicated family is legitimately found at its plain
+        # key, not a "__ri2" key.
         if meta.get('needs_tier2'):
-            check(f"{cell}: winner_ri_is_best_zero_fit flag present and boolean",
-                  isinstance(meta.get('winner_ri_is_best_zero_fit'), bool))
+            check(f"{cell}: winner_ri_zero_discrepancy present and finite",
+                  isinstance(meta.get('winner_ri_zero_discrepancy'), (int, float))
+                  and np.isfinite(meta.get('winner_ri_zero_discrepancy')))
+            check(f"{cell}: has_better_zero_fit_ri flag present and boolean",
+                  isinstance(meta.get('has_better_zero_fit_ri'), bool))
             ri_winner_tag = meta.get('m3_winner_ri')
-            ri_winner_fit = fits.get(f'{cell}__M3__{ri_winner_tag}__ri2')
+            ri_winner_fit = tier_fit(cell, 'M3', ri_winner_tag, 'ri')
             check(f"{cell}: tier-2 (ri) winner fit exists", ri_winner_fit is not None)
             if ri_winner_fit is not None:
                 check(f"{cell}: tier-2 winner is not a collapsed ZI duplicate (R14)",
                       not ri_winner_fit.get('collapsed_to'),
                       f"collapsed_to={ri_winner_fit.get('collapsed_to')!r}")
+            for key in ('eligible_ri_m1', 'eligible_ri_m3'):
+                check(f"{cell}: {key} present", key in meta)
             for model in ('M1', 'M3'):
-                tier2_fits = {t: fits.get(f'{cell}__{model}__{t}__ri2') for t in FAMILY_TAGS}
-                check(f"{cell} {model}: all 6 tier-2 (ri) fits present",
+                tier2_fits = {t: tier_fit(cell, model, t, 'ri') for t in FAMILY_TAGS}
+                check(f"{cell} {model}: all 6 fits resolve to a (1 | state) fit "
+                      "(via plain key or __ri2, per re_tier)",
                       all(v is not None for v in tier2_fits.values()),
                       f"missing {[t for t, v in tier2_fits.items() if v is None]}")
                 present = [v for v in tier2_fits.values() if v is not None]
@@ -517,6 +582,19 @@ def validate_ladder():
     tier2_cells = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('needs_tier2')}
     check("exactly viol_off_2021 and viol_cov_2021 needed a tier-2 (1 | state) refit",
           tier2_cells == {'viol_off_2021', 'viol_cov_2021'}, f"got {tier2_cells}")
+
+    # Known, verified fact (R15): restricting "better zero-fit" comparators to
+    # a credible (delta_aic <= 10) set shrinks the flagged set from 7 tier-
+    # instances (the old, defective rule) down to exactly these two rs-tier
+    # cells -- insp_2019 (zinb beats zinb_re's winning fit by a wide zero-fit
+    # margin at only 4.0 AIC cost) and viol_cov_2019 (zinb beats nbinom2's by a
+    # narrow margin at only 2.0 AIC cost). No ri-tier cell carries the flag.
+    flagged_rs = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('has_better_zero_fit_rs')}
+    flagged_ri = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('has_better_zero_fit_ri')}
+    check("exactly insp_2019 and viol_cov_2019 carry the credible-set better-zero-fit flag (rs tier)",
+          flagged_rs == {'insp_2019', 'viol_cov_2019'}, f"got {flagged_rs}")
+    check("no cell carries the credible-set better-zero-fit flag at the ri tier",
+          flagged_ri == set(), f"got {flagged_ri}")
 
     # R14: no fit anywhere should claim to be its OWN collapsed duplicate, and
     # a collapsed record's AIC must equal (relative tolerance) the record it
