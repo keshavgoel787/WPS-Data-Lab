@@ -360,6 +360,58 @@ eligible_tags <- function(fit_list) {
   sort(vapply(ok, function(r) r$family_tag, character(1)))
 }
 
+# Task 6, coordinator review round 2: machine-readable zero-inflation
+# EVIDENCE, kept separate from `winner_*` (which is about which family AIC
+# picked) so a downstream reader (Task 7) can never conflate "NB1/NB2 won on
+# AIC" with "zero-inflation is absent". Those are different claims: a ZI
+# family can lose the AIC race to NB1 while its own ZI intercept is large,
+# precise, and highly significant wherever it is estimable (this is exactly
+# what happens for viol_off_2021/viol_cov_2021 -- see task-6-report.md).
+# Walks every (zip, zinb, zinb_re) x (rs, ri) cell of the M3 ladder via
+# `tier_fit()` (never re-deriving convergence/degeneracy), and reports:
+#   - zi_evidence: one row per family/tier that was actually fit, carrying
+#     the raw ZI-intercept b/se/p plus converged/zi_degenerate flags, so
+#     nothing here is asserted without the underlying fit alongside it.
+#   - zi_estimable_rs: TRUE iff at least one ZI family reached a converged,
+#     NON-degenerate fit at the mandated rs tier (i.e. zero-inflation could
+#     be estimated at all without falling back to a simpler RE structure).
+#   - zi_rs_family/zi_rs_b/zi_rs_se/zi_rs_p: the first such rs-tier estimate
+#     found (ZIP is checked before ZINB/ZINB+RE, since ZIP is the one that
+#     actually reaches rs for viol_off_2021/viol_cov_2021 -- see below).
+#   - zi_significant_any_tier: TRUE iff ANY converged, non-degenerate ZI
+#     family fit (at EITHER tier) has p < 0.05 on its ZI intercept -- i.e.
+#     "is zero-inflation detectable somewhere in this cell's ladder", not
+#     conditioned on which tier or which family ultimately won M3 by AIC.
+ZI_FAMILIES <- c("zip", "zinb", "zinb_re")
+zi_evidence_for_cell <- function(cell_name) {
+  ev <- list()
+  estimable_rs <- FALSE
+  rs_family <- NA_character_; rs_b <- NA_real_; rs_se <- NA_real_; rs_p <- NA_real_
+  significant_any_tier <- FALSE
+  for (tag in ZI_FAMILIES) {
+    for (tier in c("rs", "ri")) {
+      f <- tier_fit(cell_name, "M3", tag, tier)
+      if (is.null(f)) next
+      zi_int <- f$zi[["(Intercept)"]]
+      rec <- list(family = tag, re_tier = tier,
+                  converged = isTRUE(f$converged), zi_degenerate = isTRUE(f$zi_degenerate),
+                  b = if (!is.null(zi_int)) zi_int$b else NA_real_,
+                  se = if (!is.null(zi_int)) zi_int$se else NA_real_,
+                  p = if (!is.null(zi_int)) zi_int$p else NA_real_)
+      ev[[length(ev) + 1]] <- rec
+      non_degenerate <- isTRUE(rec$converged) && !isTRUE(rec$zi_degenerate) && !is.null(zi_int)
+      if (non_degenerate && identical(tier, "rs")) {
+        estimable_rs <- TRUE
+        if (is.na(rs_b)) { rs_family <- tag; rs_b <- rec$b; rs_se <- rec$se; rs_p <- rec$p }
+      }
+      if (non_degenerate && is.finite(rec$p) && rec$p < 0.05) significant_any_tier <- TRUE
+    }
+  }
+  list(zi_evidence = ev, zi_estimable_rs = estimable_rs,
+       zi_rs_family = rs_family, zi_rs_b = rs_b, zi_rs_se = rs_se, zi_rs_p = rs_p,
+       zi_significant_any_tier = significant_any_tier)
+}
+
 M2_ADD <- c("SPEND_APP_z", "SPEND_WORK_z", "lii_2017_z")
 M3_ADD <- c(M2_ADD, "h2a_per_farmworker_z", "dol_demand_met_pct_z", "pct_flc_z")
 FAMILY_TAGS_R <- vapply(LADDER, `[[`, "", "tag")
@@ -570,8 +622,16 @@ for (cell_name in names(cells)) {
           "Vermont's 3 zero-inspection rows drop via BLS-applicator listwise",
           "deletion before M3, not because they stopped being zero.") else ""
 
+  zi_info <- zi_evidence_for_cell(cell_name)
+
   results[[sprintf("%s__meta", cell_name)]] <- list(
     cell = cell_name, needs_tier2 = needs_tier2,
+    # Task 6, review round 2: ZI evidence, kept distinct from winner_rs/ri
+    # (AIC-based family choice) -- see zi_evidence_for_cell()'s comment.
+    zi_evidence = zi_info$zi_evidence, zi_estimable_rs = zi_info$zi_estimable_rs,
+    zi_rs_family = zi_info$zi_rs_family, zi_rs_b = zi_info$zi_rs_b,
+    zi_rs_se = zi_info$zi_rs_se, zi_rs_p = zi_info$zi_rs_p,
+    zi_significant_any_tier = zi_info$zi_significant_any_tier,
     m1_winner_rs = w_rs_m1, m3_winner_rs = w_rs_m3, stable_rs = identical(w_rs_m1, w_rs_m3),
     m1_winner_ri = w_ri_m1, m3_winner_ri = w_ri_m3, stable_ri = stable_ri,
     m2_family = w_rs_m3,

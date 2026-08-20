@@ -1392,21 +1392,44 @@ def validate_zi_crosscheck():
     brief assumed (it was written when violations was expected to select
     ZINB). The ladder's actual winners inverted that expectation: inspections
     selects ZINB (Delta-AIC 33.4 over NB2) on a series with only 1.3% zeros
-    (7/539) while violations selects NB1 (no zero-inflation component at
-    all). Inspections is therefore the more important claim to corroborate --
-    a ZINB win on a series that barely has any zeros is this project's most
-    surprising result. Violations is checked as a negative-result
-    corroboration: the expectation is that zero-inflation is weak/unnecessary
-    there, and a statsmodels finding of STRONG, well-identified
-    zero-inflation for violations would be a genuine conflict, not a detail
-    to reconcile away.
+    (7/539) while violations selects NB1.
+
+    CORRECTED FRAME (coordinator review round 2 -- the original dispatch's
+    framing here was wrong, not just this function's interpretation of it):
+    "violations selects NB1" is NOT evidence that zero-inflation is weak or
+    absent for violations. glmmTMB's own ZI-family fits for the violations
+    cells are large, precise, and highly significant wherever a ZI family can
+    actually be estimated -- e.g. ZIP's ZI intercept reaches the mandated rs
+    tier for both viol_off_2021 and viol_cov_2021 at p ~ 5e-36 (see
+    `meta['zi_evidence']`, added below). NB1 wins the AIC race because a
+    negative binomial's own overdispersion parameter explains those same
+    zeros about as well as an explicit ZI term does -- and specifically the
+    ZI+NB combination (zinb/zinb_re) could not reach the rs tier for these two
+    cells, not that zero-inflation itself is undetectable. This function
+    therefore does NOT check "is zero-inflation weak for violations" (it
+    is not); it checks whether statsmodels' independent fit is informative
+    about it at all, and reports that verdict without overclaiming either
+    way.
+
+    SPEC/SAMPLE MISMATCH WITH glmmTMB's M3 (undocumented until this review --
+    important for reconciling N's): this cross-check omits the six M3_ADD
+    covariates (SPEND_APP_z, SPEND_WORK_z, lii_2017_z, h2a_per_farmworker_z,
+    dol_demand_met_pct_z, pct_flc_z) entirely -- defensible, since most of
+    them are state-time-invariant or collinear with the state dummies used
+    here instead of a random intercept -- and therefore runs on the FULL
+    2021 panel (N=539 inspections / 533 violations), retaining AK/RI/VT,
+    rather than glmmTMB M3's listwise-deleted N=506/501 (AK/RI/VT lack BLS
+    applicator data needed for lii_2017_z/pct_flc_z and are dropped there).
+    A reader comparing this section's printed N against glmmTMB's M3 N should
+    expect them to differ for this reason, not read the mismatch as a bug.
 
     Ruling 4 (task-6 dispatch): non-convergence must never be hidden. Every
     fit is wrapped in `warnings.catch_warnings(record=True)` (never
     `filterwarnings('ignore')`), and a fit that fails to converge is reported
     as a finding with its diagnostics -- it is not tuned into submission by
     trying optimizers until one "works" and it is not silently treated as if
-    it had converged.
+    it had converged, and (per this review) its non-convergence is not read
+    as if it settled anything about zero-inflation either.
     """
     import json
     import warnings as _warnings
@@ -1416,6 +1439,9 @@ def validate_zi_crosscheck():
     from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
     print("\n[5] Independent ZI cross-check (statsmodels, state fixed effects)")
+    print("        NOTE: this cross-check drops the 6 M3_ADD covariates and "
+          "retains AK/RI/VT (N=539/533), unlike glmmTMB M3's N=506/501 -- "
+          "see this function's docstring for why the N's legitimately differ.")
     d = pd.read_csv(GEN + 'count_model_panel_2021.csv')
     fits = json.load(open(GEN + 'count_model_results.json'))
 
@@ -1492,43 +1518,118 @@ def validate_zi_crosscheck():
                           "real zero-inflation)",
                           np.sign(r_zi) == np.sign(zi_const),
                           f"glmmTMB {r_zi:+.3f} vs statsmodels {zi_const:+.3f}")
-                    check(f"{label}: glmmTMB and statsmodels ZI intercepts agree "
-                          "in rough magnitude (relative difference < 30%)",
-                          abs(zi_const - r_zi) / abs(r_zi) < 0.30,
-                          f"glmmTMB {r_zi:+.3f} vs statsmodels {zi_const:+.3f} "
-                          f"(rel diff {abs(zi_const - r_zi) / abs(r_zi):.1%})")
+                    check_close(f"{label}: glmmTMB and statsmodels ZI intercepts "
+                                "agree in rough magnitude", zi_const, r_zi, 0.30,
+                                kind='rel')
         else:
-            # viol_cov_2021: glmmTMB's WINNING family (NB1) has no
-            # zero-inflation component at all -- the expectation is that
-            # zero-inflation is weak/unnecessary here. A FE-ZINB that fails
-            # to converge, with a live ConvergenceWarning and a ZI intercept
-            # that has wandered to a numerical boundary (huge magnitude,
-            # non-finite SE), IS the corroborating finding: the ZI component
-            # is unidentified/degenerate in this independent specification
-            # too, consistent with glmmTMB's own no-ZI selection. This is a
-            # real, falsifiable assertion of the CURRENT verified result
-            # (mirrors this file's existing "known, verified fact" idiom,
-            # e.g. `n_zinb_re_lrt == 6` in [3]) -- if statsmodels instead
-            # converged to a strong, well-identified ZI estimate, that would
-            # be a genuine conflict with glmmTMB and this check would (and
-            # should) fail.
+            # viol_cov_2021: CORRECTED interpretation (coordinator review
+            # round 2). The FE-ZINB's non-convergence here carries NO
+            # interpretive weight about zero-inflation one way or the other:
+            # a from-scratch reproduction of this exact fit shows the ENTIRE
+            # parameter vector diverges (const=114.5, time=-55.2,
+            # log_inspections=-35.0, alpha=-1726.3 -- a dispersion parameter
+            # that must be positive, several state dummies at +20 to +211),
+            # not just the ZI intercept. The design matrix is full rank
+            # (53/53 columns), no state is 100% zeros, and exog_infl is
+            # correct, so this is a general BFGS breakdown on a ~53-parameter
+            # fixed-effects count mixture at N=533/49 states (the classic
+            # incidental-parameters fragility of state dummies + a count
+            # mixture), not a ZI-specific failure. It is therefore NOT read
+            # as "consistent with no zero-inflation" -- that reading is
+            # false: glmmTMB's own ZI-family fits for this cell (ZIP at the
+            # rs tier, ZINB/ZINB+RE at the ri tier -- see
+            # meta['zi_evidence'] below) are large, precise, and highly
+            # significant (p ~ 1e-9 to 5e-36). NB1 winning the AIC race
+            # reflects that its own overdispersion parameter fits the same
+            # zeros about as well as an explicit ZI term, not that
+            # zero-inflation is absent. This section's statsmodels result is
+            # therefore INCONCLUSIVE for this cell, not corroborating.
+            meta = fits.get(f'{label}__meta', {})
+            print(f"        {label}: glmmTMB's OWN ZI evidence (zi_estimable_rs="
+                  f"{meta.get('zi_estimable_rs')}, zi_significant_any_tier="
+                  f"{meta.get('zi_significant_any_tier')}) shows zero-inflation "
+                  "IS real and significant in this cell wherever a ZI family "
+                  "can be estimated -- NB1 winning on AIC does not mean "
+                  "zero-inflation is absent, only that NB1's own "
+                  "overdispersion captures it about as well.")
             check(f"{label}: a ConvergenceWarning was actually raised when the "
                   "FE-ZINB failed to converge (not silently swallowed)",
                   (not conv) and bool(conv_warns),
                   f"conv={conv}, conv_warns={conv_warns}")
-            check(f"{label}: statsmodels FE-ZINB does NOT converge to a clean "
-                  "estimate here (verified current result -- the ZI component "
-                  "is unidentified/degenerate in the fixed-effects "
-                  "specification, consistent with glmmTMB's own NB1/no-ZI "
-                  "selection for this cell)",
+            check(f"{label}: statsmodels FE-ZINB does not reach a stable "
+                  "estimate here (verified current result) -- a general "
+                  "fixed-effects/incidental-parameters convergence failure "
+                  "(the WHOLE parameter vector diverges, not just the ZI "
+                  "term), carrying no interpretive weight about "
+                  "zero-inflation either way",
                   not conv, f"got converged={conv}, zi_const={zi_const!r}")
-            if not conv:
-                check(f"{label}: the non-converged fit fails in the direction "
-                      "of 'no zero-inflation needed' -- its ZI intercept is a "
-                      "boundary/degenerate value (|b| > 50 or non-finite SE), "
-                      "not a strong, well-identified ZI estimate",
-                      (not np.isfinite(zi_se)) or abs(zi_const) > 50,
-                      f"zi_const={zi_const!r}, zi_se={zi_se!r}")
+            check(f"{label}: glmmTMB's own meta record confirms zero-inflation "
+                  "IS estimable and significant somewhere in this cell's "
+                  "ladder (zi_estimable_rs and zi_significant_any_tier both "
+                  "True) -- so this statsmodels non-convergence must NOT be "
+                  "read as the two methods agreeing zero-inflation is absent",
+                  bool(meta.get('zi_estimable_rs')) and bool(meta.get('zi_significant_any_tier')),
+                  f"zi_estimable_rs={meta.get('zi_estimable_rs')!r}, "
+                  f"zi_significant_any_tier={meta.get('zi_significant_any_tier')!r}")
+
+    # -- Machine-readable ZI evidence (coordinator review round 2): Task 7
+    # must be able to read "is zero-inflation real for this cell" from DATA
+    # (meta['zi_evidence'] / meta['zi_estimable_rs'] / meta['zi_significant_
+    # any_tier']), not from this function's prose. Verify it for ALL SIX
+    # cells (not just the two exercised above), and never trust the stored
+    # summary flags alone -- recompute them from each cell's raw
+    # `zi_evidence` list so a future edit that quietly drops or miscomputes
+    # a flag fails here, not silently in the Task 7 memo.
+    print("\n        Machine-readable ZI evidence per cell (meta['zi_evidence'], "
+          "independent of AIC-based family selection):")
+    for cell in CELLS:
+        meta = fits.get(f'{cell}__meta')
+        check(f"{cell}: __meta carries a non-empty zi_evidence list",
+              isinstance(meta.get('zi_evidence'), list) and len(meta['zi_evidence']) > 0)
+        ev = meta.get('zi_evidence', [])
+        recomputed_estimable_rs = any(
+            r.get('converged') and not r.get('zi_degenerate')
+            and r.get('re_tier') == 'rs' and r.get('b') is not None
+            for r in ev)
+        recomputed_significant_any = any(
+            r.get('converged') and not r.get('zi_degenerate')
+            and r.get('p') is not None and np.isfinite(r['p']) and r['p'] < 0.05
+            for r in ev)
+        check(f"{cell}: zi_estimable_rs matches an independent recomputation "
+              "from zi_evidence (not just trusted as stored)",
+              meta.get('zi_estimable_rs') == recomputed_estimable_rs,
+              f"stored={meta.get('zi_estimable_rs')}, recomputed={recomputed_estimable_rs}")
+        check(f"{cell}: zi_significant_any_tier matches an independent "
+              "recomputation from zi_evidence (not just trusted as stored)",
+              meta.get('zi_significant_any_tier') == recomputed_significant_any,
+              f"stored={meta.get('zi_significant_any_tier')}, "
+              f"recomputed={recomputed_significant_any}")
+        print(f"        {cell}: zi_estimable_rs={meta.get('zi_estimable_rs')}, "
+              f"zi_significant_any_tier={meta.get('zi_significant_any_tier')}"
+              + (f", best rs estimate: {meta.get('zi_rs_family')} "
+                 f"b={meta.get('zi_rs_b'):+.3f} p={meta.get('zi_rs_p'):.2g}"
+                 if meta.get('zi_estimable_rs') else ""))
+
+    # -- Known, verified fact (this run): zero-inflation is estimable and
+    # significant SOMEWHERE in the ladder for exactly four of six cells.
+    # The two 2019 violations cells are the exception -- every ZI family's
+    # intercept there is zi_degenerate (boundary, SE ~2500-3000) at every
+    # tier, so there is no non-degenerate estimate left to be significant.
+    # This is the SAME 11-fit `zi_degenerate` population already asserted in
+    # [3] (`n_degenerate == 11`), restated here as a cell-level summary. The
+    # point of this check: violations is NOT one undifferentiated "no
+    # zero-inflation" story -- the 2021 violations cells DO show real,
+    # significant zero-inflation (just outcompeted by NB1 on AIC); only the
+    # 2019 violations cells' ZI estimates are genuinely uninformative
+    # (degenerate).
+    sig_cells = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('zi_significant_any_tier')}
+    check("zero-inflation is estimable and significant somewhere in the "
+          "ladder for exactly {insp_2021, insp_2019, viol_off_2021, "
+          "viol_cov_2021} -- i.e. NOT absent for the 2021 violations cells, "
+          "only outcompeted there by NB1 on AIC; only the 2019 violations "
+          "cells' ZI estimates are genuinely degenerate",
+          sig_cells == {'insp_2021', 'insp_2019', 'viol_off_2021', 'viol_cov_2021'},
+          f"got {sig_cells}")
 
 
 # ============================================================
@@ -1578,7 +1679,9 @@ def validate_covid():
                   f"COVID variant did not converge at the mandated rs tier "
                   f"(re_used={f.get('re_used')!r}); message={f.get('message')!r}")
             continue
-        check(f"{k}: converged at the rs tier", True)
+        # No unconditional `check(..., True)` here: convergence was already
+        # asserted by the guard above (a False result would have `continue`d),
+        # so re-asserting True here is true by construction and cannot fail.
         check(f"{k}: re_tier is 'rs' (matches the base M3 winner's own tier)",
               f.get('re_tier') == 'rs', f"got {f.get('re_tier')!r}")
         check(f"{k}: includes the covid term", 'covid' in f.get('cond', {}),
@@ -1600,7 +1703,13 @@ def validate_covid():
         cov_term = f['cond']['covid']
         b, se, p = cov_term['b'], cov_term['se'], cov_term['p']
         irr = float(np.exp(b))
-        check(f"{k}: covid IRR == exp(b)", np.isclose(irr, np.exp(b), rtol=1e-9))
+        # NOT `np.isclose(irr, np.exp(b))` -- that compares an expression to
+        # itself and cannot fail (coordinator review round 2). A real check:
+        # the raw coefficient fields are all finite, so a NaN/Inf from a
+        # degenerate fit that still reports converged=True cannot slip
+        # through silently.
+        check(f"{k}: covid b/se/p are all finite",
+              all(np.isfinite(x) for x in (b, se, p)), f"got b={b!r}, se={se!r}, p={p!r}")
         check(f"{k}: covid p-value is a valid probability in [0, 1]",
               0.0 <= p <= 1.0, f"got {p!r}")
         print(f"        {k}: covid b={b:+.4f} (SE {se:.4f}, p={p:.3g}), IRR={irr:.4f} "
