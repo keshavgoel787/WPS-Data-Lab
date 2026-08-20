@@ -377,33 +377,39 @@ def validate_ladder():
     fits = json.load(open(path))
     check("count_model_results.json exists", True)
 
-    # Ruling 1 (original) + 2026-08-20 coordinator review (R12/R13/R14, then
-    # R15/R16): the tier-1 ladder itself is still 6 cells x 13 fits (M1 full
-    # ladder + M3 full ladder + M2 winner-only) = 78. R12 added a second,
-    # RE-homogeneous tier (all 6 families forced to `(1 | state)`) for any cell
-    # where at least one tier-1 rung could not reach the constraint-compliant
-    # `(1 + time | state)` structure -- 2 cells x 2 models x 6 families = 24
-    # possible extra fits, keyed `{cell}__{model}__{tag}__ri2`. R16: a family
-    # whose tier-1 attempt ALREADY fell back to `(1 | state)` already IS that
-    # tier's fit, so it is not refit under `__ri2` -- 7 such fits are skipped,
-    # leaving 24 - 7 = 17 tier-2 keys. Each cell also gets one `{cell}__meta`
-    # record (not a fit) carrying the per-tier winners and the R15 zero-fit
-    # evidence. Total: 78 + 17 + 6 + 2 Gaussian round-trip = 103. Every
+    # Ruling 1 (original) + 2026-08-20 coordinator review (R12-R19): the
+    # tier-1 ladder itself is still 6 cells x 13 fits (M1 full ladder + M3 full
+    # ladder + M2 winner-only) = 78. R12 added a second, RE-homogeneous tier
+    # (all 6 families forced to `(1 | state)`) for any cell where at least one
+    # tier-1 rung could not reach the constraint-compliant `(1 + time | state)`
+    # structure -- 2 cells x 2 models x 6 families = 24 possible extra fits,
+    # keyed `{cell}__{model}__{tag}__ri2`. R16: a family whose tier-1 attempt
+    # ALREADY fell back to `(1 | state)` already IS that tier's fit, so it is
+    # not refit under `__ri2` -- 7 such fits are skipped, leaving 24 - 7 = 17
+    # tier-2 keys. R19 adds 2 cells x 3 models = 6 `__altopt` diagnostic refits
+    # (BFGS) of the nbinom1 winners in the two 2021 violations cells. Each cell
+    # also gets one `{cell}__meta` record (not a fit) carrying the per-tier
+    # winners and the R15/R17 zero-fit evidence. Total:
+    # 78 + 17 + 6 altopt + 6 meta + 2 Gaussian round-trip = 109. Every
     # population is counted separately so none of these numbers can silently
     # stand in for another.
     tier1_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)
-                  and not k.endswith('__ri2') and not k.endswith('__meta')]
+                  and not k.endswith('__ri2') and not k.endswith('__meta')
+                  and not k.endswith('__altopt')]
     tier2_keys = [k for k in fits if k.endswith('__ri2')]
+    altopt_keys = [k for k in fits if k.endswith('__altopt')]
     meta_keys = [k for k in fits if k.endswith('__meta')]
     check("78 tier-1 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
           len(tier1_keys) == 78, f"got {len(tier1_keys)}")
     check("17 tier-2 (1 | state) ladder fits (24 possible - 7 de-duplicated per R16)",
           len(tier2_keys) == 17, f"got {len(tier2_keys)}")
+    check("6 R19 optimizer-stability (__altopt) diagnostic fits (2 cells x 3 models)",
+          len(altopt_keys) == 6, f"got {len(altopt_keys)}")
     check("6 per-cell meta records (one per cell)",
           len(meta_keys) == 6, f"got {len(meta_keys)}")
-    check("103 total entries in count_model_results.json "
-          "(78 tier-1 + 17 tier-2 + 6 meta + 2 Gaussian round-trip)",
-          len(fits) == 103, f"got {len(fits)}")
+    check("109 total entries in count_model_results.json "
+          "(78 tier-1 + 17 tier-2 + 6 altopt + 6 meta + 2 Gaussian round-trip)",
+          len(fits) == 109, f"got {len(fits)}")
 
     # R16: tier membership must be readable from `re_tier` alone -- mirrors
     # `tier_fit()` in the R script. Looks up the plain key first (valid if its
@@ -425,12 +431,33 @@ def validate_ladder():
     import collections
     groups = collections.defaultdict(list)
     for k, f in fits.items():
-        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+        # __altopt fits are EXCLUDED here on purpose (R19): they share
+        # (cell, model, family_tag='nbinom1', re_tier='rs') with the default-
+        # optimizer fit by design -- that is the point of the diagnostic (same
+        # spec, different optimizer), not an accidental duplicate.
+        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE or k.endswith('__altopt'):
             continue
         groups[(f.get('cell'), f.get('model'), f.get('family_tag'), f.get('re_tier'))].append(k)
     dup_groups = {ident: keys for ident, keys in groups.items() if len(keys) > 1}
     check("no two fits share the same (cell, model, family_tag, re_tier)",
           len(dup_groups) == 0, f"duplicates: {dup_groups}")
+
+    # I-3 (minor): every __altopt fit must be paired with its default-optimizer
+    # counterpart at the SAME identity except optimizer -- this is the one
+    # place two records are EXPECTED to share (cell, model, family_tag,
+    # re_tier), and it must be exactly the altopt/non-altopt pair, nothing else.
+    for k, f in fits.items():
+        if not k.endswith('__altopt'):
+            continue
+        default_key = k[:-len('__altopt')]
+        default_fit = fits.get(default_key)
+        check(f"{k}: paired default-optimizer fit {default_key!r} exists",
+              default_fit is not None)
+        if default_fit is not None:
+            check(f"{k}: shares (cell, model, family_tag, re_tier) with its default-optimizer pair",
+                  (f.get('cell'), f.get('model'), f.get('family_tag'), f.get('re_tier')) ==
+                  (default_fit.get('cell'), default_fit.get('model'),
+                   default_fit.get('family_tag'), default_fit.get('re_tier')))
 
     # Spec 5.3: full ladder at M3 and M1 (stability check), winner only at M2.
     for cell in CELLS:
@@ -439,23 +466,68 @@ def validate_ladder():
                        if f'{cell}__{model}__{t}' not in fits]
             check(f"{cell} {model}: all 6 families present", not missing,
                   f"missing {missing}")
-        m2 = [k for k in fits if k.startswith(f'{cell}__M2__')]
+        # __altopt diagnostic keys (R19) also start with "{cell}__M2__" for
+        # the two cells where the M2 winner is nbinom1 -- excluded here since
+        # they are a diagnostic refit of the SAME family, not a second family.
+        m2 = [k for k in fits if k.startswith(f'{cell}__M2__') and not k.endswith('__altopt')]
         check(f"{cell} M2: exactly one family fit", len(m2) == 1, f"got {m2}")
 
-    # At least one NB-family model must converge per cell, or the cell is unusable.
+    # At least one NB-family model must converge per cell, or the cell is
+    # unusable. Minor fix: was `k.rsplit('__', 1)[1]` against the RAW key,
+    # which yields 'ri2' (not the family tag) for every tier-2 key and 'altopt'
+    # for R19 diagnostics -- silently dropping all 17 tier-2 fits (and now the
+    # 6 altopt fits) from consideration. Use the `family_tag` FIELD instead,
+    # which every fit carries explicitly regardless of its key's suffix.
     for cell in CELLS:
-        nb = [k for k in fits if k.startswith(cell + '__')
-              and k.rsplit('__', 1)[1] in ('nbinom1', 'nbinom2', 'zinb', 'zinb_re')
-              and fits[k].get('converged')]
+        nb = [k for k, f in fits.items() if f.get('cell') == cell
+              and f.get('family_tag') in ('nbinom1', 'nbinom2', 'zinb', 'zinb_re')
+              and f.get('converged')]
         check(f"{cell}: at least one NB-family model converged", bool(nb))
 
-    # The offset specification must drop the 7 zero-inspection state-years.
-    off = fits.get('viol_off_2021__M1__nbinom2')
-    cov = fits.get('viol_cov_2021__M1__nbinom2')
-    if off and cov:
+    # The offset specification must drop the zero-inspection state-years --
+    # checked in BOTH windows (was 2021-only). The two counts are both 7 but
+    # are NOT the same population: 2021 has exactly 7 zero-inspection rows
+    # total, all with non-missing violations; 2019 has 15 zero-inspection rows
+    # (partly fillna(0)-manufactured, see I-2), of which only 7 also have
+    # non-missing violations, so only those 7 are dropped by the offset spec.
+    off21 = fits.get('viol_off_2021__M1__nbinom2')
+    cov21 = fits.get('viol_cov_2021__M1__nbinom2')
+    if off21 and cov21:
         check("2021 offset spec drops the 7 zero-inspection state-years",
-              cov['n_obs'] - off['n_obs'] == 7,
-              f"covariate n={cov['n_obs']}, offset n={off['n_obs']}")
+              cov21['n_obs'] - off21['n_obs'] == 7,
+              f"covariate n={cov21['n_obs']}, offset n={off21['n_obs']}")
+    off19 = fits.get('viol_off_2019__M1__nbinom2')
+    cov19 = fits.get('viol_cov_2019__M1__nbinom2')
+    if off19 and cov19:
+        check("2019 offset spec drops 7 zero-inspection state-years "
+              "(of 15 total; the other 8 already had missing violations)",
+              cov19['n_obs'] - off19['n_obs'] == 7,
+              f"covariate n={cov19['n_obs']}, offset n={off19['n_obs']}")
+
+    # I-3: an UNGATED check that every ladder/tier-2/altopt fit converged --
+    # the exp_zeros check just below is explicitly gated on `if converged`, so
+    # a non-converged fit previously produced ZERO failing checks, only an
+    # unasserted R "WARNING:" line. That is this project's swallowed-warning
+    # failure mode recurring in a new place. Excludes meta (not a fit) and the
+    # Gaussian round-trip (already checked in [2b]).
+    for k, f in fits.items():
+        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+            continue
+        check(f"{k}: converged", f.get('converged') is True,
+              f"message: {f.get('message')!r}")
+
+    # I-3: n_obs homogeneity, UNGATED on needs_tier2 -- tier 1 is the source of
+    # every reported winner (tier 2 only exists for 2 of 6 cells), so its own
+    # six families sharing one n_obs per model was never actually checked
+    # before; RE tier/family choice should never change the analytic sample
+    # (only the complete-case columns and the offset filter do).
+    for cell in CELLS:
+        for model in ('M1', 'M3'):
+            tier1_present = {t: fits.get(f'{cell}__{model}__{t}') for t in FAMILY_TAGS}
+            present = [v for v in tier1_present.values() if v is not None]
+            n_obs_vals = {v['n_obs'] for v in present}
+            check(f"{cell} {model}: tier-1 fits share one n_obs across all 6 families",
+                  len(n_obs_vals) == 1, f"got {n_obs_vals}")
 
     # Poisson must fit worse than NB2 on these data -- variance is ~158x the mean.
     for cell in CELLS:
@@ -476,6 +548,23 @@ def validate_ladder():
             ez = f.get('exp_zeros')
             ok = ez is not None and np.isfinite(ez) and ez >= 0
             check(f"{k}: exp_zeros is present, finite, and >= 0", ok, f"got {ez!r}")
+
+    # Ruling R18: every non-meta, non-Gaussian record carries the three
+    # selection-eligibility fields directly (not just derivable from
+    # `__meta`) -- `is_winner_rs`, `is_winner_ri`, `eligible_for_selection`.
+    # This is the interface change the coordinator flagged as needing to
+    # carry into Task 5's dispatch: a consumer that reproduces the "lowest
+    # AIC among all M3 fits for this cell" rule against the raw JSON, without
+    # knowing anything about the __ri2 key convention or the fallback ladder,
+    # will get the WRONG winner for viol_off_2021/viol_cov_2021 (it picks
+    # zinb_re, reintroducing the cross-tier comparison R12 removed) unless it
+    # filters on `eligible_for_selection` and `re_tier == 'rs'`, or simply
+    # reads `is_winner_rs` directly.
+    for k, f in fits.items():
+        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+            continue
+        for field in ('is_winner_rs', 'is_winner_ri', 'eligible_for_selection'):
+            check(f"{k}: {field} present and boolean", isinstance(f.get(field), bool))
 
     # ------------------------------------------------------------
     # R12/R13/R14 (2026-08-20 coordinator review): the original winner
@@ -531,12 +620,24 @@ def validate_ladder():
                       comp_fit['zero_fit_discrepancy'] < meta['winner_rs_zero_discrepancy'],
                       f"competitor {comp_fit['zero_fit_discrepancy']!r} vs "
                       f"winner {meta['winner_rs_zero_discrepancy']!r}")
+                # R17: the credible competitor must itself not be ZI-boundary-
+                # degenerate -- a degenerate fit (e.g. viol_cov_2019's old
+                # 'zinb' comparator, ZI intercept -21.4) is not a real
+                # competitor, however small its zero_fit_discrepancy looks.
+                check(f"{cell}: credible competitor is not ZI-boundary-degenerate (R17)",
+                      not comp_fit.get('zi_degenerate'),
+                      f"zi_degenerate_reason={comp_fit.get('zi_degenerate_reason')!r}")
 
-        # R16 follow-up: per-tier, per-model eligible-family sets must be
-        # present, so an M1-vs-M3 winner change is interpretable (preference
-        # reversal vs. a change in which families reached that tier).
+        # R16 follow-up + I-5: per-tier, per-model eligible-family sets must be
+        # present, NON-EMPTY, and must contain the winner that was chosen from
+        # them -- "present" alone can never fail (an empty list is still
+        # "present"), so I-5 adds the two assertions that can.
         for key in ('eligible_rs_m1', 'eligible_rs_m3'):
             check(f"{cell}: {key} present", key in meta)
+            check(f"{cell}: {key} is non-empty", bool(meta.get(key)))
+        check(f"{cell}: m3_winner_rs is a member of eligible_rs_m3",
+              meta.get('m3_winner_rs') in meta.get('eligible_rs_m3', []),
+              f"winner {meta.get('m3_winner_rs')!r} not in {meta.get('eligible_rs_m3')!r}")
 
         # R12: where a tier-2 ladder was needed, it must be a full,
         # internally-consistent six-family ladder -- RE tier alone should not
@@ -559,6 +660,10 @@ def validate_ladder():
                       f"collapsed_to={ri_winner_fit.get('collapsed_to')!r}")
             for key in ('eligible_ri_m1', 'eligible_ri_m3'):
                 check(f"{cell}: {key} present", key in meta)
+                check(f"{cell}: {key} is non-empty", bool(meta.get(key)))
+            check(f"{cell}: m3_winner_ri is a member of eligible_ri_m3",
+                  meta.get('m3_winner_ri') in meta.get('eligible_ri_m3', []),
+                  f"winner {meta.get('m3_winner_ri')!r} not in {meta.get('eligible_ri_m3')!r}")
             for model in ('M1', 'M3'):
                 tier2_fits = {t: tier_fit(cell, model, t, 'ri') for t in FAMILY_TAGS}
                 check(f"{cell} {model}: all 6 fits resolve to a (1 | state) fit "
@@ -575,6 +680,88 @@ def validate_ladder():
             check(f"{cell}: no tier-2 winner reported (tier-2 not needed)",
                   meta.get('m3_winner_ri') is None)
 
+        # I-3: M2 is fit under the winning family with the FULL fallback
+        # ladder (not forced to any tier), so it could in principle land at a
+        # different RE structure than the tier that actually selected it.
+        # M2's family is always meta['m3_winner_rs'], and winner_rs is by
+        # construction drawn only from rs-tier fits -- so M2 must ALSO be at
+        # rs, or the manuscript's M2 column would silently rest on a different
+        # random-effects structure than the one its own selection was based on.
+        m2_fit = fits.get(f"{cell}__M2__{meta.get('m2_family')}")
+        check(f"{cell}: M2 fit exists under the selected family", m2_fit is not None)
+        if m2_fit is not None:
+            check(f"{cell}: M2's re_tier matches the tier ('rs') of the winner that selected it",
+                  m2_fit.get('re_tier') == 'rs',
+                  f"got re_tier={m2_fit.get('re_tier')!r}, re_used={m2_fit.get('re_used')!r}")
+
+        # R17: no fit that is EITHER the rs or ri winner should be ZI-boundary
+        # degenerate -- pick_winner() already excludes zi_degenerate fits, so
+        # this is a check that the exclusion actually took effect on the
+        # stored result, not just a restatement of the R script's own filter.
+        for tier, tag_key in (('rs', 'm3_winner_rs'), ('ri', 'm3_winner_ri')):
+            tag = meta.get(tag_key)
+            if tag is None:
+                continue
+            wfit = tier_fit(cell, 'M3', tag, tier)
+            if wfit is not None:
+                check(f"{cell}: {tier}-tier winner is not ZI-boundary-degenerate (R17)",
+                      not wfit.get('zi_degenerate'),
+                      f"zi_degenerate_reason={wfit.get('zi_degenerate_reason')!r}")
+
+        # R18: a downstream consumer that knows NOTHING about the __ri2 key
+        # convention must still be able to find the correct winner by scanning
+        # every record for `is_winner_rs` (or `is_winner_ri`) == True -- this
+        # is the exact scenario the reviewer simulated (Task 5's selection
+        # rule reproducing zinb_re for the 2021 violations cells because it
+        # only knew plain keys). Reconstruct the winner that way here and
+        # confirm it matches meta's own winner tag.
+        marked_rs = [k for k, f in fits.items()
+                     if f.get('cell') == cell and f.get('model') == 'M3' and f.get('is_winner_rs')]
+        check(f"{cell}: exactly one M3 record is marked is_winner_rs == True",
+              len(marked_rs) == 1, f"got {marked_rs}")
+        if len(marked_rs) == 1:
+            check(f"{cell}: the record marked is_winner_rs matches meta['m3_winner_rs']",
+                  fits[marked_rs[0]].get('family_tag') == meta.get('m3_winner_rs'),
+                  f"marked {fits[marked_rs[0]].get('family_tag')!r} vs "
+                  f"meta {meta.get('m3_winner_rs')!r}")
+        if meta.get('needs_tier2'):
+            marked_ri = [k for k, f in fits.items()
+                         if f.get('cell') == cell and f.get('model') == 'M3' and f.get('is_winner_ri')]
+            check(f"{cell}: exactly one M3 record is marked is_winner_ri == True",
+                  len(marked_ri) == 1, f"got {marked_ri}")
+            if len(marked_ri) == 1:
+                check(f"{cell}: the record marked is_winner_ri matches meta['m3_winner_ri']",
+                      fits[marked_ri[0]].get('family_tag') == meta.get('m3_winner_ri'),
+                      f"marked {fits[marked_ri[0]].get('family_tag')!r} vs "
+                      f"meta {meta.get('m3_winner_ri')!r}")
+        else:
+            marked_ri_any = [k for k, f in fits.items()
+                             if f.get('cell') == cell and f.get('is_winner_ri')]
+            check(f"{cell}: no record is marked is_winner_ri (tier-2 not needed)",
+                  len(marked_ri_any) == 0, f"got {marked_ri_any}")
+
+        # I-2: the manufactured-zeros flag must be present, boolean, and TRUE
+        # only for insp_2019 (the only cell whose DV -- inspections -- is
+        # subject to the establishments-reshape fillna(0) artifact; violations
+        # has no such fill and keeps genuine NaN).
+        check(f"{cell}: zeros_partly_manufactured present and boolean",
+              isinstance(meta.get('zeros_partly_manufactured'), bool))
+        check(f"{cell}: zeros_partly_manufactured is True only for insp_2019",
+              meta.get('zeros_partly_manufactured') == (cell == 'insp_2019'),
+              f"got {meta.get('zeros_partly_manufactured')!r}")
+
+        # R19: the winner-warning diagnostic fields must be present; if the
+        # winner carries a warning, `clean_rs_competitor_within_10_aic` is
+        # either a real family tag (a clean competitor exists) or None (it
+        # doesn't) -- both are valid outcomes, but the field must exist so the
+        # memo does not have to re-derive it from `message`/`aic` by hand.
+        check(f"{cell}: winner_rs_has_warning present and boolean",
+              isinstance(meta.get('winner_rs_has_warning'), bool))
+        if meta.get('winner_rs_has_warning'):
+            comp = meta.get('clean_rs_competitor_within_10_aic')
+            check(f"{cell}: clean_rs_competitor_within_10_aic is a family tag or None",
+                  comp is None or comp in FAMILY_TAGS, f"got {comp!r}")
+
     # Known, verified fact about this run: exactly the two 2021-window
     # violations cells needed a tier-2 refit -- their zinb/zinb_re rungs fell
     # back to (1 | state) while poisson/nbinom1/nbinom2/zip converged at
@@ -583,18 +770,64 @@ def validate_ladder():
     check("exactly viol_off_2021 and viol_cov_2021 needed a tier-2 (1 | state) refit",
           tier2_cells == {'viol_off_2021', 'viol_cov_2021'}, f"got {tier2_cells}")
 
-    # Known, verified fact (R15): restricting "better zero-fit" comparators to
-    # a credible (delta_aic <= 10) set shrinks the flagged set from 7 tier-
-    # instances (the old, defective rule) down to exactly these two rs-tier
-    # cells -- insp_2019 (zinb beats zinb_re's winning fit by a wide zero-fit
-    # margin at only 4.0 AIC cost) and viol_cov_2019 (zinb beats nbinom2's by a
-    # narrow margin at only 2.0 AIC cost). No ri-tier cell carries the flag.
+    # Known, verified fact (R15, revised by R17 -- Critical): restricting
+    # "better zero-fit" comparators to a credible (delta_aic <= 10), non-
+    # ZI-degenerate, noise-aware (improvement > 2x combined MC SE) set shrinks
+    # the flagged set down to exactly ONE cell: insp_2019 (zinb beats
+    # zinb_re's winning fit by a wide, noise-swamping zero-fit margin at only
+    # ~4 AIC cost). viol_cov_2019 previously also carried this flag, but its
+    # only credible competitor (zinb) is now excluded as ZI-boundary-
+    # degenerate (R17: ZI intercept ~-21.4, SE ~2533) -- with no other
+    # eligible competitor, the flag correctly no longer fires there. No
+    # ri-tier cell carries the flag.
     flagged_rs = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('has_better_zero_fit_rs')}
     flagged_ri = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('has_better_zero_fit_ri')}
-    check("exactly insp_2019 and viol_cov_2019 carry the credible-set better-zero-fit flag (rs tier)",
-          flagged_rs == {'insp_2019', 'viol_cov_2019'}, f"got {flagged_rs}")
+    check("exactly insp_2019 carries the credible-set, noise-aware better-zero-fit flag (rs tier)",
+          flagged_rs == {'insp_2019'}, f"got {flagged_rs}")
     check("no cell carries the credible-set better-zero-fit flag at the ri tier",
           flagged_ri == set(), f"got {flagged_ri}")
+
+    # Ruling R17 (Critical): every zip/zinb/zinb_re fit gets a `zi_degenerate`
+    # boolean + `zi_degenerate_reason` string; degenerate fits stay in the
+    # JSON (selection-exclusion, not deletion) so a later task can still see
+    # exactly what glmmTMB reported. Verified directly against this run's own
+    # thresholds (|zi_intercept| > 15, se(zi_intercept) > 100, or loglik within
+    # 1e-4 of the non-ZI counterpart): 11 records meet at least one criterion,
+    # all in the 2019 violations cells (viol_off_2019/viol_cov_2019, both
+    # models where present). The coordinator's review independently cited 12;
+    # this run finds 11 by the exact specified thresholds -- reported as a
+    # verified discrepancy, not silently reconciled to match.
+    for k, f in fits.items():
+        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+            continue
+        if f.get('family_tag') in ('zip', 'zinb', 'zinb_re'):
+            check(f"{k}: zi_degenerate present and boolean",
+                  isinstance(f.get('zi_degenerate'), bool))
+            check(f"{k}: zi_degenerate_reason present and a string",
+                  isinstance(f.get('zi_degenerate_reason'), str))
+        else:
+            check(f"{k}: zi_degenerate is False for a non-ZI family",
+                  f.get('zi_degenerate') is False)
+    n_degenerate = sum(1 for k, f in fits.items()
+                       if not k.endswith('__meta') and k not in GAUSSIAN_REFERENCE
+                       and f.get('zi_degenerate') is True)
+    check("exactly 11 fits are marked zi_degenerate under the specified thresholds",
+          n_degenerate == 11, f"got {n_degenerate}")
+
+    # Ruling R19: the optimizer-stability diagnostic must have run for both
+    # affected cells and its sigma2_u1 comparison fields must be present.
+    for cell in ('viol_off_2021', 'viol_cov_2021'):
+        meta = fits.get(f'{cell}__meta', {})
+        for field in ('sigma2_u1_default_optimizer', 'sigma2_u1_alt_optimizer', 'sigma2_u1_rel_diff'):
+            val = meta.get(field)
+            check(f"{cell}: meta[{field!r}] present and finite",
+                  isinstance(val, (int, float)) and np.isfinite(val), f"got {val!r}")
+        check(f"{cell}: meta['sigma2_u1_alt_optimizer_converged'] is True",
+              meta.get('sigma2_u1_alt_optimizer_converged') is True)
+        for model in ('M1', 'M2', 'M3'):
+            alt = fits.get(f'{cell}__{model}__nbinom1__altopt')
+            check(f"{cell} {model}: __altopt diagnostic fit present and converged",
+                  alt is not None and alt.get('converged') is True)
 
     # R14: no fit anywhere should claim to be its OWN collapsed duplicate, and
     # a collapsed record's AIC must equal (relative tolerance) the record it
