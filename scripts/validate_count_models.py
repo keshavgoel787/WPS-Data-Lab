@@ -377,17 +377,30 @@ def validate_ladder():
     fits = json.load(open(path))
     check("count_model_results.json exists", True)
 
-    # Ruling 1: the ladder itself is 6 cells x 13 fits (M1 full ladder + M3 full
-    # ladder + M2 winner-only) = 78. The same write_json call also carries the
-    # 2 Gaussian round-trip entries (insp_M1_gaussian, viol_M1_gaussian) written
-    # earlier in the script, so the file on disk holds 80 entries total. Both
-    # counts are checked explicitly against their own population so neither
-    # number silently drifts into standing for the other.
-    ladder_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)]
-    check("80 total entries in count_model_results.json (78 ladder + 2 Gaussian round-trip)",
-          len(fits) == 80, f"got {len(fits)}")
-    check("78 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
-          len(ladder_keys) == 78, f"got {len(ladder_keys)}")
+    # Ruling 1 (original) + 2026-08-20 coordinator review (R12/R13/R14): the
+    # tier-1 ladder itself is still 6 cells x 13 fits (M1 full ladder + M3 full
+    # ladder + M2 winner-only) = 78. R12 added a second, RE-homogeneous tier
+    # (all 6 families forced to `(1 | state)`) for any cell where at least one
+    # tier-1 rung could not reach the constraint-compliant `(1 + time | state)`
+    # structure -- in this run that is exactly 2 cells x 2 models x 6 families
+    # = 24 extra fits, keyed `{cell}__{model}__{tag}__ri2`. Each cell also gets
+    # one `{cell}__meta` record (not a fit) carrying the per-tier winners and
+    # the R13 zero-fit-disagreement flags. Total: 78 + 24 + 6 + 2 Gaussian
+    # round-trip = 110. Every population is counted separately so none of these
+    # numbers can silently stand in for another.
+    tier1_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)
+                  and not k.endswith('__ri2') and not k.endswith('__meta')]
+    tier2_keys = [k for k in fits if k.endswith('__ri2')]
+    meta_keys = [k for k in fits if k.endswith('__meta')]
+    check("78 tier-1 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
+          len(tier1_keys) == 78, f"got {len(tier1_keys)}")
+    check("24 tier-2 (1 | state) ladder fits (2 cells x 2 models x 6 families)",
+          len(tier2_keys) == 24, f"got {len(tier2_keys)}")
+    check("6 per-cell meta records (one per cell)",
+          len(meta_keys) == 6, f"got {len(meta_keys)}")
+    check("110 total entries in count_model_results.json "
+          "(78 tier-1 + 24 tier-2 + 6 meta + 2 Gaussian round-trip)",
+          len(fits) == 110, f"got {len(fits)}")
 
     # Spec 5.3: full ladder at M3 and M1 (stability check), winner only at M2.
     for cell in CELLS:
@@ -427,12 +440,103 @@ def validate_ladder():
     # i.e. the zero-inflation simulation in fit_spec() ran and produced a
     # sensible count, not NaN/Inf/negative from a degenerate simulate() call.
     for k, f in fits.items():
-        if k in GAUSSIAN_REFERENCE:
+        if k in GAUSSIAN_REFERENCE or k.endswith('__meta'):
             continue
         if f.get('converged'):
             ez = f.get('exp_zeros')
             ok = ez is not None and np.isfinite(ez) and ez >= 0
             check(f"{k}: exp_zeros is present, finite, and >= 0", ok, f"got {ez!r}")
+
+    # ------------------------------------------------------------
+    # R12/R13/R14 (2026-08-20 coordinator review): the original winner
+    # selection compared AIC across fits that had fallen back to different RE
+    # structures, which conflates "needs a simpler RE structure" with "fits
+    # better," and could report a winner that was a collapsed ZI duplicate of
+    # another rung. These checks assert the fix, not the original rule.
+    # ------------------------------------------------------------
+    for cell in CELLS:
+        meta = fits.get(f'{cell}__meta')
+        check(f"{cell}: meta record present", meta is not None)
+        if meta is None:
+            continue
+
+        # R12: the tier-1 ("rs") winner must be a fit that actually achieved
+        # the constraint-compliant (1 + time | state) structure -- not one
+        # compared in from a fallback tier -- and R14: it must not be a
+        # collapsed ZI duplicate of another rung.
+        winner_tag = meta.get('m3_winner_rs')
+        winner_fit = fits.get(f'{cell}__M3__{winner_tag}')
+        check(f"{cell}: tier-1 (rs) winner fit exists ({cell}__M3__{winner_tag})",
+              winner_fit is not None)
+        if winner_fit is not None:
+            check(f"{cell}: tier-1 winner was fit at (1 + time | state)",
+                  winner_fit.get('re_tier') == 'rs',
+                  f"got re_tier={winner_fit.get('re_tier')!r}, re_used={winner_fit.get('re_used')!r}")
+            check(f"{cell}: tier-1 winner is not a collapsed ZI duplicate (R14)",
+                  not winner_fit.get('collapsed_to'),
+                  f"collapsed_to={winner_fit.get('collapsed_to')!r}")
+
+        # R13: the AIC-vs-zero-fit disagreement flag must exist (as an actual
+        # boolean, not merely truthy/falsy) for every cell, visible without
+        # re-deriving it from obs_zeros/exp_zeros in a later task.
+        check(f"{cell}: winner_rs_is_best_zero_fit flag present and boolean",
+              isinstance(meta.get('winner_rs_is_best_zero_fit'), bool))
+
+        # R12: where a tier-2 ladder was needed, it must be a full,
+        # internally-consistent six-family ladder -- RE tier alone should not
+        # change the analytic sample, so all six share one n_obs per model.
+        if meta.get('needs_tier2'):
+            check(f"{cell}: winner_ri_is_best_zero_fit flag present and boolean",
+                  isinstance(meta.get('winner_ri_is_best_zero_fit'), bool))
+            ri_winner_tag = meta.get('m3_winner_ri')
+            ri_winner_fit = fits.get(f'{cell}__M3__{ri_winner_tag}__ri2')
+            check(f"{cell}: tier-2 (ri) winner fit exists", ri_winner_fit is not None)
+            if ri_winner_fit is not None:
+                check(f"{cell}: tier-2 winner is not a collapsed ZI duplicate (R14)",
+                      not ri_winner_fit.get('collapsed_to'),
+                      f"collapsed_to={ri_winner_fit.get('collapsed_to')!r}")
+            for model in ('M1', 'M3'):
+                tier2_fits = {t: fits.get(f'{cell}__{model}__{t}__ri2') for t in FAMILY_TAGS}
+                check(f"{cell} {model}: all 6 tier-2 (ri) fits present",
+                      all(v is not None for v in tier2_fits.values()),
+                      f"missing {[t for t, v in tier2_fits.items() if v is None]}")
+                present = [v for v in tier2_fits.values() if v is not None]
+                n_obs_vals = {v['n_obs'] for v in present}
+                check(f"{cell} {model}: tier-2 fits share one n_obs across all 6 families",
+                      len(n_obs_vals) == 1, f"got {n_obs_vals}")
+                check(f"{cell} {model}: every tier-2 fit is tagged re_tier == 'ri'",
+                      all(v.get('re_tier') == 'ri' for v in present))
+        else:
+            check(f"{cell}: no tier-2 winner reported (tier-2 not needed)",
+                  meta.get('m3_winner_ri') is None)
+
+    # Known, verified fact about this run: exactly the two 2021-window
+    # violations cells needed a tier-2 refit -- their zinb/zinb_re rungs fell
+    # back to (1 | state) while poisson/nbinom1/nbinom2/zip converged at
+    # (1 + time | state) (see task-4-report.md addendum for the full table).
+    tier2_cells = {c for c in CELLS if fits.get(f'{c}__meta', {}).get('needs_tier2')}
+    check("exactly viol_off_2021 and viol_cov_2021 needed a tier-2 (1 | state) refit",
+          tier2_cells == {'viol_off_2021', 'viol_cov_2021'}, f"got {tier2_cells}")
+
+    # R14: no fit anywhere should claim to be its OWN collapsed duplicate, and
+    # a collapsed record's AIC must equal (relative tolerance) the record it
+    # collapsed to -- otherwise "collapsed_to" would be an assertion, not an
+    # observed fact about the two fits.
+    for k, f in fits.items():
+        if k.endswith('__meta') or not f.get('collapsed_to'):
+            continue
+        # Strip a trailing tier-2 "__ri2" suffix (if present) BEFORE splitting
+        # off the family tag -- rsplit('__', 1) on the raw key would otherwise
+        # split between the family tag and "ri2", not between model and tag.
+        suffix = '__ri2' if k.endswith('__ri2') else ''
+        base = k[:-len(suffix)] if suffix else k
+        prefix = base.rsplit('__', 1)[0]  # "{cell}__{model}"
+        parent_key = f"{prefix}__{f['collapsed_to']}{suffix}"
+        parent = fits.get(parent_key)
+        check(f"{k}: collapsed-to target {parent_key!r} exists", parent is not None)
+        if parent is not None:
+            check_close(f"{k}: collapsed duplicate shares its parent's AIC",
+                        f['aic'], parent['aic'], 1e-8, kind='rel')
 
 
 def main():
