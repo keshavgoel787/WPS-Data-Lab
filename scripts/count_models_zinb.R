@@ -687,6 +687,59 @@ for (cell_name in ALT_OPTIM_CELLS) {
   }
 }
 
+# ------------------------------------------------------------
+# Task 6, Ruling 2 (2026-08-20 coordinator dispatch): COVID robustness,
+# 2021 window only (spec 5.7). 2020-21 are pandemic years and WPS inspections
+# fall ~15% in 2020. Under the log-LMM (paper_table_models_2021.py) the
+# indicator was -0.590*** for inspections (pushing time2/time3 from null into
+# significance) but -0.183 n.s. for violations. Repeating it under each
+# cell's own SELECTED count family lets the two model classes be compared on
+# the same question.
+#
+# Fit at the SAME re_tier as that cell's rs-tier M3 winner (read from
+# `__meta$m3_winner_rs`, never re-derived from a key or recomputed by AIC) --
+# NOT the full RE_FALLBACK ladder. Falling back to (1 | state) here would
+# recreate exactly the cross-tier confound (comparing AIC/coefficients across
+# two different random-effects structures) that Rulings R12-R19 spent four
+# commits removing. re_fallback = RS_RE (a single-element list) means
+# fit_with_fallback never tries a second tier: if the rs fit does not
+# converge, that non-convergence is reported as-is (converged = FALSE,
+# re_used/re_tier still record the ONE tier actually attempted), not masked
+# by a silent retry at a simpler structure.
+# ------------------------------------------------------------
+COVID_CELLS <- c("insp_2021", "viol_cov_2021")
+for (cell_name in COVID_CELLS) {
+  cl <- cells[[cell_name]]
+  meta <- results[[sprintf("%s__meta", cell_name)]]
+  win_tag <- meta$m3_winner_rs
+  win <- Filter(function(r) r$tag == win_tag, LADDER)[[1]]
+  key <- sprintf("%s__M3covid__%s", cell_name, win_tag)
+  cat("fitting", key, "(rs tier only -- Ruling 2, no cross-tier fallback)\n")
+  res <- fit_with_fallback(cl$d, cl$dv, c(cl$base, M3_ADD, "covid"),
+                           win$family, win$zi, cl$offset_col,
+                           re_fallback = RS_RE)
+  res$cell <- cell_name; res$model <- "M3covid"; res$family_tag <- win_tag
+  res$window <- cl$window; res$outcome <- cl$outcome; res$exposure <- cl$exposure
+  res$re_tier <- if (identical(res$re_used, RS_RE)) "rs" else "ri"
+  # No same-model (M3covid) non-ZI counterpart exists (only the winning family
+  # is fit here, mirroring M2's precedent) -- pass NULL, so only R17's
+  # magnitude criteria apply.
+  res$zi_degenerate <- FALSE; res$zi_degenerate_reason <- ""
+  if (win_tag %in% c("zip", "zinb", "zinb_re")) {
+    res <- mark_zi_degenerate(res, NULL)
+  }
+  # A COVID robustness variant is a downstream diagnostic of the already-
+  # selected family, exactly like M2 -- never a ladder competitor, never
+  # eligible for a future selection.
+  res$is_winner_rs <- FALSE; res$is_winner_ri <- FALSE; res$eligible_for_selection <- FALSE
+  res <- add_zero_fit_discrepancy(res)
+  results[[key]] <- res
+  if (!isTRUE(res$converged)) {
+    cat(sprintf("WARNING [%s]: COVID variant did NOT converge at the mandated rs tier (attempted %s); re_used=%s; message=%s\n",
+                key, RS_RE, res$re_used, res$message))
+  }
+}
+
 write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
 cat("\nWrote", length(results), "entries to", out_json, "\n")
 n_bad <- sum(vapply(results, function(r) !is.null(r$converged) && !isTRUE(r$converged), logical(1)))

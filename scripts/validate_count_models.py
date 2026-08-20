@@ -389,16 +389,21 @@ def validate_ladder():
     # tier-2 keys. R19 adds 2 cells x 3 models = 6 `__altopt` diagnostic refits
     # (BFGS) of the nbinom1 winners in the two 2021 violations cells. Each cell
     # also gets one `{cell}__meta` record (not a fit) carrying the per-tier
-    # winners and the R15/R17 zero-fit evidence. Total:
-    # 78 + 17 + 6 altopt + 6 meta + 2 Gaussian round-trip = 109. Every
-    # population is counted separately so none of these numbers can silently
-    # stand in for another.
+    # winners and the R15/R17 zero-fit evidence. Task 6 adds 2 more
+    # `__M3covid__` fits (insp_2021, viol_cov_2021 only), each fit at the SAME
+    # rs tier as that cell's own M3 winner -- excluded from `tier1_keys` below
+    # (it is not part of the M1/M3 full-ladder comparison; it is a downstream
+    # diagnostic of the already-selected family, exactly like M2). Total:
+    # 78 + 17 + 6 altopt + 6 meta + 2 Gaussian round-trip + 2 Task-6 COVID
+    # = 111. Every population is counted separately so none of these numbers
+    # can silently stand in for another.
     tier1_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)
                   and not k.endswith('__ri2') and not k.endswith('__meta')
-                  and not k.endswith('__altopt')]
+                  and not k.endswith('__altopt') and '__M3covid__' not in k]
     tier2_keys = [k for k in fits if k.endswith('__ri2')]
     altopt_keys = [k for k in fits if k.endswith('__altopt')]
     meta_keys = [k for k in fits if k.endswith('__meta')]
+    covid_keys = [k for k in fits if '__M3covid__' in k]
     check("78 tier-1 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
           len(tier1_keys) == 78, f"got {len(tier1_keys)}")
     check("17 tier-2 (1 | state) ladder fits (24 possible - 7 de-duplicated per R16)",
@@ -407,9 +412,12 @@ def validate_ladder():
           len(altopt_keys) == 6, f"got {len(altopt_keys)}")
     check("6 per-cell meta records (one per cell)",
           len(meta_keys) == 6, f"got {len(meta_keys)}")
-    check("109 total entries in count_model_results.json "
-          "(78 tier-1 + 17 tier-2 + 6 altopt + 6 meta + 2 Gaussian round-trip)",
-          len(fits) == 109, f"got {len(fits)}")
+    check("2 Task-6 COVID robustness (__M3covid__) fits (insp_2021, viol_cov_2021 only)",
+          len(covid_keys) == 2, f"got {len(covid_keys)}")
+    check("111 total entries in count_model_results.json "
+          "(78 tier-1 + 17 tier-2 + 6 altopt + 6 meta + 2 Gaussian round-trip "
+          "+ 2 Task-6 COVID)",
+          len(fits) == 111, f"got {len(fits)}")
 
     # R16: tier membership must be readable from `re_tier` alone -- mirrors
     # `tier_fit()` in the R script. Looks up the plain key first (valid if its
@@ -880,15 +888,44 @@ def validate_selection():
     raw = json.load(open(GEN + 'count_model_results.json'))
     tab = selection_table(raw)
 
-    # -- Population: 109 total = 2 Gaussian + 6 __meta + 6 __altopt + 95
-    # genuine fits. selection_table() must return exactly the 95, never
-    # KeyError'ing on a __meta record (the brief's loop did exactly that).
-    check("selection_table returns exactly the 95 genuine model fits "
-          "(109 total - 2 gaussian - 6 meta - 6 altopt)",
-          len(tab) == 95, f"got {len(tab)}")
+    # -- Population: 111 total (Task 6 added 2 __M3covid__ fits to the prior
+    # 109) = 2 Gaussian + 6 __meta + 6 __altopt + 97 genuine fits.
+    # selection_table() must return exactly the 97, never KeyError'ing on a
+    # __meta record (the brief's loop did exactly that). Note: per
+    # report_count_models.py's `_is_genuine_fit_key()` (not modified by
+    # Task 6 -- out of scope), the exclusion suffix list is
+    # ('_gaussian', '__meta', '__altopt') and does NOT exclude
+    # '__M3covid__' keys, so the 2 COVID fits ARE included here as ordinary
+    # rows. That is correct: they are genuine model fits (just never
+    # eligible_for_selection or is_winner_rs/ri, so they cannot corrupt any
+    # winner/LRT computation below).
+    check("selection_table returns exactly the 97 genuine model fits "
+          "(111 total - 2 gaussian - 6 meta - 6 altopt)",
+          len(tab) == 97, f"got {len(tab)}")
     check("selection_table never includes a __meta, _gaussian, or __altopt key",
           not any(k.endswith('__meta') or k.endswith('_gaussian') or k.endswith('__altopt')
                   for k in tab['key']))
+
+    # -- Task 6: the 2 COVID rows must be visible in the table, tagged with
+    # their own 'M3covid' model (never mistaken for 'M3'), and structurally
+    # inert for every downstream computation this section already checks --
+    # they must never be a winner or an LRT participant (both fields are
+    # forced False/'' by the R script, but this confirms the table preserves
+    # that rather than silently defaulting them differently).
+    covid_rows = tab[tab['model'] == 'M3covid']
+    check("selection_table carries exactly 2 M3covid (Task 6) rows",
+          len(covid_rows) == 2, f"got {len(covid_rows)}")
+    check("M3covid rows are for exactly {insp_2021, viol_cov_2021}",
+          set(covid_rows['cell']) == {'insp_2021', 'viol_cov_2021'},
+          f"got {sorted(covid_rows['cell'])}")
+    check("M3covid rows are never a winner (is_winner_rs/ri both False) and "
+          "never eligible_for_selection",
+          bool((~covid_rows['is_winner_rs']).all())
+          and bool((~covid_rows['is_winner_ri']).all())
+          and bool((~covid_rows['eligible_for_selection']).all()))
+    check("M3covid rows never carry a computed LRT (model doesn't match any "
+          "sibling family's model, so no nested pair exists)",
+          bool(covid_rows['lrt_p'].isna().all()) and bool((covid_rows['lrt_vs'] == '').all()))
 
     metas = {k[:-len('__meta')]: v for k, v in raw.items() if k.endswith('__meta')}
     check("6 __meta records recovered", len(metas) == 6, f"got {len(metas)}")
@@ -1315,7 +1352,8 @@ def validate_selection():
     out_path = GEN + 'count_model_comparison.csv'
     if os.path.exists(out_path):
         written = pd.read_csv(out_path)
-        check("count_model_comparison.csv has one row per genuine fit (95)",
+        check("count_model_comparison.csv has one row per genuine fit (97, "
+              "post-Task-6)",
               len(written) == len(tab), f"got {len(written)}")
         for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e', 'exp_zeros_se',
                     'lrt_boundary', 'lrt_boundary_kind', 'is_m3_winner'):
@@ -1324,9 +1362,10 @@ def validate_selection():
         # -- ROUND-TRIP assertion (not an in-memory one): `lrt_vs` is '' in
         # memory but becomes NaN through to_csv/read_csv, and `NaN != ''` is
         # True for every row -- so `df[df.lrt_vs != '']` on the FILE, not the
-        # in-memory DataFrame, would silently select all 95 rows instead of
-        # 30. Read the file back and confirm the documented selector
-        # (`lrt_p.notna()`) gives 30 while the naive one does not.
+        # in-memory DataFrame, would silently select ALL rows instead of 30
+        # (97 post-Task-6, was 95). Read the file back and confirm the
+        # documented selector (`lrt_p.notna()`) gives 30 while the naive one
+        # does not.
         n_lrt_from_file = int(written['lrt_p'].notna().sum())
         check("count_model_comparison.csv (read from disk): lrt_p.notna() "
               "selects exactly 30 LRT rows -- the documented, round-trip-safe "
@@ -1335,9 +1374,254 @@ def validate_selection():
             n_naive_from_file = int((written['lrt_vs'] != '').sum())
             check("count_model_comparison.csv (read from disk): the naive "
                   "`lrt_vs != ''` selector is BROKEN by the CSV round-trip "
-                  "(selects all 95 rows, not 30) -- proves why lrt_p.notna() "
+                  "(selects all rows, not 30) -- proves why lrt_p.notna() "
                   "must be used instead, not merely asserts it once",
                   n_naive_from_file == len(written), f"got {n_naive_from_file}")
+
+
+# ============================================================
+# [5] INDEPENDENT ZI CROSS-CHECK (Task 6)
+# ============================================================
+def validate_zi_crosscheck():
+    """Confirm zero-inflation is real independently of glmmTMB: fit a
+    statsmodels ZINB with state FIXED EFFECTS (dummy variables) instead of
+    glmmTMB's random effects -- different software, different treatment of
+    the state dimension, which is the entire point of an independent check.
+
+    Run on BOTH 2021 outcomes, not just violations as the original task-6
+    brief assumed (it was written when violations was expected to select
+    ZINB). The ladder's actual winners inverted that expectation: inspections
+    selects ZINB (Delta-AIC 33.4 over NB2) on a series with only 1.3% zeros
+    (7/539) while violations selects NB1 (no zero-inflation component at
+    all). Inspections is therefore the more important claim to corroborate --
+    a ZINB win on a series that barely has any zeros is this project's most
+    surprising result. Violations is checked as a negative-result
+    corroboration: the expectation is that zero-inflation is weak/unnecessary
+    there, and a statsmodels finding of STRONG, well-identified
+    zero-inflation for violations would be a genuine conflict, not a detail
+    to reconcile away.
+
+    Ruling 4 (task-6 dispatch): non-convergence must never be hidden. Every
+    fit is wrapped in `warnings.catch_warnings(record=True)` (never
+    `filterwarnings('ignore')`), and a fit that fails to converge is reported
+    as a finding with its diagnostics -- it is not tuned into submission by
+    trying optimizers until one "works" and it is not silently treated as if
+    it had converged.
+    """
+    import json
+    import warnings as _warnings
+
+    import statsmodels.api as sm
+    from statsmodels.discrete.count_model import ZeroInflatedNegativeBinomialP
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
+    print("\n[5] Independent ZI cross-check (statsmodels, state fixed effects)")
+    d = pd.read_csv(GEN + 'count_model_panel_2021.csv')
+    fits = json.load(open(GEN + 'count_model_results.json'))
+
+    def _fit_fe_zinb(dv, extra_cols):
+        need = [dv, 'time', 'time2', 'time3'] + extra_cols
+        dd = d.dropna(subset=need).copy()
+        X = pd.concat(
+            [dd[['time', 'time2', 'time3'] + extra_cols],
+             pd.get_dummies(dd['state'], prefix='st', drop_first=True, dtype=float)],
+            axis=1)
+        X = sm.add_constant(X)
+        y = dd[dv]
+        with _warnings.catch_warnings(record=True) as wrec:
+            _warnings.simplefilter('always')
+            res = ZeroInflatedNegativeBinomialP(
+                y, X, exog_infl=np.ones((len(dd), 1)), p=2
+            ).fit(method='bfgs', maxiter=500, disp=0)
+        return res, wrec, len(dd)
+
+    # (dv, extra RHS columns, glmmTMB comparator key, whether convergence is
+    # the EXPECTED outcome). The glmmTMB comparator is each cell's `zinb`
+    # rung specifically (not necessarily that cell's overall M3 winner) --
+    # for insp_2021 the zinb rung IS the winner; for viol_cov_2021 it is not
+    # (nbinom1 wins), but the zinb rung is still the right same-family
+    # comparator for "what does glmmTMB's own zero-inflation model say".
+    CROSSCHECK_SPECS = {
+        'insp_2021': ('inspections', [], 'insp_2021__M3__zinb', True),
+        'viol_cov_2021': ('violations', ['log_inspections'], 'viol_cov_2021__M3__zinb', False),
+    }
+    for label, (dv, extra, glmm_key, expect_converged) in CROSSCHECK_SPECS.items():
+        try:
+            res, wrec, n = _fit_fe_zinb(dv, extra)
+        except Exception as e:  # noqa: BLE001 - a hard failure is a reportable finding
+            check(f"{label}: statsmodels ZINB fit raised an exception", False, str(e))
+            continue
+
+        conv = bool(res.mle_retvals.get('converged'))
+        warn_cats = sorted({w.category.__name__ for w in wrec})
+        conv_warns = [str(w.message) for w in wrec if issubclass(w.category, ConvergenceWarning)]
+        zi_const = float(res.params.get('inflate_const', np.nan))
+        zi_se = float(res.bse.get('inflate_const', np.nan))
+        obs_zero_rate = float((d[dv] == 0).mean())
+
+        print(f"        {label}: N={n}, converged={conv}, warning categories={warn_cats}")
+        for msg in conv_warns:
+            print(f"        {label}: ConvergenceWarning -- {msg}")
+        print(f"        {label}: statsmodels ZI intercept {zi_const:+.3f} "
+              f"(SE {zi_se}); observed zero rate {obs_zero_rate:.4f}")
+
+        glmm_fit = fits.get(glmm_key)
+        if glmm_fit and glmm_fit.get('converged') and glmm_fit.get('zi'):
+            r_zi = float(glmm_fit['zi']['(Intercept)']['b'])
+            r_prob = 1 / (1 + np.exp(-r_zi))
+            print(f"        {label}: glmmTMB ({glmm_key}, re_tier="
+                  f"{glmm_fit.get('re_tier')!r}) ZI intercept {r_zi:+.3f} "
+                  f"-> structural-zero prob {r_prob:.4f}")
+        else:
+            r_zi = None
+
+        if expect_converged:
+            # insp_2021: glmmTMB's own selected family HAS zero-inflation
+            # (ZINB beats NB2 by 33.4 AIC). This is the important corroboration:
+            # convergence, a well-identified probability, and sign/magnitude
+            # agreement with glmmTMB's estimate are all real requirements.
+            check(f"{label}: statsmodels FE-ZINB converged", conv,
+                  f"mle_retvals={res.mle_retvals}")
+            if conv:
+                zi_prob = 1 / (1 + np.exp(-zi_const))
+                check(f"{label}: structural-zero probability strictly inside (0, 1)",
+                      0.001 < zi_prob < 0.999, f"got {zi_prob:.6f}")
+                if r_zi is not None:
+                    check(f"{label}: glmmTMB and statsmodels agree on the SIGN "
+                          "of the ZI intercept (independent corroboration of "
+                          "real zero-inflation)",
+                          np.sign(r_zi) == np.sign(zi_const),
+                          f"glmmTMB {r_zi:+.3f} vs statsmodels {zi_const:+.3f}")
+                    check(f"{label}: glmmTMB and statsmodels ZI intercepts agree "
+                          "in rough magnitude (relative difference < 30%)",
+                          abs(zi_const - r_zi) / abs(r_zi) < 0.30,
+                          f"glmmTMB {r_zi:+.3f} vs statsmodels {zi_const:+.3f} "
+                          f"(rel diff {abs(zi_const - r_zi) / abs(r_zi):.1%})")
+        else:
+            # viol_cov_2021: glmmTMB's WINNING family (NB1) has no
+            # zero-inflation component at all -- the expectation is that
+            # zero-inflation is weak/unnecessary here. A FE-ZINB that fails
+            # to converge, with a live ConvergenceWarning and a ZI intercept
+            # that has wandered to a numerical boundary (huge magnitude,
+            # non-finite SE), IS the corroborating finding: the ZI component
+            # is unidentified/degenerate in this independent specification
+            # too, consistent with glmmTMB's own no-ZI selection. This is a
+            # real, falsifiable assertion of the CURRENT verified result
+            # (mirrors this file's existing "known, verified fact" idiom,
+            # e.g. `n_zinb_re_lrt == 6` in [3]) -- if statsmodels instead
+            # converged to a strong, well-identified ZI estimate, that would
+            # be a genuine conflict with glmmTMB and this check would (and
+            # should) fail.
+            check(f"{label}: a ConvergenceWarning was actually raised when the "
+                  "FE-ZINB failed to converge (not silently swallowed)",
+                  (not conv) and bool(conv_warns),
+                  f"conv={conv}, conv_warns={conv_warns}")
+            check(f"{label}: statsmodels FE-ZINB does NOT converge to a clean "
+                  "estimate here (verified current result -- the ZI component "
+                  "is unidentified/degenerate in the fixed-effects "
+                  "specification, consistent with glmmTMB's own NB1/no-ZI "
+                  "selection for this cell)",
+                  not conv, f"got converged={conv}, zi_const={zi_const!r}")
+            if not conv:
+                check(f"{label}: the non-converged fit fails in the direction "
+                      "of 'no zero-inflation needed' -- its ZI intercept is a "
+                      "boundary/degenerate value (|b| > 50 or non-finite SE), "
+                      "not a strong, well-identified ZI estimate",
+                      (not np.isfinite(zi_se)) or abs(zi_const) > 50,
+                      f"zi_const={zi_const!r}, zi_se={zi_se!r}")
+
+
+# ============================================================
+# [6] COVID ROBUSTNESS, 2021 WINDOW (Task 6)
+# ============================================================
+def validate_covid():
+    """COVID robustness under the selected count family (2021 window only --
+    `covid` is not a column in the 2019 panel). Compares against the known
+    log-linear result from paper_table_models_2021.py: -0.590*** for
+    inspections (pushing time2/time3 from null into significance) and -0.183
+    n.s. for violations.
+
+    Ruling 2 (task-6 dispatch): each COVID variant must be fit at the SAME
+    re_tier as that cell's own rs-tier M3 winner. Fitting at a
+    different (fallen-back) tier would recreate exactly the cross-tier
+    confound (comparing AIC/coefficients across two different random-effects
+    structures) that Rulings R12-R19 spent four commits removing -- so this
+    section checks re_used/re_tier directly, not just that a fit exists.
+    """
+    import json
+
+    print("\n[6] COVID robustness (2021 window)")
+    fits = json.load(open(GEN + 'count_model_results.json'))
+    covid = {k: v for k, v in fits.items() if '__M3covid__' in k}
+    check("COVID variants fit for both 2021 cells (insp_2021, viol_cov_2021)",
+          sorted({v.get('cell') for v in covid.values()}) == ['insp_2021', 'viol_cov_2021'],
+          f"got {sorted(covid)}")
+
+    for k, f in covid.items():
+        cell = f.get('cell')
+        meta = fits.get(f'{cell}__meta', {})
+        winner_tag = meta.get('m3_winner_rs')
+        check(f"{k}: family_tag matches the cell's own rs-tier M3 winner "
+              f"({winner_tag!r}), read from __meta rather than re-derived",
+              f.get('family_tag') == winner_tag, f"got {f.get('family_tag')!r}")
+        check(f"{k}: fit was attempted at the rs tier ('(1 + time | state)') "
+              "per Ruling 2 -- no cross-tier fallback was permitted",
+              f.get('re_used') == '(1 + time | state)',
+              f"got re_used={f.get('re_used')!r}")
+
+        if not f.get('converged'):
+            # Ruling 2: non-convergence at the mandated rs tier IS the
+            # finding here -- report it plainly rather than accepting a
+            # fallback fit that would silently compare against a different
+            # random-effects structure than the base (no-COVID) M3 fit.
+            check(f"{k}: converged at the rs tier", False,
+                  f"COVID variant did not converge at the mandated rs tier "
+                  f"(re_used={f.get('re_used')!r}); message={f.get('message')!r}")
+            continue
+        check(f"{k}: converged at the rs tier", True)
+        check(f"{k}: re_tier is 'rs' (matches the base M3 winner's own tier)",
+              f.get('re_tier') == 'rs', f"got {f.get('re_tier')!r}")
+        check(f"{k}: includes the covid term", 'covid' in f.get('cond', {}),
+              f"terms: {sorted(f.get('cond', {}))}")
+        if 'covid' not in f.get('cond', {}):
+            continue
+
+        base_key = k.replace('__M3covid__', '__M3__')
+        base = fits.get(base_key)
+        check(f"{k}: base (no-COVID) M3 fit {base_key!r} exists and converged",
+              base is not None and base.get('converged'))
+        if base is None or not base.get('converged'):
+            continue
+        check(f"{k}: base fit is at the SAME re_tier ('rs') as the COVID "
+              "variant -- required before any coefficient-shift comparison "
+              "is meaningful",
+              base.get('re_tier') == 'rs', f"got {base.get('re_tier')!r}")
+
+        cov_term = f['cond']['covid']
+        b, se, p = cov_term['b'], cov_term['se'], cov_term['p']
+        irr = float(np.exp(b))
+        check(f"{k}: covid IRR == exp(b)", np.isclose(irr, np.exp(b), rtol=1e-9))
+        check(f"{k}: covid p-value is a valid probability in [0, 1]",
+              0.0 <= p <= 1.0, f"got {p!r}")
+        print(f"        {k}: covid b={b:+.4f} (SE {se:.4f}, p={p:.3g}), IRR={irr:.4f} "
+              f"[family={f.get('family_tag')}, tier={f.get('re_tier')}]")
+
+        check(f"{k}: all three cubic time terms are present in both the base "
+              "and COVID fits (required before their shift is comparable)",
+              all(t in base.get('cond', {}) and t in f.get('cond', {})
+                  for t in ('time', 'time2', 'time3')))
+        for term in ('time', 'time2', 'time3'):
+            b_no = base['cond'].get(term, {}).get('b')
+            b_cv = f['cond'].get(term, {}).get('b')
+            if b_no is None or b_cv is None:
+                continue
+            if abs(b_no) > 1e-8:
+                rel_shift = abs(b_cv - b_no) / abs(b_no)
+                print(f"        {k}: {term} {b_no:+.5f} -> {b_cv:+.5f} "
+                      f"(relative shift {rel_shift:.1%})")
+            else:
+                print(f"        {k}: {term} {b_no:+.5f} -> {b_cv:+.5f} "
+                      "(base b ~ 0, relative shift undefined)")
 
 
 def main():
@@ -1346,6 +1630,8 @@ def main():
     validate_gaussian_roundtrip()
     validate_ladder()
     validate_selection()
+    validate_zi_crosscheck()
+    validate_covid()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")
