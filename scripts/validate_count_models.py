@@ -868,9 +868,10 @@ def validate_selection():
 
     print("\n[4] Selection table and reporting")
     try:
-        from report_count_models import (coefficient_table,
+        from report_count_models import (BOUNDARY_KIND, TIER_ORDER,
+                                          coefficient_table,
                                           nearest_clean_competitor,
-                                          selection_table)
+                                          selection_table, winner_summary)
     except ImportError as e:
         check("report_count_models importable", False, str(e))
         return
@@ -894,23 +895,23 @@ def validate_selection():
 
     # -- Requirement 1/2: the computed winner (from is_winner_rs/is_winner_ri)
     # must match each cell's own __meta record, at M3, per tier.
-    for cell, meta in metas.items():
+    for cell, mrec in metas.items():
         m3 = tab[(tab['cell'] == cell) & (tab['model'] == 'M3')]
         rs_winners = m3.loc[m3['is_winner_rs'], 'family'].tolist()
         check(f"{cell}: exactly one M3 rs-tier winner", len(rs_winners) == 1,
               f"got {rs_winners}")
         if rs_winners:
             check(f"{cell}: computed rs winner ({rs_winners[0]!r}) matches "
-                  f"meta.m3_winner_rs ({meta['m3_winner_rs']!r})",
-                  rs_winners[0] == meta['m3_winner_rs'])
-        if meta.get('needs_tier2'):
+                  f"meta.m3_winner_rs ({mrec['m3_winner_rs']!r})",
+                  rs_winners[0] == mrec['m3_winner_rs'])
+        if mrec.get('needs_tier2'):
             ri_winners = m3.loc[m3['is_winner_ri'], 'family'].tolist()
             check(f"{cell}: exactly one M3 ri-tier winner", len(ri_winners) == 1,
                   f"got {ri_winners}")
             if ri_winners:
                 check(f"{cell}: computed ri winner ({ri_winners[0]!r}) matches "
-                      f"meta.m3_winner_ri ({meta['m3_winner_ri']!r})",
-                      ri_winners[0] == meta['m3_winner_ri'])
+                      f"meta.m3_winner_ri ({mrec['m3_winner_ri']!r})",
+                      ri_winners[0] == mrec['m3_winner_ri'])
         else:
             check(f"{cell}: no M3 ri-tier winner flagged (tier-2 not needed)",
                   not m3['is_winner_ri'].any())
@@ -963,15 +964,21 @@ def validate_selection():
     deg_keys = set(map(tuple, deg.to_numpy()))
     check("no degenerate fit is ever used as an LRT parent",
           len(lrt_parents & deg_keys) == 0, f"overlap: {lrt_parents & deg_keys}")
-    for cell, meta in metas.items():
+    for cell, mrec in metas.items():
         for tier in ('rs', 'ri'):
-            comp = meta.get(f'credible_better_zero_fit_{tier}')
+            comp = mrec.get(f'credible_better_zero_fit_{tier}')
             if comp is None:
                 continue
             comp_fit = tab[(tab['cell'] == cell) & (tab['model'] == 'M3') &
                             (tab['re_tier'] == tier) & (tab['family'] == comp)]
-            check(f"{cell}/{tier}: credible better-zero-fit competitor {comp!r} is not degenerate",
-                  comp_fit.empty or not bool(comp_fit['zi_degenerate'].iloc[0]))
+            # Must actually exist -- an empty match previously passed this
+            # check vacuously, which would hide a broken/renamed competitor
+            # tag instead of failing on it.
+            check(f"{cell}/{tier}: credible better-zero-fit competitor {comp!r} fit exists",
+                  not comp_fit.empty, f"no ({cell}, M3, {tier}, {comp}) row in the table")
+            if not comp_fit.empty:
+                check(f"{cell}/{tier}: credible better-zero-fit competitor {comp!r} is not degenerate",
+                      not bool(comp_fit['zi_degenerate'].iloc[0]))
 
     # -- Requirement 5: AIC comparisons stay within (cell, model, re_tier);
     # n_obs must be constant within each such group before any AIC number is
@@ -1030,15 +1037,24 @@ def validate_selection():
     check("coefficient_table(ri) for viol_off_2021 has no M2 columns "
           "(M2 was never fit at the ri tier)",
           'M2_b' not in ct_ri.columns)
-    check("coefficient_table(rs) M1 column reflects the M1 rs winner (zinb_re), "
-          "not the M3 winner (nbinom1)",
-          bool((ct_rs.get('M1_family') == 'zinb_re').any())
-          if 'M1_family' in ct_rs.columns else True)
+    # No "else True" fallback: a missing M1_family column is exactly the
+    # regression this check exists to catch, so it must FAIL, not vanish.
+    check("coefficient_table(rs) for viol_off_2021 carries an M1_family column",
+          'M1_family' in ct_rs.columns)
+    if 'M1_family' in ct_rs.columns:
+        check("coefficient_table(rs) M1 column reflects the M1 rs winner (zinb_re), "
+              "not the M3 winner (nbinom1)",
+              bool((ct_rs['M1_family'] == 'zinb_re').any()))
 
-    # -- IRR must equal exp(b) wherever a coefficient is populated.
+    # -- IRR must equal exp(b) wherever a coefficient is populated. Each
+    # model's b/irr columns are asserted to EXIST (not just checked "if
+    # present") so a column silently disappearing produces a FAIL, not zero
+    # checks run.
     for m in ('M1', 'M2', 'M3'):
         bcol, ircol = f'{m}_b', f'{m}_irr'
-        if bcol in ct_rs.columns:
+        check(f"coefficient_table(rs) for viol_off_2021 carries {bcol}/{ircol}",
+              bcol in ct_rs.columns and ircol in ct_rs.columns)
+        if bcol in ct_rs.columns and ircol in ct_rs.columns:
             mask = ct_rs[bcol].notna()
             ok = np.allclose(ct_rs.loc[mask, ircol], np.exp(ct_rs.loc[mask, bcol]), rtol=1e-9)
             check(f"coefficient_table {m}: IRR == exp(b)", ok)
@@ -1047,17 +1063,231 @@ def validate_selection():
     # the nested-pairs machinery actually ran, not just an empty no-op).
     check("all computed LRT p-values are valid probabilities in [0, 1]",
           bool(tab['lrt_p'].dropna().between(0, 1).all()))
-    check("at least one LRT was computed (nested pairs exist and converged)",
-          int(tab['lrt_p'].notna().sum()) > 0, f"got {int(tab['lrt_p'].notna().sum())}")
-    # LRTs must only ever pair up nested families (nbinom2<-poisson,
-    # zinb<-nbinom2, zinb_re<-zinb); nbinom1 is never a parent or child here.
+    n_lrt = int(tab['lrt_p'].notna().sum())
+    check("exactly 30 LRTs were computed across the six cells "
+          "(nested pairs exist and converged, structurally excluding "
+          "degenerate/collapsed/ineligible fits)", n_lrt == 30, f"got {n_lrt}")
     lrt_rows = tab[tab['lrt_vs'] != '']
-    nested_lookup = {'nbinom2': 'poisson', 'zinb': 'nbinom2', 'zinb_re': 'zinb'}
-    check("every LRT pairs a family with its correct nested parent",
-          bool((lrt_rows['family'].map(nested_lookup) == lrt_rows['lrt_vs']).all()))
-    check("nbinom1 never appears as an LRT child or parent (not nested in NB2)",
-          not ((tab['family'] == 'nbinom1') & (tab['lrt_vs'] != '')).any()
-          and 'nbinom1' not in set(lrt_rows['lrt_vs']))
+    # Explicit non-empty guard BEFORE the pairwise-mapping check below: a
+    # `.all()` over an empty selection is vacuously True in pandas, which
+    # would let the nested-pair check silently pass even if the LRT loop
+    # produced zero rows. n_lrt == 30 above already forces non-emptiness, but
+    # this makes the dependency structural rather than incidental.
+    check("lrt_rows is non-empty before asserting anything about its contents",
+          len(lrt_rows) > 0, f"got {len(lrt_rows)}")
+    if len(lrt_rows) > 0:
+        nested_lookup = {'nbinom2': 'poisson', 'zinb': 'nbinom2', 'zinb_re': 'zinb'}
+        check("every LRT pairs a family with its correct nested parent",
+              bool((lrt_rows['family'].map(nested_lookup) == lrt_rows['lrt_vs']).all()))
+        check("nbinom1 never appears as an LRT child or parent (not nested in NB2)",
+              not ((tab['family'] == 'nbinom1') & (tab['lrt_vs'] != '')).any()
+              and 'nbinom1' not in set(lrt_rows['lrt_vs']))
+        # Every computed LRT must be flagged as a boundary test, with a
+        # non-empty description of WHICH boundary -- a downstream reader must
+        # never see a bare nominal p-value with no boundary caveat attached.
+        check("every computed LRT is flagged lrt_boundary=True with a non-empty lrt_boundary_kind",
+              bool(lrt_rows['lrt_boundary'].all())
+              and bool((lrt_rows['lrt_boundary_kind'] != '').all()))
+        check("BOUNDARY_KIND covers exactly the three nested child families "
+              "(nbinom2, zinb, zinb_re)",
+              set(BOUNDARY_KIND) == {'nbinom2', 'zinb', 'zinb_re'})
+        # NOTE ON A REVIEW DISCREPANCY: the review's finding #3 states "8 of
+        # your 30 LRTs are zinb_re vs zinb". Independently re-derived by hand
+        # from the raw JSON (a second, from-scratch pass over every
+        # (cell, model, re_tier) group, not just this function's own
+        # arithmetic) the true count is 6: viol_off_2021 M1/M3 (ri),
+        # viol_cov_2021 M1/M3 (ri), insp_2019 M1/M3 (rs). A 7th zinb_re fit
+        # exists at viol_off_2021 M1's rs tier (the plain, un-suffixed key --
+        # a genuine, non-collapsed rs-tier fit, distinct from its __ri2
+        # sibling), but it has NO rs-tier 'zinb' parent to pair against
+        # ('zinb' is absent from viol_off_2021's eligible_rs_m1 list), so no
+        # LRT fires there -- correctly. This mirrors the project's prior,
+        # accepted precedent (task-4-report.md: the implementer reported 11
+        # zi_degenerate fits against the reviewer's stated 12, and 11 was
+        # independently reconfirmed correct) -- verified here, not forced to
+        # match the review's stated number.
+        n_zinb_re_lrt = int((lrt_rows['family'] == 'zinb_re').sum())
+        check("exactly 6 of the 30 LRTs are the zinb_re-vs-zinb boundary test "
+              "(independently re-verified; the review's stated count of 8 "
+              "does not hold up -- see comment above)",
+              n_zinb_re_lrt == 6, f"got {n_zinb_re_lrt}")
+        borderline = tab[(tab['cell'] == 'insp_2019') & (tab['family'] == 'zinb_re')
+                          & tab['lrt_p'].notna()]
+        check("insp_2019's zinb_re-vs-zinb LRTs are the borderline ones (both p < 0.02)",
+              len(borderline) == 2 and bool((borderline['lrt_p'] < 0.02).all()),
+              f"got {borderline[['model', 'lrt_p']].to_dict('records')}")
+
+    # -- Requirement 1 (artifact reporting): sigma2_u0/sigma2_u1/sigma_u01/
+    # sigma2_e must be readable from the table/CSV itself, not only asserted
+    # against a hardcoded value inside this validator. Recompute the
+    # headline NB1-vs-NB2 sigma2_u1 disagreement FROM THE TABLE (not from
+    # raw JSON) to prove it is actually derivable from the artifact.
+    for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e'):
+        check(f"selection_table carries {col} on every row",
+              col in tab.columns and tab[col].notna().any())
+    win = tab[(tab['cell'] == 'viol_cov_2021') & (tab['model'] == 'M3') &
+              (tab['re_tier'] == 'rs') & (tab['family'] == 'nbinom1')]
+    comp = tab[(tab['cell'] == 'viol_cov_2021') & (tab['model'] == 'M3') &
+               (tab['re_tier'] == 'rs') & (tab['family'] == 'nbinom2')]
+    if not win.empty and not comp.empty:
+        ratio = float(comp['sigma2_u1'].iloc[0]) / float(win['sigma2_u1'].iloc[0])
+        check_close("viol_cov_2021: nbinom2/nbinom1 sigma2_u1 ratio ~= 3.2x, "
+                    "DERIVED FROM selection_table() (not the raw JSON)",
+                    ratio, 3.2140498391688106, 1e-6, kind='rel')
+
+    # -- Requirement 2: exp_zeros never travels without its Monte-Carlo SE.
+    with_exp = tab[tab['exp_zeros'].notna()]
+    check("exp_zeros_se is present and finite for every fit that has exp_zeros",
+          bool(with_exp['exp_zeros_se'].notna().all())
+          and bool(np.isfinite(with_exp['exp_zeros_se']).all()))
+
+    # -- Requirement: convergence-diagnostic fields (message/pd_hess/conv_code)
+    # travel with every row -- needed to tell "clean" from "not recorded"
+    # (the ri-tier winners have no meta['winner_ri_has_warning'] field at all;
+    # `message` on the fit itself is the only generic source).
+    for col in ('message', 'pd_hess', 'conv_code'):
+        check(f"selection_table carries {col} on every row", col in tab.columns)
+    warned = tab[(tab['cell'].isin(['viol_off_2021', 'viol_cov_2021'])) &
+                 (tab['model'] == 'M3') & (tab['re_tier'] == 'rs') &
+                 (tab['family'] == 'nbinom1')]
+    check("both 2021 violations rs-tier nbinom1 winners carry a non-empty message "
+          "(the live optimizer warning)",
+          len(warned) == 2 and bool((warned['message'] != '').all()))
+
+    # -- is_m3_winner: exactly 8 rows True (6 rs winners + 2 ri winners), and
+    # it must never double-count the M1 winner that also carries
+    # is_winner_rs/ri == True.
+    check("is_m3_winner column present", 'is_m3_winner' in tab.columns)
+    n_m3_winners = int(tab['is_m3_winner'].sum())
+    check("exactly 8 rows are flagged is_m3_winner "
+          "(6 cells x rs winner + 2 cells with a second ri winner)",
+          n_m3_winners == 8, f"got {n_m3_winners}")
+    check("is_m3_winner is never True for a model other than M3",
+          not tab.loc[tab['is_m3_winner'], 'model'].ne('M3').any())
+
+    # -- winner_summary(): the artifact the memo actually reads for the
+    # zero-fit evidence, the M1-vs-M3 candidate-set stability flag (correctly
+    # LABELLED -- see below), and the eligible sets.
+    ws = winner_summary(tab, metas)
+    check("winner_summary returns 8 rows (6 cells at rs + 2 cells' ri tier)",
+          len(ws) == 8, f"got {len(ws)}")
+    for col in ('sigma2_u0', 'sigma2_u1', 'exp_zeros_se', 'zero_signed',
+                'has_better_zero_fit', 'credible_better_zero_fit',
+                'm1_m3_candidate_set_stable', 'eligible_m1', 'eligible_m3'):
+        check(f"winner_summary carries column {col!r}", col in ws.columns)
+
+    # -- REVIEWER CORRECTION, verified and encoded here: `stable_rs` is an
+    # M1-vs-M3 CANDIDATE-SET stability flag (does the rs winner at M1 equal
+    # the rs winner at M3?), NOT an optimizer-stability flag. The __altopt
+    # BFGS refits independently show the rs-tier nbinom1 winners in both 2021
+    # violations cells ARE optimizer-stable (sigma2_u1 matching to 4-5 dp) --
+    # so a False `stable_rs` for viol_off_2021 reflects the documented
+    # candidate-set change (zinb_re drops out of the M3-eligible set), not an
+    # unstable fit.
+    row = ws[(ws['cell'] == 'viol_off_2021') & (ws['re_tier'] == 'rs')]
+    check("viol_off_2021 rs: m1_m3_candidate_set_stable is False "
+          "(M1 winner zinb_re != M3 winner nbinom1 -- a candidate-SET change, "
+          "not optimizer instability; __altopt shows this winner IS optimizer-stable)",
+          not row.empty and bool(row['m1_m3_candidate_set_stable'].iloc[0]) is False)
+    stable_elsewhere = ws[~((ws['cell'] == 'viol_off_2021') & (ws['re_tier'] == 'rs'))]
+    check("every OTHER (cell, tier) is m1_m3_candidate_set_stable == True "
+          "(M1 and M3 winners agree)",
+          bool(stable_elsewhere['m1_m3_candidate_set_stable'].astype(bool).all()))
+    for _, r in ws.iterrows():
+        want = bool(metas[r['cell']].get(f'stable_{r["re_tier"]}'))
+        check(f"{r['cell']}/{r['re_tier']}: winner_summary's "
+              f"m1_m3_candidate_set_stable matches meta['stable_{r['re_tier']}']",
+              bool(r['m1_m3_candidate_set_stable']) == want)
+
+    # -- Eligible candidate sets reach the artifact, non-empty, and the
+    # viol_off_2021 M1-vs-M3 zinb_re drop is visible directly from
+    # winner_summary (not only from the raw meta record).
+    check("every winner_summary row has non-empty eligible_m1 and eligible_m3",
+          bool((ws['eligible_m1'] != '').all()) and bool((ws['eligible_m3'] != '').all()))
+    row = ws[(ws['cell'] == 'viol_off_2021') & (ws['re_tier'] == 'rs')].iloc[0]
+    check("winner_summary (not just raw meta) shows zinb_re eligible at M1 "
+          "but not at M3 for viol_off_2021/rs",
+          'zinb_re' in row['eligible_m1'].split(',')
+          and 'zinb_re' not in row['eligible_m3'].split(','))
+
+    # -- winner_summary must be written to its own CSV.
+    ws_path = GEN + 'count_model_winner_summary.csv'
+    if os.path.exists(ws_path):
+        written_ws = pd.read_csv(ws_path)
+        check("count_model_winner_summary.csv has one row per winner (8)",
+              len(written_ws) == len(ws), f"got {len(written_ws)}")
+
+    # -- ZI block in coefficient_table(): a zero-inflated winner's
+    # zero-inflation-part coefficients must reach the table, clearly
+    # separated from the count-model part, and a non-ZI winner must carry
+    # NONE (never a phantom ZI row for a family with no zi_formula).
+    ct_zi = coefficient_table(raw, 'insp_2019', 'rs')  # winner: zinb_re
+    check("coefficient_table for a zi-family winner (insp_2019, zinb_re) "
+          "carries a 'section' column", 'section' in ct_zi.columns)
+    if 'section' in ct_zi.columns:
+        zi_block = ct_zi[ct_zi['section'] == 'zi']
+        check("insp_2019 coefficient_table has a non-empty ZI block",
+              not zi_block.empty)
+        check("insp_2019's ZI block rows are labelled with the 'ZI: ' prefix",
+              bool(zi_block['term'].str.startswith('ZI:').all()) if not zi_block.empty else False)
+        check("insp_2019's ZI intercept (M3) matches the raw JSON's zi coefficient",
+              not zi_block.empty and np.isclose(
+                  zi_block[zi_block['term'] == 'ZI: Intercept']['M3_b'].iloc[0],
+                  raw['insp_2019__M3__zinb_re']['zi']['(Intercept)']['b'], rtol=1e-9))
+    ct_no_zi = coefficient_table(raw, 'viol_cov_2019', 'rs')  # winner: nbinom2
+    check("coefficient_table for a non-ZI winner (viol_cov_2019, nbinom2) "
+          "has NO zero-inflation-part rows",
+          ct_no_zi.empty or bool((ct_no_zi['section'] == 'count').all()))
+
+    # -- M2 quality guard: exercised with a SYNTHETIC duplicate so the guard
+    # is proven to do something, not merely "pass because real data never
+    # triggers it" (every real M2 fit here happens to already be clean).
+    synth = dict(raw)  # shallow copy; we only add keys, never mutate values
+    base_key = 'viol_cov_2019__M2__nbinom2'
+    base = dict(raw[base_key])
+    non_converged = dict(base)
+    non_converged['converged'] = False
+    synth['_synthfit__M2__nbinom2_bad'] = {**non_converged, 'cell': '_synthfit',
+                                            're_tier': 'rs', 'model': 'M2',
+                                            'family_tag': 'nbinom2'}
+    synth['_synthfit__M1__nbinom2'] = {**base, 'cell': '_synthfit',
+                                        're_tier': 'rs', 'model': 'M1',
+                                        'family_tag': 'nbinom2',
+                                        'is_winner_rs': True, 'is_winner_ri': False}
+    synth['_synthfit__M3__nbinom2'] = {**base, 'cell': '_synthfit',
+                                        're_tier': 'rs', 'model': 'M3',
+                                        'family_tag': 'nbinom2',
+                                        'is_winner_rs': True, 'is_winner_ri': False}
+    ct_synth = coefficient_table(synth, '_synthfit', 'rs')
+    check("M2 quality guard EXCLUDES a synthetic non-converged M2 duplicate "
+          "(latent-bug regression test, per review finding 6)",
+          'M2_b' not in ct_synth.columns or ct_synth['M2_b'].isna().all())
+    # Two DISTINCT, CONVERGED, non-degenerate M2 candidates for the same
+    # cell/tier must raise -- the guard's uniqueness assertion must be a real
+    # assertion, not a silent last-write-wins. Flip the first synthetic M2
+    # (deliberately non-converged above) back to converged, so together with
+    # a second, independently-keyed, differently-tagged M2 fit there are
+    # exactly two quality-passing candidates.
+    synth2 = dict(synth)
+    synth2['_synthfit__M2__nbinom2_bad'] = {**base, 'cell': '_synthfit',
+                                             're_tier': 'rs', 'model': 'M2',
+                                             'family_tag': 'nbinom2'}
+    second_good = dict(base)
+    synth2['_synthfit__M2__nbinom1_dup'] = {**second_good, 'cell': '_synthfit',
+                                             're_tier': 'rs', 'model': 'M2',
+                                             'family_tag': 'nbinom1'}
+    try:
+        coefficient_table(synth2, '_synthfit', 'rs')
+        check("M2 quality guard raises on two quality-passing M2 duplicates", False,
+              "no exception raised")
+    except ValueError:
+        check("M2 quality guard raises on two quality-passing M2 duplicates", True)
+
+    # -- Presentation: TIER_ORDER must sort rs before ri, so the per-cell
+    # printout never lets a reader read the (1|state) fallback tier's AIC as
+    # if it were comparable to (or better-ranked than) the primary
+    # (1+time|state) tier above it.
+    check("TIER_ORDER sorts 'rs' strictly before 'ri'", TIER_ORDER['rs'] < TIER_ORDER['ri'])
 
     # -- Overdispersion sanity, read from the winner (rs) tier only: NB2
     # should predict zero counts closer to a 1:1 ratio than Poisson.
@@ -1070,16 +1300,19 @@ def validate_selection():
               abs(float(n.iloc[0]) - 1) < abs(float(p.iloc[0]) - 1),
               f"poisson ratio {float(p.iloc[0]):.2f}, nb2 ratio {float(n.iloc[0]):.2f}")
 
-    # -- If the CSV has already been written (i.e. report_count_models.py has
-    # run), it must carry exactly the same rows as selection_table() itself --
-    # not gated as a hard prerequisite of this section, since the process
-    # calls for validation to pass BEFORE the reporter is run for the first
-    # time.
+    # -- If the CSVs have already been written (i.e. report_count_models.py
+    # has run), they must carry exactly the same rows as their in-memory
+    # source -- not gated as a hard prerequisite of this section, since the
+    # process calls for validation to pass BEFORE the reporter is run for the
+    # first time.
     out_path = GEN + 'count_model_comparison.csv'
     if os.path.exists(out_path):
         written = pd.read_csv(out_path)
         check("count_model_comparison.csv has one row per genuine fit (95)",
               len(written) == len(tab), f"got {len(written)}")
+        for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e', 'exp_zeros_se',
+                    'lrt_boundary', 'lrt_boundary_kind', 'is_m3_winner'):
+            check(f"count_model_comparison.csv carries column {col!r}", col in written.columns)
 
 
 def main():
