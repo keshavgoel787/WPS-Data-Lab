@@ -850,11 +850,244 @@ def validate_ladder():
                         f['aic'], parent['aic'], 1e-8, kind='rel')
 
 
+# ============================================================
+# [4] SELECTION TABLE AND REPORTING (Task 5)
+# ============================================================
+# NOTE (2026-08-20 dispatch): the original brief for this section assumed
+# selection_table() would groupby('cell')['aic'].idxmin() across ALL M3 fits
+# regardless of re_tier. That rule is provably wrong on this JSON: two cells
+# (viol_off_2021, viol_cov_2021) have de-duplicated (1 | state) fits sitting
+# at their PLAIN keys (re_tier == 'ri'), so a cross-tier AIC-min conflates
+# random-effects structure with distribution family and silently returns
+# 'zinb_re' where the real, tier-respecting winner is 'nbinom1'. These checks
+# assert the corrected contract instead: winners are read from is_winner_rs /
+# is_winner_ri, cross-checked against each cell's __meta record.
+def validate_selection():
+    import json
+    import os
+
+    print("\n[4] Selection table and reporting")
+    try:
+        from report_count_models import (coefficient_table,
+                                          nearest_clean_competitor,
+                                          selection_table)
+    except ImportError as e:
+        check("report_count_models importable", False, str(e))
+        return
+    check("report_count_models importable", True)
+
+    raw = json.load(open(GEN + 'count_model_results.json'))
+    tab = selection_table(raw)
+
+    # -- Population: 109 total = 2 Gaussian + 6 __meta + 6 __altopt + 95
+    # genuine fits. selection_table() must return exactly the 95, never
+    # KeyError'ing on a __meta record (the brief's loop did exactly that).
+    check("selection_table returns exactly the 95 genuine model fits "
+          "(109 total - 2 gaussian - 6 meta - 6 altopt)",
+          len(tab) == 95, f"got {len(tab)}")
+    check("selection_table never includes a __meta, _gaussian, or __altopt key",
+          not any(k.endswith('__meta') or k.endswith('_gaussian') or k.endswith('__altopt')
+                  for k in tab['key']))
+
+    metas = {k[:-len('__meta')]: v for k, v in raw.items() if k.endswith('__meta')}
+    check("6 __meta records recovered", len(metas) == 6, f"got {len(metas)}")
+
+    # -- Requirement 1/2: the computed winner (from is_winner_rs/is_winner_ri)
+    # must match each cell's own __meta record, at M3, per tier.
+    for cell, meta in metas.items():
+        m3 = tab[(tab['cell'] == cell) & (tab['model'] == 'M3')]
+        rs_winners = m3.loc[m3['is_winner_rs'], 'family'].tolist()
+        check(f"{cell}: exactly one M3 rs-tier winner", len(rs_winners) == 1,
+              f"got {rs_winners}")
+        if rs_winners:
+            check(f"{cell}: computed rs winner ({rs_winners[0]!r}) matches "
+                  f"meta.m3_winner_rs ({meta['m3_winner_rs']!r})",
+                  rs_winners[0] == meta['m3_winner_rs'])
+        if meta.get('needs_tier2'):
+            ri_winners = m3.loc[m3['is_winner_ri'], 'family'].tolist()
+            check(f"{cell}: exactly one M3 ri-tier winner", len(ri_winners) == 1,
+                  f"got {ri_winners}")
+            if ri_winners:
+                check(f"{cell}: computed ri winner ({ri_winners[0]!r}) matches "
+                      f"meta.m3_winner_ri ({meta['m3_winner_ri']!r})",
+                      ri_winners[0] == meta['m3_winner_ri'])
+        else:
+            check(f"{cell}: no M3 ri-tier winner flagged (tier-2 not needed)",
+                  not m3['is_winner_ri'].any())
+
+    # -- Requirement 1 (negative proof): the brief's own cross-tier rule
+    # (naive groupby('cell')['aic'].idxmin() over every M3 fit, ignoring
+    # re_tier) is computed here and shown to disagree with the real winner
+    # for exactly the two cells the dispatch names -- i.e. transcribing the
+    # brief literally would produce a false winner.
+    m3_all = tab[tab['model'] == 'M3']
+    naive = m3_all.loc[m3_all.groupby('cell')['aic'].idxmin()].set_index('cell')['family']
+    for cell in ('viol_off_2021', 'viol_cov_2021'):
+        check(f"{cell}: the brief's naive cross-tier AIC-min rule picks "
+              f"{naive.loc[cell]!r}, which disagrees with the real rs-tier "
+              f"winner {metas[cell]['m3_winner_rs']!r} -- proves the brief's rule wrong",
+              naive.loc[cell] == 'zinb_re' and metas[cell]['m3_winner_rs'] == 'nbinom1')
+
+    # -- Requirement 2: is_winner_rs is True on exactly two records per cell
+    # (the M1 winner and the M3 winner) -- getting this wrong silently
+    # doubles rows in any downstream table.
+    for cell in metas:
+        n_rs_winners = int(tab.loc[tab['cell'] == cell, 'is_winner_rs'].sum())
+        check(f"{cell}: is_winner_rs is True on exactly 2 records (M1 + M3 winners)",
+              n_rs_winners == 2, f"got {n_rs_winners}")
+
+    # -- Requirement 3: two-tier cells must carry BOTH tier winners as
+    # distinct, re_tier-labelled rows -- never merged into one "winner" row.
+    two_tier_cells = {c for c, m in metas.items() if m.get('needs_tier2')}
+    check("exactly viol_off_2021 and viol_cov_2021 carry a second re_tier winner",
+          two_tier_cells == {'viol_off_2021', 'viol_cov_2021'}, f"got {two_tier_cells}")
+    for cell in two_tier_cells:
+        w = tab[(tab['cell'] == cell) & (tab['model'] == 'M3') &
+                (tab['is_winner_rs'] | tab['is_winner_ri'])]
+        check(f"{cell}: rs and ri winners are two distinct rows with distinct re_tier",
+              len(w) == 2 and set(w['re_tier']) == {'rs', 'ri'},
+              f"got {w[['re_tier', 'family']].to_dict('records')}")
+        by_tier = w.set_index('re_tier')['family'] if len(w) == 2 else pd.Series(dtype=object)
+        check(f"{cell}: tier-1 (rs) winner is nbinom1, tier-2 (ri) winner is zinb_re",
+              set(by_tier.index) == {'rs', 'ri'}
+              and by_tier.get('rs') == 'nbinom1' and by_tier.get('ri') == 'zinb_re')
+
+    # -- Requirement 4: zi_degenerate fits must never drive an LRT (as either
+    # child or parent) and a degenerate fit must never be surfaced as a
+    # credible "better zero-fit" competitor.
+    check("no degenerate fit carries a computed LRT (as the child)",
+          not tab.loc[tab['zi_degenerate'], 'lrt_p'].notna().any())
+    lrt_edges = tab.loc[tab['lrt_vs'] != '', ['cell', 'model', 're_tier', 'lrt_vs']]
+    lrt_parents = set(map(tuple, lrt_edges.to_numpy()))
+    deg = tab.loc[tab['zi_degenerate'], ['cell', 'model', 're_tier', 'family']]
+    deg_keys = set(map(tuple, deg.to_numpy()))
+    check("no degenerate fit is ever used as an LRT parent",
+          len(lrt_parents & deg_keys) == 0, f"overlap: {lrt_parents & deg_keys}")
+    for cell, meta in metas.items():
+        for tier in ('rs', 'ri'):
+            comp = meta.get(f'credible_better_zero_fit_{tier}')
+            if comp is None:
+                continue
+            comp_fit = tab[(tab['cell'] == cell) & (tab['model'] == 'M3') &
+                            (tab['re_tier'] == tier) & (tab['family'] == comp)]
+            check(f"{cell}/{tier}: credible better-zero-fit competitor {comp!r} is not degenerate",
+                  comp_fit.empty or not bool(comp_fit['zi_degenerate'].iloc[0]))
+
+    # -- Requirement 5: AIC comparisons stay within (cell, model, re_tier);
+    # n_obs must be constant within each such group before any AIC number is
+    # compared across rows of that group.
+    bad_groups = []
+    for (cell, model, tier), g in tab.groupby(['cell', 'model', 're_tier']):
+        if g['n_obs'].nunique() > 1:
+            bad_groups.append((cell, model, tier, sorted(g['n_obs'].unique().tolist())))
+    check("n_obs is constant within every (cell, model, re_tier) group "
+          "(required before any AIC comparison in that group)",
+          len(bad_groups) == 0, f"{bad_groups}")
+
+    # -- Requirement 6: the nearest clean competitor is reported UNCONDITIONALLY
+    # (no delta_aic <= 10 cutoff). viol_cov_2021's nearest clean competitor
+    # (nbinom2) sits at ~10.74 AIC above the nbinom1 winner -- just past the
+    # meta JSON's own hard cutoff (which stores None there) -- and must still
+    # be surfaced by this function, with sigma2_u1 disagreeing ~3.2x.
+    comp_family, delta = nearest_clean_competitor(tab, 'viol_cov_2021', 'M3', 'rs', 'nbinom1')
+    check("viol_cov_2021 M3/rs nearest clean competitor is nbinom2",
+          comp_family == 'nbinom2', f"got {comp_family}")
+    check_close("viol_cov_2021 M3/rs competitor delta AIC ~= 10.74",
+                delta, 10.73596790800002, 1e-6, kind='rel')
+    check("viol_cov_2021's clean competitor is reported despite exceeding "
+          "meta's own <=10 AIC cutoff (meta stores None there)",
+          delta > 10 and metas['viol_cov_2021']['clean_rs_competitor_within_10_aic'] is None)
+    winner_fit = raw['viol_cov_2021__M3__nbinom1']
+    comp_fit = raw['viol_cov_2021__M3__nbinom2']
+    check_close("viol_cov_2021: nbinom2 vs winner sigma2_u1 ratio ~= 3.2x",
+                comp_fit['sigma2_u1'] / winner_fit['sigma2_u1'], 3.2140498391688106,
+                1e-6, kind='rel')
+
+    comp_family2, delta2 = nearest_clean_competitor(tab, 'viol_off_2021', 'M3', 'rs', 'nbinom1')
+    check("viol_off_2021 M3/rs nearest clean competitor is nbinom2, delta ~= 7.88 (within 10)",
+          comp_family2 == 'nbinom2', f"got {comp_family2}")
+    check_close("viol_off_2021 M3/rs competitor delta AIC ~= 7.88",
+                delta2, 7.881499135899958, 1e-6, kind='rel')
+
+    # -- Requirement 8: viol_off_2021's apparent M1->M3 "winner change" is a
+    # change in the ELIGIBLE CANDIDATE SET (zinb_re drops out of contention at
+    # M3), not a preference reversal among a fixed set of alternatives.
+    m1_elig = set(metas['viol_off_2021']['eligible_rs_m1'])
+    m3_elig = set(metas['viol_off_2021']['eligible_rs_m3'])
+    check("viol_off_2021: zinb_re is eligible at M1 (rs) but not at M3 (rs) -- "
+          "the M1->M3 'winner change' is a candidate-set change, not a reversal",
+          'zinb_re' in m1_elig and 'zinb_re' not in m3_elig)
+
+    # -- Coefficient table: family used per model must track the requested
+    # tier's own winner (read via is_winner_rs/is_winner_ri, never meta or key
+    # parsing); M2 was only ever fit at the rs tier (see [3]), so the ri-tier
+    # table must omit M2 entirely rather than fabricate or misattribute it.
+    ct_rs = coefficient_table(raw, 'viol_off_2021', 'rs')
+    check("coefficient_table(rs) for viol_off_2021 is non-empty", not ct_rs.empty)
+    check("coefficient_table(rs) for viol_off_2021 has M2 columns (M2 fit at rs)",
+          'M2_b' in ct_rs.columns)
+    ct_ri = coefficient_table(raw, 'viol_off_2021', 'ri')
+    check("coefficient_table(ri) for viol_off_2021 has no M2 columns "
+          "(M2 was never fit at the ri tier)",
+          'M2_b' not in ct_ri.columns)
+    check("coefficient_table(rs) M1 column reflects the M1 rs winner (zinb_re), "
+          "not the M3 winner (nbinom1)",
+          bool((ct_rs.get('M1_family') == 'zinb_re').any())
+          if 'M1_family' in ct_rs.columns else True)
+
+    # -- IRR must equal exp(b) wherever a coefficient is populated.
+    for m in ('M1', 'M2', 'M3'):
+        bcol, ircol = f'{m}_b', f'{m}_irr'
+        if bcol in ct_rs.columns:
+            mask = ct_rs[bcol].notna()
+            ok = np.allclose(ct_rs.loc[mask, ircol], np.exp(ct_rs.loc[mask, bcol]), rtol=1e-9)
+            check(f"coefficient_table {m}: IRR == exp(b)", ok)
+
+    # -- LRTs are valid probabilities and at least some were computed (proves
+    # the nested-pairs machinery actually ran, not just an empty no-op).
+    check("all computed LRT p-values are valid probabilities in [0, 1]",
+          bool(tab['lrt_p'].dropna().between(0, 1).all()))
+    check("at least one LRT was computed (nested pairs exist and converged)",
+          int(tab['lrt_p'].notna().sum()) > 0, f"got {int(tab['lrt_p'].notna().sum())}")
+    # LRTs must only ever pair up nested families (nbinom2<-poisson,
+    # zinb<-nbinom2, zinb_re<-zinb); nbinom1 is never a parent or child here.
+    lrt_rows = tab[tab['lrt_vs'] != '']
+    nested_lookup = {'nbinom2': 'poisson', 'zinb': 'nbinom2', 'zinb_re': 'zinb'}
+    check("every LRT pairs a family with its correct nested parent",
+          bool((lrt_rows['family'].map(nested_lookup) == lrt_rows['lrt_vs']).all()))
+    check("nbinom1 never appears as an LRT child or parent (not nested in NB2)",
+          not ((tab['family'] == 'nbinom1') & (tab['lrt_vs'] != '')).any()
+          and 'nbinom1' not in set(lrt_rows['lrt_vs']))
+
+    # -- Overdispersion sanity, read from the winner (rs) tier only: NB2
+    # should predict zero counts closer to a 1:1 ratio than Poisson.
+    v = tab[(tab['cell'] == 'viol_cov_2021') & (tab['model'] == 'M3') &
+            (tab['re_tier'] == 'rs') & tab['converged']]
+    p = v.loc[v['family'] == 'poisson', 'zero_ratio']
+    n = v.loc[v['family'] == 'nbinom2', 'zero_ratio']
+    if len(p) and len(n):
+        check("NB2 predicts zeros closer to 1:1 than Poisson (2021 violations, rs tier)",
+              abs(float(n.iloc[0]) - 1) < abs(float(p.iloc[0]) - 1),
+              f"poisson ratio {float(p.iloc[0]):.2f}, nb2 ratio {float(n.iloc[0]):.2f}")
+
+    # -- If the CSV has already been written (i.e. report_count_models.py has
+    # run), it must carry exactly the same rows as selection_table() itself --
+    # not gated as a hard prerequisite of this section, since the process
+    # calls for validation to pass BEFORE the reporter is run for the first
+    # time.
+    out_path = GEN + 'count_model_comparison.csv'
+    if os.path.exists(out_path):
+        written = pd.read_csv(out_path)
+        check("count_model_comparison.csv has one row per genuine fit (95)",
+              len(written) == len(tab), f"got {len(written)}")
+
+
 def main():
     validate_panels()
     validate_reference_convergence()
     validate_gaussian_roundtrip()
     validate_ladder()
+    validate_selection()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")
