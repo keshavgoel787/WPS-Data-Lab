@@ -26,8 +26,8 @@ def check(label, condition, detail=''):
 
 
 def check_close(label, got, want, tol, kind='abs'):
-    # Unused by this task's checks -- scaffold for later sections (e.g. comparing
-    # fitted ZINB parameters/statistics against known tolerances).
+    # Used throughout section [2] to compare live statsmodels/glmmTMB fits
+    # against the GAUSSIAN_REFERENCE values.
     delta = abs(got - want) if kind == 'abs' else abs(got - want) / abs(want)
     check(f"{label} ({kind} delta {delta:.2e} <= {tol:.0e})", delta <= tol,
           f"got {got!r}, want {want!r}")
@@ -123,11 +123,17 @@ def validate_panels():
 # ============================================================
 # [2] GAUSSIAN ROUND-TRIP: glmmTMB must reproduce statsmodels.MixedLM
 # ============================================================
-# Reference values captured 2026-08-20 from paper_table_models_2021.py, whose
-# output is what the current manuscript tables report. Tolerances are loose
-# enough for optimizer differences (lbfgs vs TMB) and tight enough that a real
-# specification difference -- wrong sample, wrong RE structure, ML instead of
-# REML -- cannot slip through.
+# insp_M1_gaussian's reference was captured 2026-08-20 from
+# paper_table_models_2021.py, whose output is what the current manuscript
+# tables report; that fit (method='lbfgs') is the converged REML optimum
+# there (it raises a boundary ConvergenceWarning, not a gradient-failure one
+# -- see the allow-list below -- and glmmTMB independently reproduces it to
+# ~7 significant figures). viol_M1_gaussian's reference is NOT from that
+# pipeline -- see the correction note immediately below; it was independently
+# re-derived because the manuscript's own value there is a non-converged
+# optimizer artifact. Tolerances are loose enough for optimizer differences
+# (lbfgs/cg vs TMB) and tight enough that a real specification difference --
+# wrong sample, wrong RE structure, ML instead of REML -- cannot slip through.
 #
 # viol_M1_gaussian CORRECTION (2026-08-20, same day, after independent audit):
 # the values originally copied here from paper_table_params_2021.json are NOT
@@ -142,22 +148,30 @@ def validate_panels():
 # values -- and that is exactly what glmmTMB's REML fit reproduces. The
 # values below are the 'cg' solution, cross-checked against 'powell'
 # (max delta 5.1e-5 across b, se, and both variance components -- see
-# task-3-report.md). insp_M1_gaussian is untouched: its own 'lbfgs' fit
-# raises no such warning and is the genuine optimum.
+# task-3-report.md). insp_M1_gaussian is untouched.
+# Values below are stored at full float precision, not rounded to 6 decimals
+# as an earlier revision had them. This matters now that comparisons are
+# relative (see [2b]): rounding a term as small as time3 (~9e-5) to 6 decimals
+# is itself a ~1e-3 RELATIVE perturbation, which was silently failing the
+# round-trip against the *rounding*, not against any real disagreement.
 GAUSSIAN_REFERENCE = {
     'insp_M1_gaussian': {
         'n_obs': 539, 'n_states': 49,
-        'cond': {'time': -0.063369, 'time2': -0.001913, 'time3': 0.000092},
-        'se': {'time': 0.021949, 'time2': 0.004265, 'time3': 0.001060},
-        'sigma2_u0': 1.118142, 'sigma2_e': 0.339958,
+        'cond': {'time': -0.0633693099714064, 'time2': -0.0019126946627020943,
+                 'time3': 9.172403282191922e-05},
+        'se': {'time': 0.021949007615142135, 'time2': 0.004265427008013349,
+               'time3': 0.0010597538603312666},
+        'sigma2_u0': 1.118142193641265, 'sigma2_u1': 0.006876814299310055,
+        'sigma_u01': 0.031418089077219484, 'sigma2_e': 0.33995847999400874,
     },
     'viol_M1_gaussian': {
         'n_obs': 533, 'n_states': 49,
-        'cond': {'log_inspections': 0.518338, 'time': 0.065731,
-                 'time2': -0.017235, 'time3': -0.005587},
-        'se': {'log_inspections': 0.055738, 'time': 0.030008,
-               'time2': 0.005578, 'time3': 0.001412},
-        'sigma2_u0': 1.217723, 'sigma2_e': 0.581066,
+        'cond': {'log_inspections': 0.5183382280797373, 'time': 0.06573090160967955,
+                 'time2': -0.017235318225044677, 'time3': -0.005587169569039488},
+        'se': {'log_inspections': 0.055737911872413476, 'time': 0.03000773750377506,
+               'time2': 0.005577524753122486, 'time3': 0.0014123472614939068},
+        'sigma2_u0': 1.2177225008860848, 'sigma2_u1': 0.014272021536143884,
+        'sigma_u01': 0.06345062640685996, 'sigma2_e': 0.5810655980313203,
     },
 }
 
@@ -171,12 +185,25 @@ REFERENCE_SPEC = {
                           ['log_inspections', 'time', 'time2', 'time3'], 'cg'),
 }
 
+# ConvergenceWarning substrings that are allow-listed: known, understood, and
+# checked live (not just asserted by comment) not to indicate a genuinely
+# broken fit. insp_M1/lbfgs raises exactly
+# "The MLE may be on the boundary of the parameter space." -- glmmTMB
+# independently reproduces the same optimum (pdHess = TRUE, see [2b]) and,
+# checked below, no random-effect variance is actually pinned at zero. A
+# warning on any OTHER substring (e.g. "Gradient optimization failed", the
+# one that caused the viol_M1 episode) is NOT allow-listed and fails the guard.
+ALLOWED_CONVERGENCE_SUBSTRINGS = ('boundary of the parameter space',)
+
 
 def _fit_statsmodels_reference(dv, rhs, method):
     """Refit the exact statsmodels.MixedLM spec paper_table_models_2021.py
     uses (same dropna, same '~time' random slope, same REML default), so the
-    reference values above can be checked for convergence live rather than
-    trusted as hand-copied numbers. Returns (result, warning_messages)."""
+    reference values above can be checked -- for convergence AND for their
+    numeric values -- live, rather than trusted as hand-copied numbers.
+    Returns (result, data, warning_records), where warning_records is a list
+    of (category, message) pairs so callers match on warning CLASS, not a
+    hand-picked substring of the message text."""
     import warnings as _warnings
 
     from build_count_model_panel import build_panel
@@ -190,7 +217,7 @@ def _fit_statsmodels_reference(dv, rhs, method):
         _warnings.simplefilter('always')
         res = MixedLM.from_formula(formula, data=d, groups=d['state'],
                                     re_formula='~time').fit(method=method)
-    return res, [str(w.message) for w in wrec]
+    return res, d, [(w.category, str(w.message)) for w in wrec]
 
 
 def validate_reference_convergence():
@@ -198,20 +225,65 @@ def validate_reference_convergence():
     # statsmodels ConvergenceWarning silently swallowed by a blanket
     # `warnings.filterwarnings('ignore')`, letting a non-converged fit become
     # "ground truth". This project's pipeline must NEVER add that idiom --
-    # this check fits the references live and asserts none is hiding.
+    # this check fits the references live, matches warnings by class (via
+    # statsmodels.tools.sm_exceptions.ConvergenceWarning, not a substring that
+    # can miss real messages), and prints every recorded warning so nothing
+    # is invisible even when the check PASSes.
     import re as _re
+
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
     print("\n[2a] Reference-fit convergence guard (statsmodels, live refit)")
     for cell, (dv, rhs, method) in REFERENCE_SPEC.items():
-        res, warns = _fit_statsmodels_reference(dv, rhs, method)
-        conv_warns = [w for w in warns if 'onverg' in w or 'grad' in w.lower()]
-        check(f"{cell} reference fit (method={method!r}) raised no convergence warning",
-              len(conv_warns) == 0, f"warnings: {conv_warns}")
-        grads = [float(m.group(1)) for w in conv_warns
+        ref = GAUSSIAN_REFERENCE[cell]
+        res, d, warns = _fit_statsmodels_reference(dv, rhs, method)
+        conv_warns = [msg for cat, msg in warns if issubclass(cat, ConvergenceWarning)]
+        unexplained = [w for w in conv_warns
+                       if not any(s in w for s in ALLOWED_CONVERGENCE_SUBSTRINGS)]
+        grads = [float(m.group(1)) for w in unexplained
                  for m in [_re.search(r'\|grad\|\s*=\s*([0-9.eE+-]+)', w)] if m]
-        if grads:
-            check(f"{cell} reference fit (method={method!r}) |grad| < 1.0",
-                  max(grads) < 1.0, f"|grad| values seen: {grads}")
+
+        # An allow-listed boundary warning is only actually benign if no
+        # random-effect variance is pinned at (numerically) zero -- checked
+        # live against this run's own fit, not just against the specific
+        # numbers recorded in the comment above.
+        diag = np.diag(res.cov_re.values)
+        boundary_pinned = bool(conv_warns) and not unexplained and not np.all(diag > 1e-6)
+        ok = (len(unexplained) == 0) and not boundary_pinned
+
+        if conv_warns:
+            label = (f"{cell} reference fit (method={method!r}): "
+                     f"convergence warning(s) present -- {conv_warns!r}")
+        else:
+            label = f"{cell} reference fit (method={method!r}) raised no convergence warning"
+        if unexplained:
+            detail = f"NOT allow-listed: {unexplained!r}" + (f"; |grad|={grads!r}" if grads else '')
+        elif boundary_pinned:
+            detail = f"allow-listed warning but a variance component is ~0: cov_re diag={diag.tolist()!r}"
+        else:
+            detail = ''
+        check(label, ok, detail)
+
+        # The live refit's own estimates, pinned against GAUSSIAN_REFERENCE
+        # independently of the glmmTMB comparison in [2b] -- so a future edit
+        # cannot quietly retune the hardcoded reference toward glmmTMB output.
+        check(f"{cell} reference n_obs == {ref['n_obs']}", int(res.nobs) == ref['n_obs'],
+              f"got {int(res.nobs)}")
+        check(f"{cell} reference n_states == {ref['n_states']}",
+              d['state'].nunique() == ref['n_states'], f"got {d['state'].nunique()}")
+        for term, want in ref['cond'].items():
+            check_close(f"{cell} reference b[{term}]", float(res.fe_params[term]), want,
+                        1e-4, kind='rel')
+            check_close(f"{cell} reference se[{term}]", float(res.bse[term]), ref['se'][term],
+                        1e-4, kind='rel')
+        check_close(f"{cell} reference sigma2_u0", float(res.cov_re.iloc[0, 0]),
+                    ref['sigma2_u0'], 1e-4, kind='rel')
+        check_close(f"{cell} reference sigma2_u1", float(res.cov_re.iloc[1, 1]),
+                    ref['sigma2_u1'], 1e-4, kind='rel')
+        check_close(f"{cell} reference sigma_u01", float(res.cov_re.iloc[0, 1]),
+                    ref['sigma_u01'], 1e-4, kind='rel')
+        check_close(f"{cell} reference sigma2_e", float(res.scale), ref['sigma2_e'],
+                    1e-4, kind='rel')
 
 
 def validate_gaussian_roundtrip():
@@ -221,17 +293,36 @@ def validate_gaussian_roundtrip():
     import os
 
     print("\n[2b] Gaussian round-trip (glmmTMB REML vs statsmodels MixedLM)")
-    out = os.path.join(tempfile.mkdtemp(), 'gaussian_roundtrip.json')
-    proc = subprocess.run(
-        ['Rscript', '/Users/keshavgoel/Research/scripts/count_models_zinb.R',
-         GEN + 'count_model_panel_2021.csv', out, '--gaussian-only'],
-        capture_output=True, text=True)
-    if proc.returncode != 0:
-        check("R script ran", False, proc.stderr.strip()[-500:])
-        return
-    check("R script ran", True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out = os.path.join(tmpdir, 'gaussian_roundtrip.json')
+        proc = subprocess.run(
+            ['Rscript', '/Users/keshavgoel/Research/scripts/count_models_zinb.R',
+             GEN + 'count_model_panel_2021.csv', out, '--gaussian-only'],
+            capture_output=True, text=True)
+        if proc.returncode != 0:
+            check("R script ran", False, proc.stderr.strip()[-500:])
+            return
+        check("R script ran", True)
 
-    fits = json.load(open(out))
+        # The TMB ABI-mismatch warning (glmmTMB built against TMB 1.9.19,
+        # 1.9.23 installed here) is EXPECTED on every invocation and is not
+        # suppressed anywhere in this pipeline (see count_models_zinb.R and
+        # task-3-report.md for the verdict that it is empirically benign).
+        # Assert stderr holds nothing ELSE, so a genuinely new problem (e.g. a
+        # real fit-time warning) cannot hide behind the expected one, and the
+        # "benign" verdict keeps being re-checked on every run instead of
+        # resting on a one-time judgement.
+        known_markers = ('check_dep_version', 'TMB package version',
+                          'package version mismatch', 'Warning message:',
+                          're-install glmmTMB', 'restore original')
+        unexpected_stderr = [ln for ln in proc.stderr.splitlines()
+                             if ln.strip() and not any(m in ln for m in known_markers)]
+        check("R stderr contains nothing beyond the known TMB ABI-mismatch warning",
+              len(unexpected_stderr) == 0,
+              f"unexpected lines: {unexpected_stderr!r}; full stderr: {proc.stderr!r}")
+
+        fits = json.load(open(out))
+
     for cell, ref in GAUSSIAN_REFERENCE.items():
         fit = fits.get(cell)
         if fit is None:
@@ -246,10 +337,20 @@ def validate_gaussian_roundtrip():
             if got is None:
                 check(f"{cell} {term} estimated", False, f"terms: {sorted(fit['cond'])}")
                 continue
-            check_close(f"{cell} b[{term}]", got, want, 1e-3)
-            check_close(f"{cell} se[{term}]", fit['cond'][term]['se'], ref['se'][term], 5e-3)
-        # Variance components come from a different optimizer path, so relative.
+            # Relative, not absolute: an absolute 1e-3/5e-3 tolerance cannot
+            # fail on the small cubic-time terms (b[time3] ~ 1e-4, se ~ 1e-3)
+            # -- glmmTMB could return zero, the wrong sign, or 10x and still
+            # pass. Relative tolerance scales with the term's own magnitude.
+            check_close(f"{cell} b[{term}]", got, want, 1e-3, kind='rel')
+            check_close(f"{cell} se[{term}]", fit['cond'][term]['se'], ref['se'][term],
+                        1e-3, kind='rel')
+        # All three (1+time|state) variance/covariance terms, so the random-
+        # slope structure is checked directly rather than inferred from
+        # sigma2_u0 alone. Looser tolerance: these come from a different
+        # optimizer path (TMB's Laplace/AD vs statsmodels' profile likelihood).
         check_close(f"{cell} sigma2_u0", fit['sigma2_u0'], ref['sigma2_u0'], 2e-2, kind='rel')
+        check_close(f"{cell} sigma2_u1", fit['sigma2_u1'], ref['sigma2_u1'], 2e-2, kind='rel')
+        check_close(f"{cell} sigma_u01", fit['sigma_u01'], ref['sigma_u01'], 2e-2, kind='rel')
         check_close(f"{cell} sigma2_e", fit['sigma2_e'], ref['sigma2_e'], 2e-2, kind='rel')
 
 

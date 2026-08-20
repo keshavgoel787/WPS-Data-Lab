@@ -48,10 +48,21 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, offset_col = NULL,
   form <- stats::as.formula(sprintf("%s ~ %s%s + %s", dv,
                                     paste(rhs, collapse = " + "), off, re))
 
+  # Collect (not discard) every warning glmmTMB raises during the fit --
+  # muffling them outright is the same idiom as the module-level
+  # `warnings.filterwarnings('ignore')` in paper_table_models_2021.py that let
+  # a non-converged fit become "ground truth" (see task-3-report.md). They are
+  # surfaced in `message` below so Task 4's ZI/NB fits, which are more fragile
+  # than this Gaussian gate, cannot silently hide a false-convergence or
+  # boundary warning behind a numerically "converged" flag.
+  warn_msgs <- character(0)
   fit <- tryCatch(
     withCallingHandlers(
       glmmTMB(form, ziformula = zi, family = family, data = dd, REML = REML),
-      warning = function(w) invokeRestart("muffleWarning")),
+      warning = function(w) {
+        warn_msgs <<- c(warn_msgs, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }),
     error = function(e) e)
 
   base <- list(formula = deparse1(form), zi_formula = deparse1(zi),
@@ -79,17 +90,28 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, offset_col = NULL,
   # MixedLM's `scale`.
   s2_e <- tryCatch(sigma(fit)^2, error = function(e) NA_real_)
 
+  # Family-name resolution robust to call style: `family` may arrive as a bare
+  # function (gaussian), a called family object (gaussian(), nbinom2(link=
+  # "log")), or a string ("gaussian"). identical(family, gaussian) only
+  # matches the first of these and silently falls through -- running zero
+  # simulation on a continuous DV, or skipping it for a count family called
+  # with an explicit link -- for the other two.
+  fam_obj <- if (is.function(family)) family() else family
+  fam_name <- if (is.character(fam_obj)) fam_obj else fam_obj$family
+  is_gaussian <- identical(fam_name, "gaussian")
+
   # Observed vs expected zeros -- the direct evidence for zero-inflation.
   # Skipped for Gaussian, where "zero" is not a meaningful outcome.
   obs_zeros <- exp_zeros <- NA_real_
-  if (!identical(family, gaussian) && !identical(family, "gaussian")) {
+  if (!is_gaussian) {
     obs_zeros <- sum(dd[[dv]] == 0, na.rm = TRUE)
     sims <- tryCatch(as.data.frame(simulate(fit, nsim = N_SIM, seed = SEED)),
                      error = function(e) NULL)
     if (!is.null(sims)) exp_zeros <- mean(colSums(sims == 0))
   }
 
-  c(base, list(converged = converged, message = "",
+  c(base, list(converged = converged,
+               message = if (length(warn_msgs)) paste(warn_msgs, collapse = " | ") else "",
                pd_hess = pd_hess, conv_code = conv_code,
                aic = AIC(fit), bic = BIC(fit),
                loglik = as.numeric(logLik(fit)), df = attr(logLik(fit), "df"),
