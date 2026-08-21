@@ -432,6 +432,57 @@ def coefficient_table(raw, cell, re_tier):
     return pd.DataFrame(rows)
 
 
+ZINB_FAMILIES = ['zinb', 'zinb_re']
+
+
+def matched_zinb_vs_nb1(tab, meta):
+    """Every comparison of a zero-inflated negative binomial against plain NB1
+    that is actually legitimate: same cell, same model, same re_tier, same
+    n_obs, both converged, neither ZI-degenerate.
+
+    This exists because the memo's original mechanism sentence -- "a negative
+    binomial's own overdispersion parameter accounts for those same zeros about
+    as economically as an explicit inflation term does" -- is false, and
+    exhaustively so. Wherever a ZI-NB CAN be fit at matched model and tier it
+    beats NB1 by a wide margin. NB1's win in the Model-3 random-slope column is
+    therefore a DEFAULT (the ZI-NB rungs are not estimable there once the
+    Model-3 covariates enter), not a merit win.
+
+    A `collapsed` flag rides on each row: `insp_2021`'s ZINB+ZI-RE is
+    numerically identical to its ZINB (the ZI random-effect variance went to
+    zero), so those two rows are duplicates of their ZINB twin rather than
+    independent evidence. They are KEPT and flagged rather than dropped, so the
+    row count is reproducible either way and the reader can see which is which.
+    """
+    rows = []
+    for cell in sorted(meta):
+        for model in ('M1', 'M2', 'M3'):
+            for tier in ('rs', 'ri'):
+                g = tab[(tab['cell'] == cell) & (tab['model'] == model) &
+                        (tab['re_tier'] == tier) & tab['converged'] &
+                        (~tab['zi_degenerate'])]
+                nb1 = g[g['family'] == 'nbinom1']
+                if nb1.empty:
+                    continue
+                nb1 = nb1.iloc[0]
+                for zf in ZINB_FAMILIES:
+                    z = g[g['family'] == zf]
+                    if z.empty:
+                        continue
+                    z = z.iloc[0]
+                    if z['n_obs'] != nb1['n_obs']:
+                        continue
+                    rows.append({
+                        'cell': cell, 'model': model, 're_tier': tier,
+                        'zi_family': zf, 'n_obs': int(z['n_obs']),
+                        'nb1_aic': float(nb1['aic']), 'zi_aic': float(z['aic']),
+                        'margin': float(nb1['aic'] - z['aic']),
+                        'collapsed': bool(z['collapsed_to'] or nb1['collapsed_to']),
+                        'collapsed_to': z['collapsed_to'] or '',
+                    })
+    return sorted(rows, key=lambda r: -r['margin'])
+
+
 def _absent_families(tab, meta, cell, model, re_tier='rs'):
     """For one (cell, model, re_tier): every family NOT in
     `eligible_rs_{model}`, paired with the reason it is absent, read off the fit
@@ -643,6 +694,37 @@ def write_memo(raw, meta, tab, ws, ev):
         "and two problems it turned up along the way that are decisions for you rather "
         "than for me.\n")
 
+    # The headline answer to the PI's question, generated so it cannot drift
+    # from the matched-comparison evidence that supports it.
+    _mc = matched_zinb_vs_nb1(tab, meta)
+    _mc_wins = sum(1 for r in _mc if r['margin'] > 0)
+    _mlo = min(r['margin'] for r in _mc)
+    _rs3 = m3w[m3w['re_tier'] == 'rs']
+    _zi_sel = sorted(set(_rs3[_rs3['family'].isin(('zip', 'zinb', 'zinb_re'))]['cell']))
+    add("## Bottom line\n")
+    add(f"**Jafari's model class fits these data better than the plain negative "
+        f"binomial everywhere it can be estimated.** Across every legitimate "
+        f"matched comparison in the ladder -- same cell, same model, same "
+        f"random-effects tier, same N -- a zero-inflated negative binomial beats "
+        f"plain NB1 {_mc_wins} times out of {len(_mc)}, by at least "
+        f"{_f(_mlo, '.1f')} AIC, with no exception. The binding constraint on "
+        f"using it is **identifiability at the random-slope structure**, not "
+        f"evidence against zero-inflation.\n")
+    add(f"Concretely: at the structure the manuscript mandates, "
+        f"`(1 + time | state)`, the zero-inflated negative-binomial rungs stop "
+        f"being estimable for the violations cells once the Model-3 covariates "
+        f"enter -- so a plain negative binomial wins those columns **by default, "
+        f"having been the only kind of model left in the race**. For the "
+        f"inspections cells the ZI rungs do survive to Model 3 and are duly "
+        f"selected ({', '.join('`' + c + '`' for c in _zi_sel)}). Nowhere in this "
+        f"pipeline did a zero-inflated model get tested and lose on merit.\n")
+    add("Two further findings are corrections to work already in print rather "
+        "than additions to it, and both need your decision: the published "
+        "Table 3 Model 1 comes from a fit that never converged, and the "
+        "violations time trend is materially less COVID-robust than "
+        "`CLAUDE.md` currently records. Both are documented below with the "
+        "numbers.\n")
+
     # ------------------------------------------------- what was replicated
     add("## What was and was not replicated\n")
     add("Same package and same model class: Jafari et al. fit their models in R with "
@@ -839,13 +921,46 @@ def write_memo(raw, meta, tab, ws, ev):
     n_fam = len(ALL_FAMILIES)
     ALL_CELLS = sorted(meta)
     absent_m3 = {c: _absent_families(tab, meta, c, 'M3') for c in ALL_CELLS}
-    add(f"NB1 wins the AIC comparison because a negative binomial's own "
-        f"overdispersion parameter accounts for those same zeros about as "
-        f"economically as an explicit inflation term does -- and, **at Model 3**, "
-        f"because the zero-inflated **negative binomial** rungs are not available "
-        f"at the mandated random-slope structure for these cells. That scope "
-        f"matters: it is a Model-3 statement, not a blanket one, and the Model-1 "
-        f"paragraph below is the counter-example.\n")
+    mc = matched_zinb_vs_nb1(tab, meta)
+    mc_wins = [r for r in mc if r['margin'] > 0]
+    mc_dist = [r for r in mc if not r['collapsed']]
+    mc_dist_wins = [r for r in mc_dist if r['margin'] > 0]
+    mlo, mhi = min(r['margin'] for r in mc), max(r['margin'] for r in mc)
+    add(f"### NB1's win is a default, not a merit win\n")
+    add(f"It is tempting to explain the result by saying a negative binomial's "
+        f"own overdispersion parameter accounts for those zeros about as "
+        f"economically as an explicit inflation term does. **That explanation is "
+        f"wrong, and the artifacts say so exhaustively.** Comparing a "
+        f"zero-inflated negative binomial against plain NB1 wherever the "
+        f"comparison is legitimate -- same cell, same model, same random-effects "
+        f"tier, same N, both converged, neither ZI-degenerate -- the "
+        f"zero-inflated model wins **{len(mc_wins)} of {len(mc)}** times, by "
+        f"{_f(mlo, '.1f')} to {_f(mhi, '.1f')} AIC. There is no exception.\n")
+    add("| Cell | Model | RE structure | ZI family | N | NB1 AIC | ZI-NB AIC | "
+        "AIC margin to ZI-NB | Distinct model? |")
+    add("|---|---|---|---|---|---|---|---|---|")
+    for r in mc:
+        add(f"| {r['cell']} | {r['model']} | {_re_label(r['re_tier'])} | "
+            f"{FAMILY_LABEL.get(r['zi_family'], r['zi_family'])} | {r['n_obs']} | "
+            f"{_f(r['nb1_aic'], '.2f')} | {_f(r['zi_aic'], '.2f')} | "
+            f"**{_f(r['margin'], '+.2f')}** | "
+            + ("yes" if not r['collapsed'] else
+               f"no -- numerically identical to "
+               f"{FAMILY_LABEL.get(r['collapsed_to'], r['collapsed_to'])}")
+            + " |")
+    add("")
+    add(f"{len(mc) - len(mc_dist)} of those {len(mc)} rows are not independent "
+        f"evidence -- they are a ZINB+ZI-RE fit that collapsed onto its own ZINB "
+        f"twin, so it reports the same likelihood. Counting only the "
+        f"{len(mc_dist)} distinct models, the zero-inflated family still wins "
+        f"{len(mc_dist_wins)} of {len(mc_dist)}. Either way the direction is "
+        f"unanimous.\n")
+    add(f"So the honest mechanism is not that NB1 explains the zeros comparably "
+        f"well. **NB1 wins the Model-3 random-slope comparison by default**: the "
+        f"zero-inflated negative-binomial rungs cannot be estimated at that "
+        f"specific structure once the Model-3 covariates enter, so they are not "
+        f"in the race. Where they are in the race, they win. That is a statement "
+        f"about identifiability, not about zero-inflation being unnecessary.\n")
     add("### At Model 3, for the 2021 violations cells, the family comparison is an identifiability statement\n")
     for cell in ('viol_off_2021', 'viol_cov_2021'):
         elig = meta[cell]['eligible_rs_m3']
@@ -857,6 +972,29 @@ def write_memo(raw, meta, tab, ws, ev):
             + ("absent one is " if len(ab) == 1 else f"{len(ab)} absent ones are ")
             + "; ".join(f"{FAMILY_LABEL.get(f, f)} ({why})" for f, why in ab)
             + ".")
+    add("")
+    add("The same accounting for every cell and both build-up steps, so nothing "
+        "here rests on a sentence about two of them. All rows are at the mandated "
+        "`(1 + time | state)` structure; \"eligible\" means converged, "
+        "non-degenerate, and not numerically identical to a simpler family.\n")
+    add("| Cell | Model | Eligible families | Eligible count | Absent families | Why absent |")
+    add("|---|---|---|---|---|---|")
+    for cell in ALL_CELLS:
+        for model in ('M1', 'M3'):
+            elig = meta[cell].get(f'eligible_rs_{model.lower()}') or []
+            ab = _absent_families(tab, meta, cell, model)
+            add(f"| {cell} | {model} | "
+                + (", ".join(FAMILY_LABEL.get(e, e) for e in elig) or "--")
+                + f" | {len(elig)} of {n_fam} | "
+                + (", ".join(FAMILY_LABEL.get(f, f) for f, _ in ab) or "none")
+                + " | "
+                # The reason strings mention '(1 | state)'; a bare pipe inside a
+                # markdown cell splits the row (and breaks the positional parse
+                # in validate_count_models.py [7]), so escape it here. The prose
+                # bullets above are not table cells and keep the bare pipe.
+                + ("; ".join(f"{FAMILY_LABEL.get(f, f)}: {why}".replace('|', r'\|')
+                             for f, why in ab) or "--")
+                + " |")
     add("")
     ab_off = absent_m3['viol_off_2021']
     ab_cov = absent_m3['viol_cov_2021']
@@ -883,7 +1021,8 @@ def write_memo(raw, meta, tab, ws, ev):
     changed = [c for c in ALL_CELLS
                if set(meta[c].get('eligible_rs_m1') or [])
                != set(meta[c].get('eligible_rs_m3') or [])]
-    add("#### And at Model 1 the picture is different -- in the direction that favours zero-inflation\n")
+    add("#### At Model 1 the candidate sets differ -- and for one cell that "
+        "difference favours zero-inflation\n")
     add("The candidate set is not a property of the cell; it is a property of the "
         "(cell, model) pair, because adding covariates changes what the optimizer "
         "can support. Where the Model-1 and Model-3 sets differ:\n")
@@ -971,25 +1110,60 @@ def write_memo(raw, meta, tab, ws, ev):
             f"{_f(r['obs_zeros'], '.0f')} | {_f(r['exp_zeros'], '.1f')} +/- "
             f"{_f(r['exp_zeros_se'], '.2f')} | {_f(r['zero_ratio'], '.2f')}x |")
     add("")
-    zi19 = [e for c in ('viol_off_2019', 'viol_cov_2019') for e in meta[c]['zi_evidence']]
+    # NOTE: __meta.zi_evidence is MODEL-3 ONLY. An earlier draft cited its SEs
+    # and p-values as though they covered the whole ladder for these cells, and
+    # that is false -- viol_off_2019's ZIP is estimable at Model 1. Scope the
+    # claim to Model 3 and derive the Model-1 exceptions from the fit records.
+    CELLS_19 = ('viol_off_2019', 'viol_cov_2019')
+    zi19 = [e for c in CELLS_19 for e in meta[c]['zi_evidence']]
     ses = [e['se'] for e in zi19 if e.get('se') is not None]
     ps = [e['p'] for e in zi19 if e.get('p') is not None]
-    degen_cells = sorted(set(tab[tab['zi_degenerate']]['cell']))
     n_zi_fams_19 = len({e['family'] for e in zi19})
+    degen_by_cell = tab[tab['zi_degenerate']].groupby('cell').size().to_dict()
+    degen_cells = sorted(degen_by_cell)
     add(f"Consistent with that, all {n_zi_fams_19} zero-inflated families collapse "
-        f"at the mandated structure in these cells: standard errors from "
-        f"{_f(min(ses), '.0f')} to {_f(max(ses), '.0f')} and p-values from "
+        f"**at Model 3** at the mandated structure in these cells: standard errors "
+        f"from {_f(min(ses), '.0f')} to {_f(max(ses), '.0f')} and p-values from "
         f"{_f(min(ps), '.3f')} to {_f(max(ps), '.3f')} -- a zero-inflation intercept "
-        f"sitting numerically on the boundary, estimating nothing. Across the whole "
-        f"ladder {n_degen} fits are flagged ZI-degenerate, and they are all in these "
-        f"{len(degen_cells)} cells "
-        f"({', '.join('`' + c + '`' for c in degen_cells)}).\n")
+        f"sitting numerically on the boundary, estimating nothing. (Those figures "
+        f"come from `__meta.zi_evidence`, which records the Model-3 rung only, so "
+        f"they support a Model-3 claim and no more.) Across the whole ladder "
+        f"{n_degen} fits are flagged ZI-degenerate, distributed "
+        + ", ".join(f"{v} in `{k}`" for k, v in sorted(degen_by_cell.items()))
+        + f" -- all of them in these {len(degen_cells)} cells.\n")
+    # The asymmetry in that 6/5 split IS the Model-1 exception. Derive it.
+    zi_ok_19 = tab[(tab['cell'].isin(CELLS_19)) & (tab['re_tier'] == 'rs') &
+                   (tab['family'].isin(('zip',) + tuple(ZINB_FAMILIES))) &
+                   tab['converged'] & (~tab['zi_degenerate'])]
+    if not zi_ok_19.empty:
+        add(f"**But not at every model, and this is the exception the "
+            f"{'/'.join(str(v) for _, v in sorted(degen_by_cell.items()))} split "
+            f"records.** {len(zi_ok_19)} zero-inflated fit"
+            + ("" if len(zi_ok_19) == 1 else "s")
+            + f" in these cells "
+            + ("is" if len(zi_ok_19) == 1 else "are")
+            + " estimable at the mandated structure and NOT degenerate:")
+        add("")
+        add("| Cell | Model | RE structure | Family | ZI intercept | SE | p |")
+        add("|---|---|---|---|---|---|---|")
+        for _, r in zi_ok_19.sort_values(['cell', 'model', 'family']).iterrows():
+            zi = (raw[r['key']].get('zi') or {}).get('(Intercept)') or {}
+            add(f"| {r['cell']} | {r['model']} | {_re_label(r['re_tier'])} | "
+                f"{FAMILY_LABEL.get(r['family'], r['family'])} | "
+                f"{_f(zi.get('b'), '+.4f')} | {_f(zi.get('se'), '.4f')} | "
+                f"{_f(zi.get('p'), '.3g')}{stars(zi.get('p'))} |")
+        add("")
+        add("So the collapse is a Model-3 phenomenon in these cells too, exactly "
+            "as it is for the 2021 violations cells: the zero-inflation term is "
+            "estimable at Model 1 and stops being estimable once the covariates "
+            "enter. It is the same pattern, not a different one.\n")
     add("**Scope, precisely.** The fallback `(1 | state)` tier was never attempted "
-        "for these cells -- they did not need it, because a non-ZI family fit fine "
-        "at the mandated structure. So the supportable claim is *no estimable "
-        "zero-inflation at the specified structure, where all three ZI families "
-        "collapse*. It is **not** a claim that zero-inflation is degenerate at every "
-        "possible tier, and this memo does not make that claim.\n")
+        f"for these cells -- they did not need it, because a non-ZI family fit fine "
+        f"at the mandated structure. So the supportable claim is *no estimable "
+        f"zero-inflation at Model 3 at the specified structure, where all "
+        f"{n_zi_fams_19} ZI families collapse*. It is **not** a claim that "
+        f"zero-inflation is degenerate at every model, nor at every tier, and this "
+        f"memo makes neither.\n")
 
     # --------------------------------------------------------- coefficients
     add("## Coefficients under the selected family\n")
@@ -1297,8 +1471,12 @@ def write_memo(raw, meta, tab, ws, ev):
         + f". The other {aud['n_fits'] - aud['n_nonconverged']} converge cleanly.\n")
     add(f"The `Reproduces published` column is the only guard that the "
         f"specification re-declared in "
-        f"`scripts/build_count_model_memo_evidence.py` still matches "
-        f"`paper_table_models_2021.py`: it is True on "
+        f"`scripts/build_count_model_memo_evidence.py` still matches the "
+        f"manuscript's. Be precise about what it compares: it checks our refits "
+        f"against `paper_table_params_2021.json`, i.e. against "
+        f"`paper_table_models_2021.py`'s **published output**, not against its "
+        f"source. Editing that script without regenerating the JSON would leave "
+        f"this guard green. It is True on "
         f"{aud['n_reproduces_published']} of {aud['n_fits']} fits, and validator "
         f"`[7]` fails if that is not all of them. It is True for the failed row "
         f"too -- reproducing the published number is exactly how we know the "
@@ -1482,13 +1660,20 @@ def write_memo(raw, meta, tab, ws, ev):
         "model for these counts -- and the selection evidence above is what we have "
         "on that -- then its answer is the answer, whichever direction it points. "
         "This was recorded as the expected risk in the design spec before any model "
-        "was fit, and it is recorded here because it came out mixed: the inspections "
+        "was fit. In the event the risk did not land the way it might have: the "
+        "model class did not weaken the case for zero-inflation, it strengthened "
+        f"it -- {sum(1 for r in mc if r['margin'] > 0)} of {len(mc)} matched "
+        "comparisons favour the zero-inflated negative binomial, none against. "
+        "What it did do is expose that the structure we are committed to cannot "
+        "always estimate that model. Read the rest with the genuine limits in "
+        "view: the inspections "
         "zero-inflation is real but is a left-tail-fit result rather than a latent "
         "non-inspecting subpopulation; the violations zero-inflation is real and, at "
-        "Model 3, outcompeted at the structure we are committed to"
+        "Model 3, unavailable at the structure we are committed to"
         + (f" -- though at Model 1 it actually wins that tier for "
            + ", ".join('`' + c + '`' for c, _ in zi_m1) + ", which is why the "
-           "Model-3 scoping above matters"
+           "Model-3 scoping above matters, and why 'unavailable' is the right "
+           "word rather than 'outcompeted'"
            if zi_m1 else "")
         + "; and the two genuinely "
         "new findings -- the non-converged published Model 1 and the weaker COVID "

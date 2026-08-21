@@ -1794,6 +1794,44 @@ def _memo_table_rows(text, cells):
     return out
 
 
+def _memo_tables(text):
+    """Every markdown pipe-table in the memo as (header_fields, data_rows).
+
+    Rows are split on UNESCAPED pipes only: cells legitimately contain
+    '(1 + time \\| state)' and '(1 \\| state)', and splitting on every pipe
+    would shift each column index after them. Separator rows ('|---|---|') and
+    the tier-boundary marker row are dropped."""
+    import re
+
+    def split_row(ln):
+        return [c.strip().replace('\\|', '|')
+                for c in re.split(r'(?<!\\)\|', ln.strip().strip('|'))]
+    out, hdr, rows = [], None, []
+    for ln in text.splitlines():
+        if ln.startswith('|'):
+            f = split_row(ln)
+            if set(''.join(f)) <= set('-: '):
+                continue                      # |---|---| separator
+            if '*--' in ln:
+                continue                      # tier-boundary marker
+            if hdr is None:
+                hdr, rows = f, []
+            else:
+                rows.append(f)
+        else:
+            if hdr is not None:
+                out.append((hdr, rows))
+            hdr, rows = None, []
+    if hdr is not None:
+        out.append((hdr, rows))
+    return out
+
+
+def _nearest(tab, cell, model, re_tier, family):
+    from report_count_models import nearest_clean_competitor
+    return nearest_clean_competitor(tab, cell, model, re_tier, family)
+
+
 def _first_number(s):
     import re as _re
     m = _re.search(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', s.replace(',', ''))
@@ -1965,72 +2003,169 @@ def validate_memo():
           f"{n_zire_lrt} of the {n_lrt}" in text,
           f"n_zire_lrt={n_zire_lrt}, n_boundary_zire_fits={n_boundary_zire}")
 
-    # ---- (h) C1: the estimability prose must agree with eligible_rs_m1/m3 ----
-    # This is the check that would have caught the memo asserting the ZI-NB
-    # rungs "could not be fit at all" for viol_off_2021 while its own Model-1
-    # coefficient table printed ZINB + ZI RE 150 lines later.
-    from report_count_models import ALL_FAMILIES, FAMILY_LABEL
+    # ---- (h) C1/B: estimability claims must agree with eligible_rs_m1/m3 ----
+    # Round 1 caught the blanket "could not be fit at all" claim, but the guard
+    # only fired for the two 2021 violations cells and for cells whose M1/M3 sets
+    # differed -- which is why the same defect survived in the 2019 cells
+    # ("all 3 ZI families collapse", true only at Model 3). This version parses
+    # the memo's full (cell x {M1, M3}) eligibility TABLE positionally, so every
+    # cell and both build-up steps are covered.
+    from report_count_models import (ALL_FAMILIES, FAMILY_LABEL,
+                                     matched_zinb_vs_nb1, selection_table,
+                                     load_meta, matched_zinb_vs_nb1 as _mz)
+    ELIG_HEADER = ('Cell', 'Model', 'Eligible families', 'Eligible count',
+                   'Absent families', 'Why absent')
+    elig_rows = {}
+    for blk_hdr, blk_rows in _memo_tables(text):
+        if tuple(blk_hdr) == ELIG_HEADER:
+            for r in blk_rows:
+                elig_rows[(r[0], r[1])] = r
+    check(f"memo carries the full Model-1/Model-3 eligibility table "
+          f"({len(CELLS)} cells x 2 models = {2 * len(CELLS)} rows)",
+          len(elig_rows) == 2 * len(CELLS),
+          f"got {len(elig_rows)} rows: {sorted(elig_rows)!r}")
     n_estimability_rows = 0
     for cell in CELLS:
         m = fits[f'{cell}__meta']
-        e3 = m.get('eligible_rs_m3') or []
-        e1 = m.get('eligible_rs_m1') or []
-        if not e3:
-            continue
-        if len(e3) < len(ALL_FAMILIES) and cell in ('viol_off_2021', 'viol_cov_2021'):
-            # These two cells are the ones the identifiability section is about,
-            # so their counts must appear, Model-3-scoped, verbatim.
-            pat = (rf"`{cell}`: at \*\*Model 3\*\*, only {len(e3)} of the "
-                   rf"{len(ALL_FAMILIES)} families")
-            hit = re.search(pat, text)
-            check(f"memo's Model-3 estimability line for {cell} states "
-                  f"{len(e3)} of {len(ALL_FAMILIES)} eligible, matching "
-                  f"__meta.eligible_rs_m3", hit is not None,
-                  f"pattern not found: {pat}")
-            if hit:
-                n_estimability_rows += 1
-                line = text[hit.start():text.index('\n', hit.start())]
-                for fam in sorted(set(ALL_FAMILIES) - set(e3)):
-                    lbl = FAMILY_LABEL.get(fam, fam)
-                    check(f"memo names {lbl!r} as absent at Model 3 for {cell} "
-                          f"(derived from ALL_FAMILIES - eligible_rs_m3)",
-                          lbl in line, f"line: {line!r}")
-                for fam in e3:
-                    lbl = FAMILY_LABEL.get(fam, fam)
-                    check(f"memo lists {lbl!r} as eligible at Model 3 for {cell}",
-                          lbl in line, f"line: {line!r}")
-        if set(e1) != set(e3):
-            # The candidate set differs between M1 and M3 -- the memo must say so
-            # for this cell, with both counts.
-            pat = (rf"`{cell}`: {len(e1)} eligible at Model 1 vs {len(e3)} at\s+"
-                   rf"Model 3")
-            check(f"memo records that {cell}'s Model-1 candidate set "
-                  f"({len(e1)}) differs from its Model-3 set ({len(e3)})",
-                  re.search(pat, text) is not None, f"pattern not found: {pat}")
+        for model in ('M1', 'M3'):
+            elig = m.get(f'eligible_rs_{model.lower()}') or []
+            if not elig:
+                continue
+            row = elig_rows.get((cell, model))
+            check(f"memo's eligibility table has a row for ({cell}, {model})",
+                  row is not None, f"rows: {sorted(elig_rows)!r}")
+            if row is None:
+                continue
             n_estimability_rows += 1
-            m1w = m.get('m1_winner_rs')
-            if m1w in ('zinb', 'zinb_re'):
-                # The counter-example to the blanket claim: a ZI-NB rung IS
-                # estimable at the mandated structure at Model 1.
-                wrec = fits[f'{cell}__M1__{m1w}']
-                check(f"{cell}: the Model-1 rs winner {m1w!r} really is a "
-                      f"converged rs-tier fit (the memo's counter-example is a "
-                      f"fact, not a phrasing)",
-                      wrec.get('re_tier') == 'rs' and wrec.get('converged') is True,
-                      f"re_tier={wrec.get('re_tier')!r}, "
-                      f"converged={wrec.get('converged')!r}")
-                m3w = m.get('m3_winner_rs')
-                margin = fits[f'{cell}__M1__{m3w}']['aic'] - wrec['aic']
-                check(f"memo quotes the Model-1 AIC margin for {cell} "
-                      f"({margin:.2f}) in favour of the zero-inflated model",
-                      f"{margin:.2f}" in text, f"margin={margin:.2f}")
-                check(f"that margin genuinely favours the zero-inflated model "
-                      f"for {cell} (otherwise the memo's framing is wrong)",
-                      margin > 0, f"margin={margin:.2f}")
-                n_estimability_rows += 1
-    check("the estimability prose was actually parsed and cross-checked "
-          "(at least 4 assertions fired)", n_estimability_rows >= 4,
+            want_count = f"{len(elig)} of {len(ALL_FAMILIES)}"
+            check(f"({cell}, {model}) eligible count reads {want_count!r}, "
+                  f"matching __meta.eligible_rs_{model.lower()}",
+                  row[3] == want_count, f"got {row[3]!r}")
+            listed = {x.strip() for x in row[2].split(',') if x.strip() != '--'}
+            want_listed = {FAMILY_LABEL.get(f, f) for f in elig}
+            check(f"({cell}, {model}) lists exactly the eligible families",
+                  listed == want_listed,
+                  f"memo {sorted(listed)!r} vs artifact {sorted(want_listed)!r}")
+            absent_listed = {x.strip() for x in row[4].split(',')
+                             if x.strip() not in ('', 'none')}
+            want_absent = {FAMILY_LABEL.get(f, f)
+                           for f in set(ALL_FAMILIES) - set(elig)}
+            check(f"({cell}, {model}) lists exactly the absent families "
+                  f"(ALL_FAMILIES - eligible)",
+                  absent_listed == want_absent,
+                  f"memo {sorted(absent_listed)!r} vs artifact "
+                  f"{sorted(want_absent)!r}")
+    check(f"the eligibility table was parsed and cross-checked for every "
+          f"(cell, model) pair", n_estimability_rows == 2 * len(CELLS),
           f"got {n_estimability_rows}")
+
+    # Finding B, stated as an artifact fact: the 2019 violations cells' ZI
+    # collapse is Model-3-only, and the memo must not claim otherwise.
+    tab_live = selection_table(fits)
+    meta_live = load_meta(fits)
+    zi_ok_19 = tab_live[
+        (tab_live['cell'].isin(['viol_off_2019', 'viol_cov_2019'])) &
+        (tab_live['re_tier'] == 'rs') &
+        (tab_live['family'].isin(['zip', 'zinb', 'zinb_re'])) &
+        tab_live['converged'] & (~tab_live['zi_degenerate'])]
+    check("there IS at least one estimable, non-degenerate ZI fit at the "
+          "mandated structure in the 2019 violations cells (so the memo's "
+          "Model-3 scoping is necessary, not decorative)",
+          len(zi_ok_19) >= 1, f"got {len(zi_ok_19)}")
+    for _, r in zi_ok_19.iterrows():
+        zi = (fits[r['key']].get('zi') or {}).get('(Intercept)') or {}
+        check(f"memo reports the {r['cell']} {r['model']} "
+              f"{FAMILY_LABEL.get(r['family'], r['family'])} exception with its "
+              f"ZI intercept ({zi.get('b'):+.4f}) and p ({zi.get('p'):.3g})",
+              f"{zi['b']:+.4f}" in text and f"{zi['p']:.3g}" in text,
+              f"b={zi.get('b')!r}, p={zi.get('p')!r}")
+    check("memo scopes the 2019 ZI-collapse claim to Model 3",
+          re.search(r'zero-inflated families collapse\s+\*\*at Model 3\*\*',
+                    text) is not None)
+
+    # ---- (h2) A: the matched ZI-NB vs NB1 table, parsed positionally ----
+    # The mechanism claim ("NB1 explains the zeros about as economically") was
+    # false in all matched comparisons. This asserts the memo's table IS the
+    # computed set -- row for row, both AICs and the margin -- so neither a
+    # perturbed number nor an ADDED row can pass.
+    mc = matched_zinb_vs_nb1(tab_live, meta_live)
+    MC_HEADER = ('Cell', 'Model', 'RE structure', 'ZI family', 'N', 'NB1 AIC',
+                 'ZI-NB AIC', 'AIC margin to ZI-NB', 'Distinct model?')
+    mc_rows = []
+    for blk_hdr, blk_rows in _memo_tables(text):
+        if tuple(blk_hdr) == MC_HEADER:
+            mc_rows.extend(blk_rows)
+    check(f"memo's matched ZI-NB vs NB1 table has exactly {len(mc)} rows "
+          f"(recomputed from the artifacts) -- an added or dropped row fails",
+          len(mc_rows) == len(mc), f"memo {len(mc_rows)} vs computed {len(mc)}")
+    fmt_key = lambda r: (r['cell'], r['model'], str(r['n_obs']),
+                         f"{r['nb1_aic']:.2f}", f"{r['zi_aic']:.2f}",
+                         f"{r['margin']:+.2f}")
+    want = sorted(fmt_key(r) for r in mc)
+    got = sorted((r[0], r[1], r[4], r[5], r[6], r[7].replace('*', ''))
+                 for r in mc_rows)
+    check("every row of the memo's matched-comparison table matches a computed "
+          "comparison exactly (cell, model, N, NB1 AIC, ZI-NB AIC, margin)",
+          got == want,
+          "memo-only: "
+          f"{[g for g in got if g not in want]!r}; computed-only: "
+          f"{[w for w in want if w not in got]!r}")
+    check(f"every computed margin favours the zero-inflated model, so the memo's "
+          f"stated direction is right ({sum(1 for r in mc if r['margin'] > 0)} "
+          f"of {len(mc)})",
+          all(r['margin'] > 0 for r in mc),
+          f"negative/zero margins: "
+          f"{[(r['cell'], r['model'], r['margin']) for r in mc if r['margin'] <= 0]!r}")
+    n_wins = sum(1 for r in mc if r['margin'] > 0)
+    check(f"memo states the matched-comparison tally as "
+          f"{n_wins} of {len(mc)} (both in the Bottom line and in the "
+          f"mechanism section)",
+          text.count(f"{n_wins} of {len(mc)}") >= 1
+          and f"{n_wins} times out of {len(mc)}" in text,
+          f"n_wins={n_wins}, n={len(mc)}")
+    mc_dist = [r for r in mc if not r['collapsed']]
+    check(f"memo also reports the distinct-model subtotal "
+          f"({sum(1 for r in mc_dist if r['margin'] > 0)} of {len(mc_dist)}), so "
+          f"the collapsed duplicates are not silently inflating the count",
+          f"{sum(1 for r in mc_dist if r['margin'] > 0)} of {len(mc_dist)}" in text)
+    check("memo does NOT still claim the negative binomial explains the zeros "
+          "'about as economically' as an inflation term",
+          not re.search(r'accounts for those same zeros about as\s+economically',
+                        text))
+    check("memo states plainly that NB1's win is a default rather than a merit "
+          "win", re.search(r'by default', text) is not None
+          and re.search(r'default, not a merit win', text) is not None)
+
+    # The two prose sites that quote the Model-1 counter-example numbers are
+    # checked with ANCHORED patterns, not bare `number in text` -- round 1's
+    # version passed when one of two identical sites was perturbed.
+    for cell in CELLS:
+        m = fits[f'{cell}__meta']
+        m1w, m3w = m.get('m1_winner_rs'), m.get('m3_winner_rs')
+        if m1w not in ('zinb', 'zinb_re') or m1w == m3w:
+            continue
+        wrec, lrec = fits[f'{cell}__M1__{m1w}'], fits[f'{cell}__M1__{m3w}']
+        margin = lrec['aic'] - wrec['aic']
+        comp, dcomp = _nearest(tab_live, cell, 'M1', 'rs', m1w)
+        check(f"{cell}: the Model-1 rs winner {m1w!r} is a converged rs-tier fit",
+              wrec.get('re_tier') == 'rs' and wrec.get('converged') is True,
+              f"re_tier={wrec.get('re_tier')!r}, converged={wrec.get('converged')!r}")
+        check(f"memo's Model-1 bullet for {cell} quotes the AIC gap to its "
+              f"nearest competitor in situ ('beating ... by {dcomp:.2f} AIC')",
+              re.search(rf"beating {re.escape(FAMILY_LABEL.get(comp, str(comp)))} "
+                        rf"by {dcomp:.2f} AIC", text) is not None,
+              f"nearest={comp!r}, dAIC={dcomp:.2f}")
+        check(f"memo's counter-example sentence for {cell} quotes both AICs and "
+              f"the margin in situ "
+              f"({wrec['aic']:.2f} vs {lrec['aic']:.2f}, margin {margin:.2f})",
+              re.search(rf"with AIC {wrec['aic']:.2f} against\s+"
+                        rf"{re.escape(FAMILY_LABEL.get(m3w, m3w))}'s "
+                        rf"{lrec['aic']:.2f}", text) is not None
+              and re.search(rf"a margin of {margin:.2f} AIC in favour", text)
+              is not None,
+              f"margin={margin:.2f}")
+        check(f"that margin genuinely favours the zero-inflated model for {cell}",
+              margin > 0, f"margin={margin:.2f}")
 
     # ---- (i) I2: expected-zero COVERAGE, enforced structurally ----
     # The first version of this check counted rows CONTAINING '+/-' and required
@@ -2077,14 +2212,31 @@ def validate_memo():
     # And the same guarantee for PROSE: any sentence quoting an expected-zero
     # count outside a table must carry the SE too (this is what caught the
     # 16.1-55.0 range being quoted bare).
-    bare_prose = [ln.strip()[:160] for ln in lines
-                  if not ln.startswith('|')
-                  and re.search(r'expected', ln, re.I)
-                  and re.search(r'\d+\.\d', ln)
-                  and '+/-' not in ln]
-    check("no prose sentence in the memo quotes an expected-zero count without "
-          "its Monte-Carlo SE", not bare_prose,
-          f"{len(bare_prose)} line(s): {bare_prose!r}")
+    # An expected-zero count adjacent to the word "expected" -- INTEGER or
+    # decimal. Round 1's version required a decimal on the line, so an integer
+    # count ("7 observed against 21 expected") would have slipped through.
+    # Anchored on adjacency so that incidental numbers elsewhere in a sentence
+    # (simulation counts, years) are not false positives.
+    exp_adjacent = re.compile(
+        r'(?:(\d+(?:\.\d+)?)\s*(?:\+/-\s*\d+(?:\.\d+)?\s*)?expected'
+        r'|expected[^.|]{0,25}?(\d+(?:\.\d+)?))', re.I)
+    bare_prose = []
+    for ln in lines:
+        if ln.startswith('|') or 'MC SE' in ln:
+            continue
+        for mt in exp_adjacent.finditer(ln):
+            num = mt.group(1) or mt.group(2)
+            # the SE must sit next to THAT number, not merely somewhere on the line
+            window = ln[mt.start():mt.end() + 12]
+            if '+/-' not in window:
+                bare_prose.append((ln.strip()[:140], num))
+    check("no prose sentence in the memo quotes an expected-zero count -- "
+          "integer or decimal -- without its Monte-Carlo SE alongside it",
+          not bare_prose, f"{len(bare_prose)} site(s): {bare_prose!r}")
+    check("the prose MC-SE check is not vacuous (it found expected-zero counts "
+          "in prose to cover)",
+          any(exp_adjacent.search(ln) for ln in lines if not ln.startswith('|')),
+          "no prose expected-zero counts found at all")
 
     # ---- (j) I5: the re-declared published spec must still match ----
     aud = ev['published_audit']
@@ -2123,11 +2275,6 @@ def validate_memo():
                          'build_count_model_memo_evidence.py'))
     ev_src = open('/Users/keshavgoel/Research/scripts/'
                   'build_count_model_memo_evidence.py').read()
-    check("the evidence builder STORES a bounded summary of its captured "
-          "warnings rather than discarding the record (discarding is the idiom "
-          "the memo condemns)",
-          "'warning_counts': cat_counts" in ev_src
-          and "'warnings_sample': distinct[:8]" in ev_src)
     for cell, x in ev['zi_crosscheck'].items():
         check(f"{cell}: the ZI cross-check records its warning accounting "
               f"(n_warnings, per-category counts, and a distinct sample)",

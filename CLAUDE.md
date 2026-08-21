@@ -245,6 +245,16 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   results that weakened the story changed the window AND the outcome source at once; the dual
   fit is what separates those two effects. Three specs per window (inspections; violations
   with inspections as offset; violations with log(inspections) as covariate) = 6 cells.
+- **Headline answer**: Jafari's model class fits these data **better** than the plain negative
+  binomial everywhere it can be estimated. Across every legitimate matched comparison in the
+  ladder (same cell, model, `re_tier` and N; both converged; neither ZI-degenerate) a
+  zero-inflated negative binomial beats plain NB1 in **17 of 17** comparisons, by 34.7–195.0
+  AIC, with no exception (15 of 15 counting only distinct models — 2 rows are a ZINB+ZI-RE
+  that collapsed onto its ZINB twin). The binding constraint is **identifiability at the
+  random-slope structure**, not evidence against zero-inflation. Where a plain NB wins a
+  column it wins **by default**, the ZI-NB rungs having been unavailable at that structure —
+  never on merit. Do not write that a negative binomial's own overdispersion explains the
+  zeros "about as well"; that is false in every matched comparison.
 - **Selected families**: inspections selects a zero-inflated family in both windows (2019
   ZINB+ZI-RE, 2021 ZINB); violations select a plain negative binomial in both (2019 NB2, 2021
   NB1) at the mandated tier. **This is NOT evidence against zero-inflation for violations** —
@@ -256,6 +266,11 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   ZINB+ZI-RE at `(1 + time | state)` and it wins that tier by 53.48 AIC (which is what
   `__meta.stable_rs = False` records) — the ZI-NB rungs drop out *as covariates are added*.
   The 2019 violations series is zero-**deflated** (every family overpredicts its zeros).
+  **The 2019 violations ZI collapse is also Model-3-only**: `__meta.zi_evidence` records the
+  Model-3 rung only, and `viol_off_2019__M1__zip` is `re_tier='rs'`, converged and
+  non-degenerate (ZI intercept −6.1675, SE 3.246, p = 0.0574). Same pattern as the 2021 cells
+  — the ZI term stops being estimable when the covariates enter. Any claim of the form "all
+  ZI families collapse" must be scoped to Model 3.
 - **σ²_u1 is not a published quantity.** Tables 2/3 report `sigma2_u0_ri`, `sigma2_e_ri` and
   `delta_pct_ri`; σ²_u1 exists in `paper_table_params_2021.json` but reaches no published
   table. The NB1-vs-NB2 σ²_u1 disagreement (≈3.2–3.8×) therefore changes nothing currently
