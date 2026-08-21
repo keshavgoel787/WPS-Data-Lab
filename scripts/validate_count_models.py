@@ -1733,6 +1733,235 @@ def validate_covid():
                       "(base b ~ 0, relative shift undefined)")
 
 
+# ============================================================
+# [7] MEMO (Task 7)
+# ============================================================
+MEMO_PATH = '/Users/keshavgoel/Research/docs/count_models_zinb.md'
+EVIDENCE_PATH = GEN + 'count_model_memo_evidence.json'
+
+# Phrases the memo must carry. Each one corresponds to a substantive claim the
+# PI has to be able to find: what was/was not replicated, the software, the
+# boundary-LRT caveat, the two outcome sources, the observed-vs-expected zero
+# evidence, the link-scale caveat on sigma^2_u0, the Monte-Carlo SE on every
+# expected-zero count, the non-converged published fit, and the two framings
+# that earlier drafts got wrong (zero-inflation is real for 2021 violations;
+# the 2019 ZI degeneracy statement is scoped to the specified structure).
+MEMO_REQUIRED_PHRASES = (
+    'Jafari', 'glmmTMB', 'boundary', 'establishments view', 'WPS view',
+    'observed', 'expected', 'link scale', 'Monte-Carlo', 'IRR',
+    'did not converge', 'random intercept', 'random slope',
+    'identifiability', 'zero-deflated', 'multi-start',
+)
+
+# Framings that were WRONG in earlier drafts and must never reappear. Each is a
+# claim the artifacts contradict (see [5]: zero-inflation IS real, large and
+# significant in the 2021 violations cells; the 2019 violations ZI degeneracy
+# was only ever tested at the mandated rs tier).
+MEMO_FORBIDDEN_PATTERNS = (
+    r'reject(?:s|ed)?\s+zero-inflation',
+    r'do(?:es)?\s+not\s+need\s+zero-inflation',
+    r'no\s+zero-inflation\s+in\s+the\s+violations',
+    r'degenerate\s+at\s+every\s+tier',
+    r'zero-inflation\s+is\s+absent',
+)
+
+
+def _memo_table_rows(text, cells):
+    """Every pipe-table row in the memo whose first cell is one of `cells`,
+    returned as {cell: [list of field lists]}. Used to parse generated numbers
+    back OUT of the markdown so they can be compared to the JSON -- a memo that
+    silently drifts from the artifacts fails here."""
+    out = {c: [] for c in cells}
+    for line in text.splitlines():
+        if not line.startswith('|'):
+            continue
+        fields = [f.strip() for f in line.strip().strip('|').split('|')]
+        if fields and fields[0] in out:
+            out[fields[0]].append(fields)
+    return out
+
+
+def _first_number(s):
+    import re as _re
+    m = _re.search(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', s.replace(',', ''))
+    return float(m.group(0)) if m else None
+
+
+def validate_memo():
+    """Section [7]: the memo is the deliverable, so it is validated as one --
+    it must exist, be substantive, carry every required framing, carry none of
+    the framings earlier drafts got wrong, and (the part that matters) contain
+    NO number that contradicts the artifacts. Numbers are parsed back out of
+    the generated markdown and compared to count_model_results.json and
+    count_model_memo_evidence.json with relative tolerances."""
+    import json
+    import os
+    import re
+
+    print("\n[7] Memo")
+    if not os.path.exists(MEMO_PATH):
+        check("docs/count_models_zinb.md exists", False,
+              "run: python3 scripts/report_count_models.py")
+        return
+    check("docs/count_models_zinb.md exists", True)
+    text = open(MEMO_PATH).read()
+
+    check("memo is substantive (> 8000 chars)", len(text) > 8000, f"got {len(text)}")
+    for phrase in MEMO_REQUIRED_PHRASES:
+        check(f"memo mentions {phrase!r}", phrase in text)
+    check("memo has no placeholder text",
+          not re.search(r'\bTBD\b|\bTODO\b|\bXXX\b|\bFIXME\b|\bLorem\b', text))
+    for pat in MEMO_FORBIDDEN_PATTERNS:
+        hits = re.findall(pat, text, flags=re.I)
+        check(f"memo does NOT contain the corrected-away framing /{pat}/",
+              not hits, f"found {hits!r}")
+
+    # The memo must say plainly that no Delta sigma^2_u0 percentage is computed
+    # (spec 5.6 was deliberately narrowed -- see task-7-brief.md self-review).
+    check("memo states plainly that no Delta sigma^2_u0 percentage is computed",
+          re.search(r'does not compute .{0,40}percentage|no .{0,30}percentage reduction '
+                    r'is (?:computed|reported)', text, flags=re.I) is not None)
+
+    if not os.path.exists(EVIDENCE_PATH):
+        check("count_model_memo_evidence.json exists", False,
+              "run: python3 scripts/report_count_models.py")
+        return
+    check("count_model_memo_evidence.json exists", True)
+    ev = json.load(open(EVIDENCE_PATH))
+    fits = json.load(open(GEN + 'count_model_results.json'))
+
+    # ---- (a) selected family per cell, parsed back out of the memo ----
+    rows = _memo_table_rows(text, CELLS)
+    n_family_rows = 0
+    for cell in CELLS:
+        meta = fits[f'{cell}__meta']
+        for tier, mkey in (('rs', 'm3_winner_rs'), ('ri', 'm3_winner_ri')):
+            want = meta.get(mkey)
+            if want is None:
+                continue
+            matched = [f for f in rows[cell]
+                       if len(f) > 2 and f'`{tier}`' in ' '.join(f)
+                       and f'`{want}`' in ' '.join(f)]
+            check(f"memo's selection table reports {cell} ({tier} tier) selected "
+                  f"family as {want!r} (parsed back from the markdown)",
+                  len(matched) >= 1,
+                  f"rows for {cell}: {rows[cell]!r}")
+            n_family_rows += len(matched)
+    check("memo's selection table produced at least one parseable family row "
+          "per (cell, tier) with a winner (8 total)",
+          n_family_rows >= 8, f"got {n_family_rows}")
+
+    # ---- (b) COVID coefficients, parsed back out of the memo ----
+    covid_keys = [k for k in fits if '__M3covid__' in k]
+    check("memo COVID check: both 2021 COVID fits exist in the JSON",
+          len(covid_keys) == 2, f"got {covid_keys!r}")
+    n_covid_checked = 0
+    for k in covid_keys:
+        f = fits[k]
+        cell = f['cell']
+        c = f['cond']['covid']
+        # The COVID row is the one whose second field names the covid term.
+        cand = [fl for fl in rows[cell] if len(fl) >= 6 and 'covid' in fl[1].lower()]
+        check(f"memo carries exactly one COVID row for {cell}", len(cand) == 1,
+              f"got {cand!r}")
+        if len(cand) != 1:
+            continue
+        fl = cand[0]
+        got_b, got_se, got_p = (_first_number(fl[2]), _first_number(fl[3]),
+                                _first_number(fl[4]))
+        check_close(f"memo COVID b for {cell}", got_b, c['b'], 1e-3, kind='rel')
+        check_close(f"memo COVID SE for {cell}", got_se, c['se'], 1e-3, kind='rel')
+        check_close(f"memo COVID p for {cell}", got_p, c['p'], 1e-2, kind='rel')
+        n_covid_checked += 1
+    check("memo COVID coefficients were actually parsed and compared for both cells",
+          n_covid_checked == 2, f"got {n_covid_checked}")
+
+    # ---- (c) the non-converged published fit, parsed back out of the memo ----
+    aff = ev['published_audit']['affected']
+    for label, want in (
+            ('published b(log_inspections)', aff['published_b_log_inspections']),
+            ('published sigma2_u0', aff['published_sigma2_u0']),
+            ('converged b(log_inspections)', aff['cg']['b_log_inspections']),
+            ('converged sigma2_u0', aff['cg']['sigma2_u0'])):
+        # Formatted to 4 significant-ish decimals in the memo; require the
+        # rounded string to be present verbatim, so a drifting number fails.
+        s = f"{want:.4f}"
+        check(f"memo quotes the {label} ({s}) from the audit artifact",
+              s in text, f"{s!r} not found in memo")
+    check(f"memo quotes the non-converged log-likelihood "
+          f"({aff['lbfgs']['llf']:.3f})", f"{aff['lbfgs']['llf']:.3f}" in text)
+    check(f"memo quotes the converged log-likelihood "
+          f"({aff['cg']['llf']:.3f})", f"{aff['cg']['llf']:.3f}" in text)
+    check(f"memo quotes the failed gradient norm "
+          f"({aff['lbfgs']['grad_norm']:.4f})",
+          f"{aff['lbfgs']['grad_norm']:.4f}" in text)
+    check("memo states the audited scope (exactly 1 of 12 published 2021 fits)",
+          f"1 of {ev['published_audit']['n_fits']}" in text,
+          f"n_fits={ev['published_audit']['n_fits']}")
+    check("the audit artifact itself found exactly one non-converged fit "
+          "(so the memo's scope claim is a measured result, not a belief)",
+          ev['published_audit']['n_nonconverged'] == 1,
+          f"got {ev['published_audit']['n_nonconverged']}")
+    check("all six random-intercept-only published refits converged in the "
+          "audit (this is why the manuscript's variance block is unaffected)",
+          all(not r['grad_warning'] for r in ev['published_audit']['fits']
+              if r['re_basis'] == 'random intercept')
+          and sum(1 for r in ev['published_audit']['fits']
+                  if r['re_basis'] == 'random intercept') == 6)
+
+    # ---- (d) cross-software ZI check, parsed back out of the memo ----
+    xc = ev['zi_crosscheck']['insp_2021']
+    check(f"memo quotes the statsmodels ZI intercept ({xc['zi_b']:.3f})",
+          f"{xc['zi_b']:.3f}" in text)
+    check(f"memo quotes the statsmodels ZI SE ({xc['zi_se']:.3f})",
+          f"{xc['zi_se']:.3f}" in text)
+    check(f"memo quotes the glmmTMB ZI intercept ({xc['glmm_zi_b']:.3f})",
+          f"{xc['glmm_zi_b']:.3f}" in text)
+    check("memo reports BOTH N values for the cross-check (the statsmodels fit "
+          "runs on a larger sample than glmmTMB M3)",
+          str(xc['n_obs']) in text and str(xc['glmm_n_obs']) in text,
+          f"n_obs={xc['n_obs']}, glmm_n_obs={xc['glmm_n_obs']}")
+    check("the cross-check artifact confirms the two N's genuinely differ "
+          "(otherwise the memo's caveat would be vacuous)",
+          xc['n_obs'] != xc['glmm_n_obs'],
+          f"{xc['n_obs']} vs {xc['glmm_n_obs']}")
+    vx = ev['zi_crosscheck']['viol_cov_2021']
+    check("memo records that the violations cross-check did NOT converge",
+          vx['converged'] is False and f"{vx['alpha']:.1f}" in text,
+          f"converged={vx['converged']}, alpha={vx.get('alpha')}")
+
+    # ---- (e) mean-variance scaling diagnostic ----
+    for window, want in (('2019', ev['panel']['2019']['violations']['mv_slope']),
+                         ('2021', ev['panel']['2021']['violations']['mv_slope'])):
+        check(f"memo quotes the {window} violations mean-variance slope "
+              f"({want:.2f})", f"{want:.2f}" in text)
+
+    # ---- (f) every expected-zero count in the memo carries an MC SE ----
+    exp_rows = [ln for ln in text.splitlines()
+                if ln.startswith('|') and 'Expected 0s' not in ln
+                and re.search(r'\d\s*\+/-\s*\d', ln)]
+    check("expected-zero counts in the memo are written with their "
+          "Monte-Carlo SE (+/- form)", len(exp_rows) >= 6,
+          f"only {len(exp_rows)} rows carry a '+/-'")
+
+    # ---- (g) boundary-LRT accounting ----
+    n_boundary_zire = sum(
+        1 for f in fits.values()
+        if isinstance(f, dict) and f.get('family_tag') == 'zinb_re')
+    tabpath = GEN + 'count_model_comparison.csv'
+    cmp_tab = pd.read_csv(tabpath)
+    n_lrt = int(cmp_tab['lrt_p'].notna().sum())
+    n_zire_lrt = int(((cmp_tab['lrt_p'].notna()) &
+                      (cmp_tab['family'] == 'zinb_re')).sum())
+    check(f"memo states the LRT count ({n_lrt}) that the CSV actually carries",
+          f"{n_lrt} LRT" in text or f"{n_lrt} nested" in text,
+          f"n_lrt={n_lrt}")
+    check(f"memo states the zinb_re-vs-zinb boundary-LRT count ({n_zire_lrt})",
+          f"{n_zire_lrt} of the {n_lrt}" in text,
+          f"n_zire_lrt={n_zire_lrt}, n_boundary_zire_fits={n_boundary_zire}")
+
+
+
 def main():
     validate_panels()
     validate_reference_convergence()
@@ -1741,6 +1970,7 @@ def main():
     validate_selection()
     validate_zi_crosscheck()
     validate_covid()
+    validate_memo()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")

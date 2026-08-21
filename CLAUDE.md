@@ -177,8 +177,13 @@ Wyoming has no row in the WPS view at all.
   COVID-indicator robustness check. **Inspections:** the dummy is −0.590*** and adding it
   pushes `time2`/`time3` from null into significance — so the inspections time trend over
   2011–2021 partly reflects enforcement capacity, not compliance, and the cubic is absorbing
-  the shock. **Violations:** the dummy is −0.183 n.s. and the time terms barely move, so that
-  table is robust as fit. Both docx notes state this.
+  the shock. **Violations:** in the log-linear check the dummy is −0.183 n.s. and the time
+  terms barely move, so that table looks robust as fit. Both docx notes state this.
+  **CORRECTED 2026-08 by the count models — the "barely move" part does not survive.** Under
+  the selected count family (`viol_cov_2021`, NB1) the COVID indicator is −0.279 (p ≈ 0.096)
+  and `time2` goes from p ≈ 2.0e-5 to p ≈ 0.26 when the indicator is added. The violations
+  time trend is *less* COVID-robust than this sentence originally implied; the log-linear
+  check understated the sensitivity. See `docs/count_models_zinb.md`.
 - Spending over the wider window tracks the old one closely (SPEND_WORK r=0.963,
   SPEND_APP r=0.997, median ratio ≈1.00), so the window change does not distort the
   spending measure.
@@ -189,6 +194,72 @@ Wyoming has no row in the WPS view at all.
 - The 2011–2019 `docs/WPS_Table_Sheels_augmented.docx` was regenerated with **one** added
   sentence in its Note recording that its outcome comes from the establishments view, which
   EPA publishes only through 2019. No numbers changed.
+
+**2026-08 multilevel count models (Jafari replication).** Joe asked whether we could
+replicate Jafari et al. (*PLOS ONE* 2024, doi:10.1371/journal.pone.0302960) — a multilevel
+zero-inflated negative binomial — after the 2011–2021 tables weakened the story. Design spec:
+`docs/superpowers/specs/2026-08-20-multilevel-zinb-design.md`. Deliverable memo:
+`docs/count_models_zinb.md` (**generated**, never hand-edited). Run in this order:
+
+```bash
+Rscript scripts/r_env_check.R                   # gate: glmmTMB installed and able to fit a ZINB
+python3 scripts/build_count_model_panel.py      # → count_model_panel_{2019,2021}.csv (RAW counts)
+Rscript scripts/count_models_zinb.R \
+        data/generated/count_model_panel_2021.csv \
+        data/generated/count_model_results.json # 6 families x 6 cells + COVID + diagnostics
+python3 scripts/report_count_models.py          # → count_model_comparison.csv,
+                                                #   count_model_winner_summary.csv,
+                                                #   count_model_memo_evidence.json,
+                                                #   docs/count_models_zinb.md
+python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must pass before
+                                                # trusting any estimate from this pipeline
+```
+
+- **R enters the pipeline here, and only here.** `statsmodels` has no multilevel ZINB;
+  `glmmTMB` is the package Jafari used. First use of R in this project. Python still builds
+  every panel and does all reporting. Expect a benign TMB ABI-mismatch warning on every
+  `Rscript` call — the validator asserts stderr contains *nothing else*.
+- **The random-effects structure is OURS, not Jafari's.** We keep `(1 + time | state)` with
+  cubic time. Their crossed state × industry design has no analogue here (no industry
+  dimension) and would discard the WPS-revision time trend. Where a family cannot be fit at
+  `(1 + time | state)`, a `(1 | state)` fallback tier is reported **separately**; AIC is never
+  compared across tiers.
+- **Gaussian round-trip gate.** `validate_count_models.py [2a]/[2b]` refits the manuscript's
+  own Model 1 as a Gaussian `glmmTMB` (REML) and requires it to match `statsmodels.MixedLM`
+  (coefficients 1e-3 rel., variance components 2e-2 rel.). Nothing downstream is trustworthy
+  if that fails. `[5]` independently cross-checks the ZI component against
+  `statsmodels.ZeroInflatedNegativeBinomialP` with state dummies.
+- **σ²_u0 here is on the log LINK scale**, not the `log(count+1)` outcome scale of the
+  published tables — magnitudes are **not** comparable to Tables 2/3 even though a percentage
+  reduction would be. This pipeline computes **no Δσ²_u0 percentage** at all: that needs a
+  random-intercept-only refit series against a single Model-1 baseline, and the ladder only
+  produces random-slope models. Deliberate gap, stated as such in the memo.
+- **Both windows are fit** (2011–2021 WPS view and 2011–2019 establishments view), because the
+  results that weakened the story changed the window AND the outcome source at once; the dual
+  fit is what separates those two effects. Three specs per window (inspections; violations
+  with inspections as offset; violations with log(inspections) as covariate) = 6 cells.
+- **Selected families**: inspections selects a zero-inflated family in both windows (2019
+  ZINB+ZI-RE, 2021 ZINB); violations select a plain negative binomial in both (2019 NB2, 2021
+  NB1) at the mandated tier. **This is NOT evidence against zero-inflation for violations** —
+  ZI is real, large and precisely estimated in the 2021 violations cells (ZIP ZI intercept
+  ≈ −2.2 to −2.3, p ≈ 5e-36 at the `rs` tier); only four families were estimable there and
+  neither ZI-NB rung could be fit, so it is an *identifiability* result. The 2019 violations
+  series is zero-**deflated** (every family overpredicts its zeros).
+- **NEW FINDING requiring a PI decision: the published Table 3 Model 1 never converged.**
+  `paper_table_models_2021.py`'s `lbfgs` fit of `log_violations` M1 (random slope) reports
+  `|grad| = 76.8236` at loglik −737.667; `cg` and `powell` both reach −729.532 cleanly. The
+  published b(log_inspections) = 0.4954 and σ²_u0 = 2.4438 are the non-converged values
+  (converged: 0.5183 / 1.2177). The module-level `warnings.filterwarnings('ignore')` in that
+  script swallowed the `ConvergenceWarning`. Scope, measured: **exactly 1 of 12** published
+  2021 fits is affected; the other 11 converge; and the reported variance-explained block is
+  **unaffected** because all six random-intercept-only refits converge and reproduce the
+  published values. **Not fixed here** — see `docs/count_models_zinb.md`.
+- **Manuscript `.docx` regeneration was deliberately NOT part of this work.** No
+  `docs/WPS_Table_Sheels_*.docx`, no `paper_table_*` script and no `paper_table_*` JSON was
+  modified or regenerated by the count-model pipeline.
+- **No script in this pipeline may use `warnings.filterwarnings('ignore')`** — that idiom is
+  what hid the finding above. Warnings are captured with `catch_warnings(record=True)` and
+  reported.
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
