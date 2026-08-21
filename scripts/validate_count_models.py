@@ -1751,6 +1751,14 @@ MEMO_REQUIRED_PHRASES = (
     'observed', 'expected', 'link scale', 'Monte-Carlo', 'IRR',
     'did not converge', 'random intercept', 'random slope',
     'identifiability', 'zero-deflated', 'multi-start',
+    # C1/C2: the estimability claim must be Model-3-scoped and must carry the
+    # Model-1 counter-example.
+    'at **Model 3**', 'as covariates are added',
+    # I1: sigma^2_u1 must be described as NOT published.
+    'reaches no published table',
+    # I3: the crossed design discards the state-specific SLOPE, not the fixed
+    # cubic trend.
+    'state-specific time slope',
 )
 
 # Framings that were WRONG in earlier drafts and must never reappear. Each is a
@@ -1763,6 +1771,11 @@ MEMO_FORBIDDEN_PATTERNS = (
     r'no\s+zero-inflation\s+in\s+the\s+violations',
     r'degenerate\s+at\s+every\s+tier',
     r'zero-inflation\s+is\s+absent',
+    # C1: the false blanket estimability claim, in either of its two forms.
+    r'could not be fit at the mandated random-slope structure at all',
+    r'[Nn]either ZINB nor ZINB\+ZI-RE could be fit there',
+    # I3: the wrong rationale for rejecting Jafari's RE structure.
+    r'would discard the cubic time trend',
 )
 
 
@@ -1936,14 +1949,6 @@ def validate_memo():
         check(f"memo quotes the {window} violations mean-variance slope "
               f"({want:.2f})", f"{want:.2f}" in text)
 
-    # ---- (f) every expected-zero count in the memo carries an MC SE ----
-    exp_rows = [ln for ln in text.splitlines()
-                if ln.startswith('|') and 'Expected 0s' not in ln
-                and re.search(r'\d\s*\+/-\s*\d', ln)]
-    check("expected-zero counts in the memo are written with their "
-          "Monte-Carlo SE (+/- form)", len(exp_rows) >= 6,
-          f"only {len(exp_rows)} rows carry a '+/-'")
-
     # ---- (g) boundary-LRT accounting ----
     n_boundary_zire = sum(
         1 for f in fits.values()
@@ -1959,6 +1964,198 @@ def validate_memo():
     check(f"memo states the zinb_re-vs-zinb boundary-LRT count ({n_zire_lrt})",
           f"{n_zire_lrt} of the {n_lrt}" in text,
           f"n_zire_lrt={n_zire_lrt}, n_boundary_zire_fits={n_boundary_zire}")
+
+    # ---- (h) C1: the estimability prose must agree with eligible_rs_m1/m3 ----
+    # This is the check that would have caught the memo asserting the ZI-NB
+    # rungs "could not be fit at all" for viol_off_2021 while its own Model-1
+    # coefficient table printed ZINB + ZI RE 150 lines later.
+    from report_count_models import ALL_FAMILIES, FAMILY_LABEL
+    n_estimability_rows = 0
+    for cell in CELLS:
+        m = fits[f'{cell}__meta']
+        e3 = m.get('eligible_rs_m3') or []
+        e1 = m.get('eligible_rs_m1') or []
+        if not e3:
+            continue
+        if len(e3) < len(ALL_FAMILIES) and cell in ('viol_off_2021', 'viol_cov_2021'):
+            # These two cells are the ones the identifiability section is about,
+            # so their counts must appear, Model-3-scoped, verbatim.
+            pat = (rf"`{cell}`: at \*\*Model 3\*\*, only {len(e3)} of the "
+                   rf"{len(ALL_FAMILIES)} families")
+            hit = re.search(pat, text)
+            check(f"memo's Model-3 estimability line for {cell} states "
+                  f"{len(e3)} of {len(ALL_FAMILIES)} eligible, matching "
+                  f"__meta.eligible_rs_m3", hit is not None,
+                  f"pattern not found: {pat}")
+            if hit:
+                n_estimability_rows += 1
+                line = text[hit.start():text.index('\n', hit.start())]
+                for fam in sorted(set(ALL_FAMILIES) - set(e3)):
+                    lbl = FAMILY_LABEL.get(fam, fam)
+                    check(f"memo names {lbl!r} as absent at Model 3 for {cell} "
+                          f"(derived from ALL_FAMILIES - eligible_rs_m3)",
+                          lbl in line, f"line: {line!r}")
+                for fam in e3:
+                    lbl = FAMILY_LABEL.get(fam, fam)
+                    check(f"memo lists {lbl!r} as eligible at Model 3 for {cell}",
+                          lbl in line, f"line: {line!r}")
+        if set(e1) != set(e3):
+            # The candidate set differs between M1 and M3 -- the memo must say so
+            # for this cell, with both counts.
+            pat = (rf"`{cell}`: {len(e1)} eligible at Model 1 vs {len(e3)} at\s+"
+                   rf"Model 3")
+            check(f"memo records that {cell}'s Model-1 candidate set "
+                  f"({len(e1)}) differs from its Model-3 set ({len(e3)})",
+                  re.search(pat, text) is not None, f"pattern not found: {pat}")
+            n_estimability_rows += 1
+            m1w = m.get('m1_winner_rs')
+            if m1w in ('zinb', 'zinb_re'):
+                # The counter-example to the blanket claim: a ZI-NB rung IS
+                # estimable at the mandated structure at Model 1.
+                wrec = fits[f'{cell}__M1__{m1w}']
+                check(f"{cell}: the Model-1 rs winner {m1w!r} really is a "
+                      f"converged rs-tier fit (the memo's counter-example is a "
+                      f"fact, not a phrasing)",
+                      wrec.get('re_tier') == 'rs' and wrec.get('converged') is True,
+                      f"re_tier={wrec.get('re_tier')!r}, "
+                      f"converged={wrec.get('converged')!r}")
+                m3w = m.get('m3_winner_rs')
+                margin = fits[f'{cell}__M1__{m3w}']['aic'] - wrec['aic']
+                check(f"memo quotes the Model-1 AIC margin for {cell} "
+                      f"({margin:.2f}) in favour of the zero-inflated model",
+                      f"{margin:.2f}" in text, f"margin={margin:.2f}")
+                check(f"that margin genuinely favours the zero-inflated model "
+                      f"for {cell} (otherwise the memo's framing is wrong)",
+                      margin > 0, f"margin={margin:.2f}")
+                n_estimability_rows += 1
+    check("the estimability prose was actually parsed and cross-checked "
+          "(at least 4 assertions fired)", n_estimability_rows >= 4,
+          f"got {n_estimability_rows}")
+
+    # ---- (i) I2: expected-zero COVERAGE, enforced structurally ----
+    # The first version of this check counted rows CONTAINING '+/-' and required
+    # >= 6, so a row that DROPPED its SE was invisible -- the reviewer stripped
+    # one and it still passed. This version is positional: it finds every table
+    # column headed "Expected 0s (+/- MC SE)" and requires EVERY data cell in
+    # that column to carry an MC SE. Rows are split on unescaped pipes only,
+    # because '(1 + time \| state)' contains an escaped pipe that would
+    # otherwise shift every column index after it.
+    split_row = lambda ln: [c.strip() for c in
+                            re.split(r'(?<!\\)\|', ln.strip().strip('|'))]
+    se_cell = re.compile(r'\d+(?:\.\d+)?\s*\+/-\s*\d')
+    EXP_HEADER = 'Expected 0s (+/- MC SE)'
+    bad_cells, n_checked, n_cols = [], 0, 0
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        if ln.startswith('|') and EXP_HEADER in ln:
+            hdr = split_row(ln)
+            idx = [j for j, c in enumerate(hdr) if c == EXP_HEADER]
+            n_cols += len(idx)
+            j = i + 1
+            while j < len(lines) and lines[j].startswith('|'):
+                row = split_row(lines[j])
+                # skip the |---|---| separator and the tier-boundary marker row
+                if not set(''.join(row)) <= set('-: ') and '*--' not in lines[j]:
+                    for k in idx:
+                        if k < len(row) and row[k] not in ('', '--'):
+                            n_checked += 1
+                            if not se_cell.search(row[k]):
+                                bad_cells.append((lines[j].strip()[:100], row[k]))
+                j += 1
+            i = j
+            continue
+        i += 1
+    check(f"every data cell in every '{EXP_HEADER}' column carries its "
+          f"Monte-Carlo SE (claim 13 enforced positionally, so a stripped SE is "
+          f"detectable -- {n_checked} cells across {n_cols} columns)",
+          not bad_cells, f"{len(bad_cells)} bare cell(s): {bad_cells!r}")
+    check("the positional MC-SE check is not vacuous (it found expected-zero "
+          "columns and cells to cover)", n_cols >= 6 and n_checked >= 40,
+          f"n_cols={n_cols}, n_checked={n_checked}")
+    # And the same guarantee for PROSE: any sentence quoting an expected-zero
+    # count outside a table must carry the SE too (this is what caught the
+    # 16.1-55.0 range being quoted bare).
+    bare_prose = [ln.strip()[:160] for ln in lines
+                  if not ln.startswith('|')
+                  and re.search(r'expected', ln, re.I)
+                  and re.search(r'\d+\.\d', ln)
+                  and '+/-' not in ln]
+    check("no prose sentence in the memo quotes an expected-zero count without "
+          "its Monte-Carlo SE", not bare_prose,
+          f"{len(bare_prose)} line(s): {bare_prose!r}")
+
+    # ---- (j) I5: the re-declared published spec must still match ----
+    aud = ev['published_audit']
+    bad = [f"{r['outcome']}/{r['model']}/{r['re_basis']}"
+           for r in aud['fits'] if not r['reproduces_published']]
+    check("all published-spec refits reproduce paper_table_params_2021.json's "
+          "sigma^2_u0 -- the ONLY guard that the specification re-declared in "
+          "build_count_model_memo_evidence.py has not drifted from "
+          "paper_table_models_2021.py", not bad, f"drifted: {bad!r}")
+    check(f"the audit's own n_reproduces_published ({aud['n_reproduces_published']}) "
+          f"equals n_fits ({aud['n_fits']})",
+          aud['n_reproduces_published'] == aud['n_fits'])
+    check("the memo's audit table shows no 'NO' in the Reproduces published "
+          "column (so prose and table cannot disagree)",
+          not re.search(r'\| NO \|', text))
+    check(f"the memo's variance-block paragraph is derived: it states the "
+          f"random-intercept refit count ({aud['n_random_intercept']}) that the "
+          f"artifact records", f"All {aud['n_random_intercept']} " in text)
+
+    # ---- (k) I4: the reporting script must not fit models any more ----
+    rep_src = open('/Users/keshavgoel/Research/scripts/report_count_models.py').read()
+    # Test the property that matters -- the reporting script must not IMPORT an
+    # estimator (prose mentioning statsmodels by name is fine and expected).
+    rep_imports = [ln.strip() for ln in rep_src.splitlines()
+                   if re.match(r'\s*(import|from)\s+\S', ln)]
+    for banned in ('statsmodels', 'build_count_model_panel'):
+        offenders = [ln for ln in rep_imports if banned in ln]
+        check(f"report_count_models.py imports nothing from {banned!r} "
+              f"(model fitting lives in build_count_model_memo_evidence.py)",
+              not offenders, f"found: {offenders!r}")
+    check("report_count_models.py fits no models: it has no fit(...) call "
+          "on an estimator", not re.search(r'\.fit\(', rep_src),
+          "found a .fit( call")
+    check("build_count_model_memo_evidence.py exists and does the fitting",
+          os.path.exists('/Users/keshavgoel/Research/scripts/'
+                         'build_count_model_memo_evidence.py'))
+    ev_src = open('/Users/keshavgoel/Research/scripts/'
+                  'build_count_model_memo_evidence.py').read()
+    check("the evidence builder STORES a bounded summary of its captured "
+          "warnings rather than discarding the record (discarding is the idiom "
+          "the memo condemns)",
+          "'warning_counts': cat_counts" in ev_src
+          and "'warnings_sample': distinct[:8]" in ev_src)
+    for cell, x in ev['zi_crosscheck'].items():
+        check(f"{cell}: the ZI cross-check records its warning accounting "
+              f"(n_warnings, per-category counts, and a distinct sample)",
+              all(k in x for k in ('n_warnings', 'warning_counts',
+                                   'warnings_sample', 'warning_categories')),
+              f"keys: {sorted(x)}")
+        check(f"{cell}: warning accounting is self-consistent "
+              f"(counts sum to n_warnings)",
+              sum(x['warning_counts'].values()) == x['n_warnings'],
+              f"{x['warning_counts']!r} vs n_warnings={x['n_warnings']}")
+    check("the non-converged violations cross-check did raise warnings and they "
+          "were recorded (a silent divergence would be the exact failure mode "
+          "this pipeline exists to catch)",
+          ev['zi_crosscheck']['viol_cov_2021']['n_warnings'] > 0
+          and bool(ev['zi_crosscheck']['viol_cov_2021']['convergence_warnings']),
+          f"n_warnings="
+          f"{ev['zi_crosscheck']['viol_cov_2021']['n_warnings']}")
+    # A real CALL at statement position, not a mention inside prose/docstring --
+    # both files legitimately discuss the published pipeline's use of the idiom.
+    call_pat = re.compile(r'^\s*(?:_?warnings\.)?filterwarnings\s*\(', re.M)
+    for src_name, src in (('report_count_models.py', rep_src),
+                          ('build_count_model_memo_evidence.py', ev_src),
+                          ('validate_count_models.py',
+                           open('/Users/keshavgoel/Research/scripts/'
+                                'validate_count_models.py').read())):
+        hits = call_pat.findall(src)
+        check(f"{src_name} makes no filterwarnings(...) call", not hits,
+              f"found {hits!r}")
 
 
 

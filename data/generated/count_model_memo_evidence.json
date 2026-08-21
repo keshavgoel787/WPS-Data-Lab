@@ -68,6 +68,9 @@
  "published_audit": {
   "n_fits": 12,
   "n_nonconverged": 1,
+  "n_reproduces_published": 12,
+  "n_random_intercept": 6,
+  "n_random_intercept_nonconverged": 0,
   "fits": [
    {
     "method": "lbfgs",
@@ -84,7 +87,8 @@
     "outcome": "inspections",
     "model": "M1",
     "re_basis": "random slope",
-    "published_sigma2_u0": 1.1181421936412639
+    "published_sigma2_u0": 1.1181421936412639,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -99,7 +103,8 @@
     "outcome": "inspections",
     "model": "M1",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 1.055586872056335
+    "published_sigma2_u0": 1.055586872056335,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -116,7 +121,8 @@
     "outcome": "inspections",
     "model": "M2",
     "re_basis": "random slope",
-    "published_sigma2_u0": 1.0834300378445654
+    "published_sigma2_u0": 1.0834300378445654,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -131,7 +137,8 @@
     "outcome": "inspections",
     "model": "M2",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 0.9988831335233175
+    "published_sigma2_u0": 0.9988831335233175,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -148,7 +155,8 @@
     "outcome": "inspections",
     "model": "M3",
     "re_basis": "random slope",
-    "published_sigma2_u0": 1.1048783879635333
+    "published_sigma2_u0": 1.1048783879635333,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -163,7 +171,8 @@
     "outcome": "inspections",
     "model": "M3",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 1.041083253745013
+    "published_sigma2_u0": 1.041083253745013,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -182,7 +191,8 @@
     "outcome": "violations",
     "model": "M1",
     "re_basis": "random slope",
-    "published_sigma2_u0": 2.4437866906615495
+    "published_sigma2_u0": 2.4437866906615495,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -197,7 +207,8 @@
     "outcome": "violations",
     "model": "M1",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 1.0784937973797608
+    "published_sigma2_u0": 1.0784937973797608,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -212,7 +223,8 @@
     "outcome": "violations",
     "model": "M2",
     "re_basis": "random slope",
-    "published_sigma2_u0": 1.086041023690943
+    "published_sigma2_u0": 1.086041023690943,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -227,7 +239,8 @@
     "outcome": "violations",
     "model": "M2",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 0.9640369350281421
+    "published_sigma2_u0": 0.9640369350281421,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -242,7 +255,8 @@
     "outcome": "violations",
     "model": "M3",
     "re_basis": "random slope",
-    "published_sigma2_u0": 1.0763869759165923
+    "published_sigma2_u0": 1.0763869759165923,
+    "reproduces_published": true
    },
    {
     "method": "lbfgs",
@@ -257,7 +271,8 @@
     "outcome": "violations",
     "model": "M3",
     "re_basis": "random intercept",
-    "published_sigma2_u0": 0.9423658395067633
+    "published_sigma2_u0": 0.9423658395067633,
+    "reproduces_published": true
    }
   ],
   "affected": {
@@ -283,7 +298,8 @@
     "outcome": "violations",
     "model": "M1",
     "re_basis": "random slope",
-    "published_sigma2_u0": 2.4437866906615495
+    "published_sigma2_u0": 2.4437866906615495,
+    "reproduces_published": true
    },
    "cg": {
     "method": "cg",
@@ -319,6 +335,12 @@
    "n_params": 52,
    "design_full_rank": true,
    "converged": true,
+   "n_warnings": 0,
+   "n_distinct_warnings": 0,
+   "warning_categories": [],
+   "warning_counts": {},
+   "warnings_sample": [],
+   "convergence_warnings": [],
    "zi_b": -4.457810496499091,
    "zi_se": 0.4247804828082448,
    "intercept": 4.966267265680019,
@@ -340,6 +362,31 @@
    "n_params": 53,
    "design_full_rank": true,
    "converged": false,
+   "n_warnings": 21034,
+   "n_distinct_warnings": 10,
+   "warning_categories": [
+    "ConvergenceWarning",
+    "HessianInversionWarning",
+    "RuntimeWarning"
+   ],
+   "warning_counts": {
+    "HessianInversionWarning": 2,
+    "RuntimeWarning": 21031,
+    "ConvergenceWarning": 1
+   },
+   "warnings_sample": [
+    "HessianInversionWarning: Inverting hessian failed, no bse or cov_params available",
+    "RuntimeWarning: invalid value encountered in log",
+    "RuntimeWarning: overflow encountered in exp",
+    "RuntimeWarning: divide by zero encountered in log",
+    "RuntimeWarning: invalid value encountered in multiply",
+    "RuntimeWarning: invalid value encountered in divide",
+    "RuntimeWarning: divide by zero encountered in divide",
+    "RuntimeWarning: overflow encountered in divide"
+   ],
+   "convergence_warnings": [
+    "ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals"
+   ],
    "zi_b": -4517.106166931756,
    "zi_se": NaN,
    "intercept": 114.54098685681954,

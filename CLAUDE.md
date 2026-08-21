@@ -207,9 +207,13 @@ python3 scripts/build_count_model_panel.py      # → count_model_panel_{2019,20
 Rscript scripts/count_models_zinb.R \
         data/generated/count_model_panel_2021.csv \
         data/generated/count_model_results.json # 6 families x 6 cells + COVID + diagnostics
-python3 scripts/report_count_models.py          # → count_model_comparison.csv,
+python3 scripts/build_count_model_memo_evidence.py  # ~15 s: 12 MixedLM refits of the
+                                                #   published 2021 spec + 2 statsmodels
+                                                #   FE-ZINB fits
+                                                # → count_model_memo_evidence.json
+python3 scripts/report_count_models.py          # pure artifact reader (<1 s)
+                                                # → count_model_comparison.csv,
                                                 #   count_model_winner_summary.csv,
-                                                #   count_model_memo_evidence.json,
                                                 #   docs/count_models_zinb.md
 python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must pass before
                                                 # trusting any estimate from this pipeline
@@ -221,7 +225,10 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   `Rscript` call — the validator asserts stderr contains *nothing else*.
 - **The random-effects structure is OURS, not Jafari's.** We keep `(1 + time | state)` with
   cubic time. Their crossed state × industry design has no analogue here (no industry
-  dimension) and would discard the WPS-revision time trend. Where a family cannot be fit at
+  dimension), and an intercept-only crossed structure would discard the **state-specific
+  time slope** — the per-state rate of change around the WPS revision. (The cubic trend
+  itself is a *fixed* effect and would survive either way; it is the random slope that
+  would not. An earlier draft of this note got that rationale wrong.) Where a family cannot be fit at
   `(1 + time | state)`, a `(1 | state)` fallback tier is reported **separately**; AIC is never
   compared across tiers.
 - **Gaussian round-trip gate.** `validate_count_models.py [2a]/[2b]` refits the manuscript's
@@ -242,9 +249,17 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   ZINB+ZI-RE, 2021 ZINB); violations select a plain negative binomial in both (2019 NB2, 2021
   NB1) at the mandated tier. **This is NOT evidence against zero-inflation for violations** —
   ZI is real, large and precisely estimated in the 2021 violations cells (ZIP ZI intercept
-  ≈ −2.2 to −2.3, p ≈ 5e-36 at the `rs` tier); only four families were estimable there and
-  neither ZI-NB rung could be fit, so it is an *identifiability* result. The 2019 violations
-  series is zero-**deflated** (every family overpredicts its zeros).
+  ≈ −2.2 to −2.3, p ≈ 5e-36 at the `rs` tier). **At Model 3** only four of the six families
+  were eligible at `(1 + time | state)` for those cells and neither ZI-NB rung reached that
+  tier, so the family comparison there is an *identifiability* result, not a test of
+  zero-inflation. **Scope this to Model 3**: at **Model 1**, `viol_off_2021` does admit
+  ZINB+ZI-RE at `(1 + time | state)` and it wins that tier by 53.48 AIC (which is what
+  `__meta.stable_rs = False` records) — the ZI-NB rungs drop out *as covariates are added*.
+  The 2019 violations series is zero-**deflated** (every family overpredicts its zeros).
+- **σ²_u1 is not a published quantity.** Tables 2/3 report `sigma2_u0_ri`, `sigma2_e_ri` and
+  `delta_pct_ri`; σ²_u1 exists in `paper_table_params_2021.json` but reaches no published
+  table. The NB1-vs-NB2 σ²_u1 disagreement (≈3.2–3.8×) therefore changes nothing currently
+  in print.
 - **NEW FINDING requiring a PI decision: the published Table 3 Model 1 never converged.**
   `paper_table_models_2021.py`'s `lbfgs` fit of `log_violations` M1 (random slope) reports
   `|grad| = 76.8236` at loglik −737.667; `cg` and `powell` both reach −729.532 cleanly. The

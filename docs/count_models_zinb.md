@@ -10,7 +10,7 @@ Joe asked whether we could replicate the analytic model of Jafari et al. (*PLOS 
 
 Same package and same model class: Jafari et al. fit their models in R with **`glmmTMB`**, and so do we. Their zero-inflated negative binomial, their distribution ladder (Poisson / NB / zero-inflated variants compared on AIC, BIC and nested likelihood-ratio tests), their reporting of incidence rate ratios.
 
-**Not** their random-effects structure, and this is deliberate. They use cross-classified state x industry random intercepts on case-level investigation records. Our data is a state-year panel with no industry dimension at all, and their design would discard the cubic time trend around the 2016-17 WPS revision that this paper is about. We keep the structure the manuscript already uses: a **random intercept** plus a **random slope** on time by state, `(1 + time | state)`, with cubic time as fixed effects. Where that structure could not support a particular distribution, a random-intercept-only fallback tier `(1 | state)` is reported separately and never compared to it on AIC.
+**Not** their random-effects structure, and this is deliberate. They use cross-classified state x industry random intercepts on case-level investigation records. Our data is a state-year panel with no industry dimension at all. Adopting an intercept-only crossed structure would also discard the **state-specific time slope** -- the per-state rate of change around the 2016-17 WPS revision -- which is the part of this paper's design that a crossed `(1|state) + (1|year)` cannot express. (The cubic time trend itself is a fixed effect and would survive; it is the random slope that would not.) We keep the structure the manuscript already uses: a **random intercept** plus a **random slope** on time by state, `(1 + time | state)`, with cubic time as fixed effects. Where that structure could not support a particular distribution, a random-intercept-only fallback tier `(1 | state)` is reported separately and never compared to it on AIC.
 
 Before any count model was believed, `glmmTMB` had to reproduce something already known. The validation gate refits the manuscript's own Model 1 as a **Gaussian** `glmmTMB` model with REML and requires it to match `statsmodels.MixedLM` -- coefficients to 1e-3 relative, variance components to 2e-2 relative. It does. Nothing downstream would be trustworthy otherwise.
 
@@ -33,6 +33,8 @@ The results Joe reacted to changed the window (2019 -> 2021) **and** the outcome
 
 Three specifications per window, so six cells in all: inspections as the outcome; violations with inspections as an **offset** (`viol_off_*`, a rate model); and violations with `log(inspections)` as an ordinary **covariate** (`viol_cov_*`, matching the published Table 3).
 
+The offset and covariate specifications do **not** run on the same N: 2019 M1 has 394 rows as a covariate against 387 as an offset (gap 7); 2019 M3 has 378 rows as a covariate against 375 as an offset (gap 3); 2021 M1 has 533 rows as a covariate against 526 as an offset (gap 7); 2021 M3 has 501 rows as a covariate against 494 as an offset (gap 7). The offset is `log(inspections)`, which is undefined at zero inspections, so every zero-inspection state-year drops out of the `viol_off_*` cells and stays in the `viol_cov_*` ones. Do not read the offset and covariate columns as the same sample.
+
 ## Selected family per cell
 
 Selected by AIC within one random-effects tier, never across tiers. `rs` = `(1 + time | state)` (the mandated structure); `ri` = `(1 | state)` (fallback, reported only where a family could not be fit at `rs`).
@@ -48,7 +50,9 @@ Selected by AIC within one random-effects tier, never across tiers. `rs` = `(1 +
 | viol_off_2021 | violations | 2021 | offset | `rs` | NB1 (`nbinom1`) | 3651.1 | 494 | 46 | NB2 | 7.88 | NA/NaN function evaluation |
 | viol_off_2021 | violations | 2021 | offset | `ri` | ZINB + ZI RE (`zinb_re`) | 3632.6 | 494 | 46 | ZINB | 20.14 | none |
 
-At the mandated `(1 + time | state)` structure, **inspections selects a zero-inflated family in both windows** (2019: ZINB + ZI RE; 2021: ZINB) **and violations select a plain negative binomial in both** (2019: NB2; 2021: NB1). That is what the evidence selected: it is neither the hoped-for result nor a disappointing one, and the next section is where it stops being as simple as it looks. Note also that both 2021 violations cells carry a SECOND winner at the `(1 | state)` fallback tier, and that one IS zero-inflated -- the two tiers are separate results, not a ranking.
+At the mandated `(1 + time | state)` structure, **inspections selects a zero-inflated family in both windows** (2019: ZINB + ZI RE; 2021: ZINB) **and violations select a plain negative binomial in both** (2019: NB2; 2021: NB1). That is what the evidence selected: it is neither the hoped-for result nor a disappointing one, and the next section is where it stops being as simple as it looks.
+
+Note also that 2 cells (`viol_cov_2021`, `viol_off_2021`) carry a SECOND winner at the `(1 | state)` fallback tier, and those are zero-inflated (ZINB + ZI RE) -- the two tiers are separate results, not a ranking.
 
 ## Zero-inflation: what the AIC comparison does and does not settle
 
@@ -74,18 +78,27 @@ The most important thing in this memo. **Do not read "NB1 won" as "zero-inflatio
 - **viol_off_2021**: zero-inflation is estimable even at the mandated `rs` structure, via ZIP (ZI intercept -2.2961, SE 0.1832, p = 5.09e-36), and non-degenerate at the fallback tier via ZINB (ZI intercept -2.3905, p = 1.16e-27).
 - **viol_cov_2021**: zero-inflation is estimable even at the mandated `rs` structure, via ZIP (ZI intercept -2.2009, SE 0.1756, p = 5.08e-36), and non-degenerate at the fallback tier via ZINB (ZI intercept -2.2815, p = 3.38e-27).
 
-NB1 wins the AIC comparison because a negative binomial's own overdispersion parameter accounts for those same zeros about as economically as an explicit inflation term does -- and, specifically, because the zero-inflated **negative binomial** *combination* could not be fit at the mandated random-slope structure at all.
+NB1 wins the AIC comparison because a negative binomial's own overdispersion parameter accounts for those same zeros about as economically as an explicit inflation term does -- and, **at Model 3**, because the zero-inflated **negative binomial** rungs are not available at the mandated random-slope structure for these cells. That scope matters: it is a Model-3 statement, not a blanket one, and the Model-1 paragraph below is the counter-example.
 
-### For the 2021 violations cells the family comparison is an identifiability statement
+### At Model 3, for the 2021 violations cells, the family comparison is an identifiability statement
 
-- `viol_off_2021`: only 4 families were estimable at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. Neither ZINB nor ZINB+ZI-RE could be fit there.
-- `viol_cov_2021`: only 4 families were estimable at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. Neither ZINB nor ZINB+ZI-RE could be fit there.
+- `viol_off_2021`: at **Model 3**, only 4 of the 6 families were eligible at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. The 2 absent ones are ZINB (no fit at this structure; it fell back to (1 | state)); ZINB + ZI RE (no fit at this structure; it fell back to (1 | state)).
+- `viol_cov_2021`: at **Model 3**, only 4 of the 6 families were eligible at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. The 2 absent ones are ZINB (no fit at this structure; it fell back to (1 | state)); ZINB + ZI RE (no fit at this structure; it fell back to (1 | state)).
 
-So at the structure the manuscript specifies, the comparison for these two cells is between four families, two of which are the ZI-NB rungs that **could not be estimated**. A reader must not take the result as evidence against zero-inflation; it is an **identifiability** result about the random-slope structure.
+So at the structure the manuscript specifies, the Model-3 comparison for these two cells runs over 4 families, and the 2 that are missing are exactly the zero-inflated negative-binomial rungs -- ZINB, ZINB + ZI RE in both cells. None of the 4 that were compared is a ZI-NB. A reader must not take the result as evidence against zero-inflation; it is an **identifiability** result about the random-slope structure at Model 3.
+
+#### And at Model 1 the picture is different -- in the direction that favours zero-inflation
+
+The candidate set is not a property of the cell; it is a property of the (cell, model) pair, because adding covariates changes what the optimizer can support. Where the Model-1 and Model-3 sets differ:
+
+- `viol_off_2019`: 4 eligible at Model 1 vs 3 at Model 3. Available at Model 1 but not Model 3: ZIP. The Model-1 winner at this tier is **NB2** beating NB1 by 87.73 AIC and `stable_rs` is True, which is the field that records the Model-1 and Model-3 winners agreeing.
+- `viol_off_2021`: 5 eligible at Model 1 vs 4 at Model 3. Available at Model 1 but not Model 3: ZINB + ZI RE. The Model-1 winner at this tier is **ZINB + ZI RE** beating NB1 by 53.48 AIC and `stable_rs` is False, which is the field that records the Model-1 and Model-3 winners DISAGREEING.
+
+**This is the sentence that matters, and it is stronger for zero-inflation than the Model-3 result is.** At Model 1, `viol_off_2021` *did* admit a zero-inflated negative binomial at the mandated `(1 + time | state)` structure: ZINB + ZI RE converged there (positive-definite Hessian: True) with AIC 3808.92 against NB1's 3862.41 -- a margin of 53.48 AIC in favour of the zero-inflated model, with a ZI intercept of -3.2327 (SE 0.4903, p = 4.31e-11). So the correct statement is that the ZI-NB rungs drop out **as covariates are added**, not that they were never estimable at this structure.
 
 ### The 2019 violations series is zero-**deflated**, not zero-inflated
 
-Every family **over**predicts the zeros in the 2019 violations cells: 7 observed against 16.1-55.0 expected across the six families at Model 3, i.e. 2.3x to 7.9x too many. There is no excess of zeros here to inflate; there is a shortage of them. The series is zero-deflated.
+Every family **over**predicts the zeros in the 2019 violations cells: 7 observed against a range of 16.1 +/- 0.11 (ZIP, viol_cov_2019) to 55.0 +/- 0.18 (NB1, viol_off_2019) expected across the 6 families at Model 3 -- i.e. 2.3x to 7.9x too many (MC SEs from 2000 simulations, so the gap is nowhere near simulation noise). There is no excess of zeros here to inflate; there is a shortage of them. The series is zero-deflated.
 
 | Cell | Family | Observed 0s | Expected 0s (+/- MC SE) | Expected/Observed |
 |---|---|---|---|---|
@@ -102,7 +115,7 @@ Every family **over**predicts the zeros in the 2019 violations cells: 7 observed
 | viol_off_2019 | ZINB + ZI RE | 7 | 36.0 +/- 0.15 | 5.14x |
 | viol_off_2019 | NB1 | 7 | 55.0 +/- 0.18 | 7.86x |
 
-Consistent with that, all three zero-inflated families collapse at the mandated structure in these cells: standard errors from 2260 to 3020 and p-values from 0.993 to 0.994 -- a zero-inflation intercept sitting numerically on the boundary, estimating nothing. Across the whole ladder 11 fits are flagged ZI-degenerate, and they are all in these 2 cells (`viol_cov_2019`, `viol_off_2019`).
+Consistent with that, all 3 zero-inflated families collapse at the mandated structure in these cells: standard errors from 2260 to 3020 and p-values from 0.993 to 0.994 -- a zero-inflation intercept sitting numerically on the boundary, estimating nothing. Across the whole ladder 11 fits are flagged ZI-degenerate, and they are all in these 2 cells (`viol_cov_2019`, `viol_off_2019`).
 
 **Scope, precisely.** The fallback `(1 | state)` tier was never attempted for these cells -- they did not need it, because a non-ZI family fit fine at the mandated structure. So the supportable claim is *no estimable zero-inflation at the specified structure, where all three ZI families collapse*. It is **not** a claim that zero-inflation is degenerate at every possible tier, and this memo does not make that claim.
 
@@ -189,6 +202,7 @@ Families per column: M1 = NB1, M2 = NB1, M3 = NB1.
 ### viol_cov_2021 -- violations 2021, exposure covariate, (1 | state)
 
 Families per column: M1 = ZINB + ZI RE, M3 = ZINB + ZI RE.
+Model 2 is absent from this block because M2 was only ever fit at the mandated `(1 + time | state)` tier -- the fallback tier carries Models 1 and 3 only. It is not a missing result.
 
 | Term | Model 1 | Model 3 |
 |---|---|---|
@@ -248,6 +262,7 @@ The `ZI:` row is the zero-inflation part, which has a **logit** link rather than
 ### viol_off_2021 -- violations 2021, exposure offset, (1 | state)
 
 Families per column: M1 = ZINB + ZI RE, M3 = ZINB + ZI RE.
+Model 2 is absent from this block because M2 was only ever fit at the mandated `(1 + time | state)` tier -- the fallback tier carries Models 1 and 3 only. It is not a missing result.
 
 | Term | Model 1 | Model 3 |
 |---|---|---|
@@ -269,7 +284,7 @@ The `ZI:` row is the zero-inflation part, which has a **logit** link rather than
 
 **Read the caveat before the numbers.** In a count GLMM these variance components live on the log **link scale**, not on the `log(count + 1)` outcome scale of the published tables. Their magnitudes are therefore **not** comparable to the sigma^2_u0 values reported in Tables 2 and 3, even though a percentage reduction would be. **This pipeline does not compute a Delta sigma^2_u0 percentage at all.** Doing that properly needs a random-intercept-only refit series against a single Model-1 baseline (the basis the manuscript uses), and the ladder here only produces random-slope models. Flagging that as a deliberate gap rather than implying a number exists: if you want the variance-explained block redone on the count models, that is a further piece of work.
 
-N and the state count fall between Model 1 and Models 2-3 because the spending and BLS-derived covariates are listwise-deleted (AK/RI/VT have no BLS pesticide-applicator series), so the rows of a block are not all on the same analytic sample.
+Two warnings before reading down a column. **(1)** N and the state count fall between Model 1 and Models 2-3 because the spending and BLS-derived covariates are listwise-deleted (AK/RI/VT have no BLS pesticide-applicator series), so the rows of a block are not all on the same analytic sample. **(2)** Where the selected family changes down a column, the sigma^2 values are not a variance-reduction sequence at all -- they are different models' parameters. The `Family` column flags every such case: `viol_off_2021` at the (1 + time | state) tier changes family down the column.
 
 | Cell | Model | Family | RE structure | sigma^2_u0 | sigma^2_u1 | sigma_u01 | N obs | States |
 |---|---|---|---|---|---|---|---|---|
@@ -332,6 +347,8 @@ The two N's differ on purpose: the cross-check drops the six Model 3 covariates 
 
 **The violations cross-check did not converge, and that carries no interpretive weight.** The entire parameter vector diverged -- dispersion to -1726.3, intercept to +114.5 -- on a design matrix that is full rank (53/53 columns, verified). That is the known incidental-parameters fragility of a ~53-parameter fixed-effects count mixture, not a finding about zero-inflation. It is **not** agreement with the glmmTMB result and is not presented as such.
 
+For the record, that fit raised 21,034 warnings (10 distinct) across ConvergenceWarning x1, HessianInversionWarning x2, RuntimeWarning x21,031. They are counted and sampled in `count_model_memo_evidence.json` rather than suppressed -- a divergence this loud going unrecorded is the exact failure mode the next section is about.
+
 ## COVID robustness (2021 window)
 
 Under the log-linear model the 2020-21 indicator was -0.590*** for inspections -- pushing `time2`/`time3` from null into significance -- and -0.183 n.s. for violations, from which `CLAUDE.md` concluded the violations time trend was robust. Under the selected count family:
@@ -372,7 +389,7 @@ How it stayed invisible: `paper_table_models_2021.py` carries a module-level `wa
 
 **Scope, measured rather than assumed.** All 12 published 2011-2021 fits (2 outcome columns x 3 models x {random slope, random-intercept-only}) were refit and their warnings captured: **exactly 1 of 12 is affected**, the one above. The other 11 converge cleanly.
 
-The `Reproduces published` column confirms the refit landed on the same optimum the manuscript published -- including for the failed row, where reproducing the published number is exactly how we know the published number is the non-converged one.
+The `Reproduces published` column is the only guard that the specification re-declared in `scripts/build_count_model_memo_evidence.py` still matches `paper_table_models_2021.py`: it is True on 12 of 12 fits, and validator `[7]` fails if that is not all of them. It is True for the failed row too -- reproducing the published number is exactly how we know the published number is the non-converged one.
 
 | Outcome column | Model | RE basis | N | Log-likelihood | sigma^2_u0 | Reproduces published | Gradient failure |
 |---|---|---|---|---|---|---|---|
@@ -389,20 +406,22 @@ The `Reproduces published` column confirms the refit landed on the same optimum 
 | violations | M3 | random slope | 501 | -688.166 | 1.076387 | yes | no |
 | violations | M3 | random intercept | 501 | -708.826 | 0.942366 | yes | no |
 
-**The reported variance-explained block is unaffected.** All six random-intercept-only refits converge and reproduce the published sigma^2_u0 values exactly, and those are the fits the manuscript's Delta sigma^2_u0 percentages are built from. So this is a coefficient-level problem in one column, not a variance-block problem.
+**The reported variance-explained block is unaffected.** All 6 random-intercept-only refits converge (0 gradient failures) and reproduce their published sigma^2_u0 values, and those are the fits the manuscript's Delta sigma^2_u0 percentages are built from. So this is a coefficient-level problem in 1 column, not a variance-block problem.
 
 Nothing was fixed or regenerated. No manuscript `.docx`, no `paper_table_*` script, no `paper_table_*` JSON was touched by this work. Whether to reissue Table 3 Model 1 is your call.
 
-## NB1 versus NB2 changes a number the manuscript reports
+## NB1 and NB2 disagree on the random-slope variance
 
-For the 2021 violations cells the two negative-binomial parameterisations disagree materially on the random-slope variance, and very little AIC separates them:
+For the 2021 violations cells the two negative-binomial parameterisations disagree materially on sigma^2_u1, and very little AIC separates them:
 
 | Cell | NB1 AIC | NB2 AIC | dAIC | NB1 sigma^2_u1 | NB2 sigma^2_u1 | Ratio | NB1 warning | NB2 warning |
 |---|---|---|---|---|---|---|---|---|
 | viol_off_2021 | 3651.1 | 3659.0 | 7.88 | 0.006780 | 0.025893 | 3.82x | NA/NaN function evaluation | none |
 | viol_cov_2021 | 3630.2 | 3640.9 | 10.74 | 0.007533 | 0.024212 | 3.21x | NA/NaN function evaluation | none |
 
-The winner carries a live optimizer warning while the runner-up is clean, which is uncomfortable. It is not, however, a bad optimum: refitting the winning NB1 models under BFGS reproduces the log-likelihood and AIC to four decimals.
+**sigma^2_u1 is not a quantity the manuscript publishes.** Tables 2 and 3 report sigma^2_u0, sigma^2_e and Delta sigma^2_u0 on the **random-intercept** basis (`sigma2_u0_ri` / `sigma2_e_ri` / `delta_pct_ri`); sigma^2_u1 exists in `data/generated/paper_table_params_2021.json` but reaches no published table. So this disagreement changes nothing that is currently in print. It is recorded because it would matter the moment a random-slope variance is reported, and because it is a real between-family difference rather than an optimizer artifact.
+
+The winner carries a live optimizer warning while the runner-up is clean, which is uncomfortable. It is not, however, a bad optimum: refitting the winning NB1 models under BFGS reproduces the log-likelihood to within 2.6e-05 and the AIC to within 5.2e-05 across all 6 refits.
 
 | Cell | Model | Default optimizer log-lik | BFGS log-lik | Default AIC | BFGS AIC | sigma^2_u1 default | sigma^2_u1 BFGS |
 |---|---|---|---|---|---|---|---|
@@ -522,5 +541,5 @@ Every fit in the ladder. AIC is only ever comparable **within** one RE-structure
 
 ## Honest expectations
 
-A better-specified model can confirm weak associations as readily as it can strengthen them. If a zero-inflated or negative-binomial model is the right model for these counts -- and the selection evidence above is what we have on that -- then its answer is the answer, whichever direction it points. This was recorded as the expected risk in the design spec before any model was fit, and it is recorded here because it came out mixed: the inspections zero-inflation is real but is a left-tail-fit result rather than a latent non-inspecting subpopulation; the violations zero-inflation is real but outcompeted at the structure we are committed to; and the two genuinely new findings -- the non-converged published Model 1 and the weaker COVID robustness for violations -- are corrections to the existing paper rather than additions to it.
+A better-specified model can confirm weak associations as readily as it can strengthen them. If a zero-inflated or negative-binomial model is the right model for these counts -- and the selection evidence above is what we have on that -- then its answer is the answer, whichever direction it points. This was recorded as the expected risk in the design spec before any model was fit, and it is recorded here because it came out mixed: the inspections zero-inflation is real but is a left-tail-fit result rather than a latent non-inspecting subpopulation; the violations zero-inflation is real and, at Model 3, outcompeted at the structure we are committed to -- though at Model 1 it actually wins that tier for `viol_off_2021`, which is why the Model-3 scoping above matters; and the two genuinely new findings -- the non-converged published Model 1 and the weaker COVID robustness for violations -- are corrections to the existing paper rather than additions to it.
 
