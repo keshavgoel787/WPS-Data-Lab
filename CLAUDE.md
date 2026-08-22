@@ -258,15 +258,28 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   run against plain **NB2** also give 17 of 17, by 24.1–83.2 AIC, so the claim covers both
   negative-binomial parameterisations, not just NB1.
 - **But it is the ZI-NB specifically, not zero-inflation generally, and do NOT write that a
-  zero-inflated model never lost on merit anywhere.** Over all matched ZI-vs-plain
-  comparisons a zero-inflated **Poisson** is beaten by a plain family at **13** distinct
-  (cell, model, `re_tier`) rungs — **9 of them at the mandated `rs` tier** — by 1.9–2967.5
-  AIC. No `zinb` or `zinb_re` ever lost one (**0** losses). The winning ingredient is
-  inflation *combined with* NB overdispersion, i.e. Jafari's specification; inflation on a
-  Poisson mean–variance structure loses wherever it is tested. Also note that **8 of the 17**
-  ZI-NB-vs-NB1 comparisons are at the `(1 | state)` fallback tier, and that **M2 contributes
-  none** (the ladder fits M2 under the already-selected family only), so "every comparison in
-  the ladder" means M1 and M3.
+  zero-inflated model never lost on merit anywhere.** The evidence is a three-tier
+  **hierarchy**, and all three tallies are generated in `docs/count_models_zinb.md`:
+  (1) **inflation helps** — ZIP beats plain Poisson **12–1** (margins −1.9 to +625.7 AIC);
+  (2) **NB overdispersion helps more** — a plain NB beats that same ZIP **13–0** against NB1
+  and **13–0** against NB2; (3) **the two together win wherever they can be fit** — ZI-NB
+  beats NB1 **17–0** and NB2 **17–0**. That is precisely the case for Jafari's specification.
+  So a zero-inflated **Poisson** is beaten at **13** distinct (cell, model, `re_tier`) rungs —
+  **9 of them at the mandated `rs` tier** — by 1.9–2967.5 AIC, but **always by a negative
+  binomial and never by a plain Poisson**: do NOT write that inflation on a Poisson "is beaten
+  wherever it is tested" without the "against a negative binomial" qualifier; unqualified it
+  is false. No `zinb` or `zinb_re` ever lost a matched comparison (**0** losses); always name
+  the *negative binomial* as the subject of that claim. Also note that **8 of the 17**
+  ZI-NB-vs-NB1 comparisons are at the `(1 | state)` fallback tier, that **M2 contributes
+  none** (the ladder fits M2 under the already-selected family only) so "every comparison in
+  the ladder" means M1 and M3, and that **8 ZI-NB fits are excluded as `zi_degenerate`** (all
+  in the 2019 violations cells; 8 of 8 have worse AIC than their rung's selected plain
+  family, so exclusion hides no wins).
+- **Neither plain family is the "harder comparison".** NB2 has the smaller ZI-NB margin at
+  **8** of the 17 rungs and NB1 at the other **9**. NB2's mean margin is lower (47.4 vs 81.1)
+  only because the 4 `insp_2021` rungs fall from ~183 to ~33 AIC — a range effect, not a
+  majority. The claim that holds is that the ZI-NB beats whichever plain family is tougher at
+  each rung, at all 17.
 - **Selected families**: inspections selects a zero-inflated family in both windows (2019
   ZINB+ZI-RE, 2021 ZINB); violations select a plain negative binomial in both (2019 NB2, 2021
   NB1) at the mandated tier. **This is NOT evidence against zero-inflation for violations** —

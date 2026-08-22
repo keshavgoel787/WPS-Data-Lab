@@ -560,11 +560,36 @@ def zi_loss_summary(tab, meta):
         by_family[fam] = sorted(fl)
     distinct = sorted({(r['cell'], r['model'], r['re_tier'], r['zi_family'])
                        for r in losses})
+    # `distinct` is keyed on the FAMILY as well as the rung, because two
+    # different ZI families losing at the same rung are two results. The memo's
+    # prose counts RUNGS per family (3-tuples), which is what
+    # `n_losses_by_family` holds. They are equal today only because every loser
+    # is ZIP; `distinct_loser_rungs` is kept alongside so the validator can
+    # assert that equality rather than assume it.
+    distinct_rungs = sorted({d[:3] for d in distinct})
+    # Head-to-head record per (zi_family, plain_family). This is what shows the
+    # HIERARCHY the memo needs: inflation helps a Poisson a lot, and still loses
+    # to a negative binomial every time.
+    record = {}
+    for zf in ZI_FAMILIES:
+        for pf in PLAIN_FAMILIES:
+            sub = [r for r in allcmp
+                   if r['zi_family'] == zf and r['plain_family'] == pf]
+            if not sub:
+                continue
+            record[(zf, pf)] = {
+                'n': len(sub),
+                'wins': sum(1 for r in sub if r['margin'] > 0),
+                'losses': sum(1 for r in sub if r['margin'] <= 0),
+                'margin_lo': min(r['margin'] for r in sub),
+                'margin_hi': max(r['margin'] for r in sub),
+            }
     return {
         'n_comparisons': len(allcmp),
         'n_win_pairings': len(wins),
         'n_loss_pairings': len(losses),
         'distinct_losers': distinct,
+        'distinct_loser_rungs': distinct_rungs,
         'distinct_losers_rs': [d for d in distinct if d[2] == 'rs'],
         'losers_by_family': by_family,
         'n_losses_by_family': {f: len(v) for f, v in by_family.items()},
@@ -573,8 +598,26 @@ def zi_loss_summary(tab, meta):
                            if losses else None),
         'loss_margin_hi': (max(abs(r['margin']) for r in losses)
                            if losses else None),
+        'record': record,
         'raw_losses': losses,
     }
+
+
+def pair_matched(mc_a, mc_b):
+    """Pair two matched-comparison sets rung for rung, refusing to guess.
+
+    `zip(sorted(a), sorted(b))` would silently misalign if the two sets ever
+    differed in membership -- e.g. if a plain family failed to converge at one
+    rung so its comparison were absent. Raise instead.
+    """
+    a, b = sorted(mc_a, key=_mc_key), sorted(mc_b, key=_mc_key)
+    ka, kb = [_mc_key(r) for r in a], [_mc_key(r) for r in b]
+    if ka != kb:
+        raise ValueError(
+            'matched-comparison sets are not over the same rungs; cannot pair. '
+            f'only in first: {[k for k in ka if k not in kb]!r}; '
+            f'only in second: {[k for k in kb if k not in ka]!r}')
+    return list(zip(a, b))
 
 
 def zinb_eligibility_at_rs(meta, cells):
@@ -840,55 +883,60 @@ def write_memo(raw, meta, tab, ws, ev):
     add(f"**Jafari's model class fits these data better than the plain negative "
         f"binomial everywhere it can be estimated.** Across every legitimate "
         f"matched comparison in the ladder -- same cell, same model, same "
-        f"random-effects tier, same N -- a zero-inflated negative binomial beats "
-        f"plain NB1 {_mc_wins} times out of {len(_mc)}, by at least "
-        f"{_f(_mlo, '.1f')} AIC, and beats plain NB2 {_mc2_wins} times out of "
-        f"{len(_mc2)}, by at least {_f(_mlo2, '.1f')} AIC. There is no exception "
-        f"against either parameterisation. The binding constraint on using it is "
-        f"**identifiability at the random-slope structure**, not evidence against "
-        f"zero-inflation.\n")
-    add(f"Two things to be clear about in that tally before it is quoted. "
-        f"{_mc_rs} of the {len(_mc)} comparisons are at the mandated "
-        f"`(1 + time | state)` structure and {_mc_ri} are at the `(1 | state)` "
-        f"fallback tier, so the evidence is not all from the structure the "
-        f"manuscript specifies. And \"every legitimate matched comparison in the "
-        f"ladder\" means every one that exists, which is "
-        f"{' and '.join(_mc_models)} only: the ladder fits Model 2 under the "
-        f"already-selected family alone, so Model 2 contributes no cross-family "
-        f"comparison to make.\n")
-    add(f"**Which zero-inflated family it is matters, and this is the sharper "
-        f"result.** A zero-inflated *negative binomial* never lost a matched "
-        f"comparison anywhere in this pipeline: {_zl['n_zinb_losses']} losses. A "
-        f"zero-inflated *Poisson* loses often and enormously -- beaten by a plain "
-        f"family at {_zip_losses} distinct (cell, model, RE-tier) rungs, "
+        f"random-effects tier, same N, both converged, neither ZI-degenerate -- a "
+        f"zero-inflated negative binomial beats plain NB1 {_mc_wins} times out of "
+        f"{len(_mc)}, by at least {_f(_mlo, '.1f')} AIC, and beats plain NB2 "
+        f"{_mc2_wins} times out of {len(_mc2)}, by at least {_f(_mlo2, '.1f')} "
+        f"AIC. There is no exception against either parameterisation.\n")
+    # The hierarchy. An earlier draft said inflation on a Poisson "is beaten
+    # wherever it is tested", which is false and throws away the strongest piece
+    # of evidence FOR inflation: ZIP beats plain Poisson 12-1. All three tallies
+    # are read off zi_loss_summary()['record'].
+    _rec = _zl['record']
+    _zp = _rec[('zip', 'poisson')]
+    _zn1 = _rec[('zip', 'nbinom1')]
+    _zn2 = _rec[('zip', 'nbinom2')]
+    add(f"**The evidence is a hierarchy, and it lands exactly on Jafari's "
+        f"specification.** Three tallies, all over matched comparisons:\n")
+    add(f"1. **Inflation helps.** A zero-inflated Poisson beats a plain Poisson "
+        f"{_zp['wins']}-{_zp['losses']} (margins {_f(_zp['margin_lo'], '.1f')} to "
+        f"{_f(_zp['margin_hi'], '.1f')} AIC). Adding a structural-zero component "
+        f"to a Poisson buys a great deal.")
+    add(f"2. **Negative-binomial overdispersion helps more.** A plain negative "
+        f"binomial beats that same zero-inflated Poisson "
+        f"{_zn1['losses']}-{_zn1['wins']} against NB1 and "
+        f"{_zn2['losses']}-{_zn2['wins']} against NB2. Inflation on a Poisson "
+        f"mean-variance structure cannot close the gap to a negative binomial -- "
+        f"not once, anywhere in the ladder.")
+    add(f"3. **The two together win wherever they can be fit.** A zero-inflated "
+        f"negative binomial beats NB1 {_mc_wins}-{len(_mc) - _mc_wins} and NB2 "
+        f"{_mc2_wins}-{len(_mc2) - _mc2_wins}. No `zinb` or `zinb_re` fit lost a "
+        f"single matched comparison: {_zl['n_zinb_losses']} losses in total.")
+    add("")
+    add(f"So the ingredient that wins is inflation **combined with** "
+        f"negative-binomial overdispersion, which is precisely Jafari's model. A "
+        f"zero-inflated *negative binomial* never lost a matched comparison "
+        f"anywhere in this pipeline; a zero-inflated *Poisson* loses at "
+        f"{_zip_losses} distinct (cell, model, RE-tier) rungs, "
         f"{len(_zl['distinct_losers_rs'])} of them at the mandated "
         f"`(1 + time | state)` structure, by {_f(_zl['loss_margin_lo'], '.1f')} to "
-        f"{_f(_zl['loss_margin_hi'], '.1f')} AIC. So the ingredient that wins is "
-        f"inflation **combined with** negative-binomial overdispersion -- which is "
-        f"precisely Jafari's specification. Inflation bolted onto a Poisson "
-        f"mean-variance structure cannot represent this overdispersion and is "
-        f"beaten wherever it is tested.\n")
-    add(f"Concretely: at the structure the manuscript mandates, "
-        f"`(1 + time | state)`, no zero-inflated negative-binomial rung is "
-        f"eligible at Model 3 in any of the {len(_viol_cells)} violations cells, "
-        f"so a plain negative binomial wins those columns **by default, having "
-        f"been the only kind of model left in the race** -- and it remains the "
-        f"selected family for them under the pre-registered protocol. But the "
-        f"reason differs by cell, and only one of them fits the phrase \"stops "
-        f"being estimable\": "
-        + (_oxford(['`' + c + '`' for c in _ze['lost']])
-           + (" has a ZI-NB rung at Model 1 that is gone by Model 3"
-              if len(_ze['lost']) == 1 else
-              " have a ZI-NB rung at Model 1 that is gone by Model 3")
-           if _ze['lost'] else "no cell loses a rung between Model 1 and Model 3")
-        + ("; " + _oxford(['`' + c + '`' for c in _ze['never']])
-           + (" has none at either model, so nothing stops -- "
-              if len(_ze['never']) == 1 else
-              " have none at either model, so nothing stops -- ")
-           + "they never had one at this structure"
-           if _ze['never'] else "")
-        + f". For {_zi_sel_noun} the ZI rungs do survive to Model 3 and are duly "
-        f"selected ({', '.join('`' + c + '`' for c in _zi_sel)}).\n")
+        f"{_f(_zl['loss_margin_hi'], '.1f')} AIC -- always to a negative "
+        f"binomial, never to a plain Poisson.\n")
+    add(f"**What stops us using it is identifiability, not evidence.** At the "
+        f"structure the manuscript mandates, `(1 + time | state)`, no "
+        f"zero-inflated negative-binomial rung is eligible at Model 3 in any of "
+        f"the {len(_viol_cells)} violations cells, so a plain negative binomial "
+        f"wins those columns **by default, having been the only kind of model "
+        f"left in the race** -- and it remains the selected family for them under "
+        f"the pre-registered protocol. Only "
+        + (_oxford(['`' + c + '`' for c in _ze['lost']]) + " of them fits"
+           if len(_ze['lost']) == 1 else
+           _oxford(['`' + c + '`' for c in _ze['lost']]) + " of them fit")
+        + f" the phrase \"stops being estimable\"; the other {len(_ze['never'])} "
+        f"never had such a rung at this structure at either model. The per-cell "
+        f"accounting is below. For {_zi_sel_noun} the ZI rungs do survive to "
+        f"Model 3 and are duly selected "
+        f"({_oxford(['`' + c + '`' for c in _zi_sel])}).\n")
     add("Two further findings are corrections to work already in print rather "
         "than additions to it, and both need your decision: the published "
         "Table 3 Model 1 comes from a fit that never converged, and the "
@@ -1097,8 +1145,34 @@ def write_memo(raw, meta, tab, ws, ev):
     mc_dist = [r for r in mc if not r['collapsed']]
     mc_dist_wins = [r for r in mc_dist if r['margin'] > 0]
     mlo, mhi = min(r['margin'] for r in mc), max(r['margin'] for r in mc)
-    add(f"### NB1's win is a default, not a merit win\n")
-    add(f"It is tempting to explain the result by saying a negative binomial's "
+    # How many ZI-NB fits the degeneracy criterion removes from the matched
+    # comparison, and where. Without this the reader cannot tell whether the
+    # 2019 Model-3 ZINB fits were excluded or counted as wins.
+    _degen_zinb = tab[tab['zi_degenerate'] & tab['family'].isin(ZINB_FAMILIES)]
+    _n_degen_zinb = len(_degen_zinb)
+    _degen_zinb_cells = sorted(set(_degen_zinb['cell']))
+    _n_degen_worse = 0
+    for _, _dr in _degen_zinb.iterrows():
+        _wf = meta[_dr['cell']][f"m{_dr['model'][1:]}_winner_rs"] \
+            if _dr['model'] in ('M1', 'M3') else None
+        if _wf is None:
+            continue
+        _w = tab[(tab['cell'] == _dr['cell']) & (tab['model'] == _dr['model']) &
+                 (tab['re_tier'] == _dr['re_tier']) & (tab['family'] == _wf)]
+        if not _w.empty and _dr['aic'] > float(_w['aic'].iloc[0]):
+            _n_degen_worse += 1
+    _zl_m = zi_loss_summary(tab, meta)
+    # The subject is derived: NB1 wins the rs/M3 column in the 2021 violations
+    # cells, NB2 in the 2019 pair, so a heading naming NB1 alone misdescribes
+    # half of what it is justifying.
+    add(f"### The plain negative binomial's win is a default, not a merit win\n")
+    add(f"The violations cells select a plain negative binomial at Model 3 at "
+        f"the mandated structure"
+        + (" (" + "; ".join(
+            f"{FAMILY_LABEL.get(meta[c]['m3_winner_rs'], meta[c]['m3_winner_rs'])} "
+            f"in `{c}`" for c in sorted(set(tab[tab['outcome'] == 'violations']['cell'])))
+           + ")")
+        + ". It is tempting to explain that by saying a negative binomial's "
         f"own overdispersion parameter accounts for those zeros about as "
         f"economically as an explicit inflation term does. **That explanation is "
         f"wrong, and the artifacts say so exhaustively.** Comparing a "
@@ -1107,6 +1181,30 @@ def write_memo(raw, meta, tab, ws, ev):
         f"tier, same N, both converged, neither ZI-degenerate -- the "
         f"zero-inflated model wins **{len(mc_wins)} of {len(mc)}** times, by "
         f"{_f(mlo, '.1f')} to {_f(mhi, '.1f')} AIC. There is no exception.\n")
+    # Relocated here from the Bottom line: these two caveats belong beside the
+    # table they qualify, not ahead of the payoff.
+    add(f"The exclusions in that definition are load-bearing, and they are what "
+        f"makes the {_zl_m['n_zinb_losses']}-loss record possible: "
+        f"{_n_degen_zinb} ZI-NB fits in the ladder are `zi_degenerate` (a "
+        f"zero-inflation intercept numerically on the boundary, estimating "
+        f"nothing) and are **excluded** from the comparison rather than counted "
+        f"as losses. All of them are in the "
+        f"{_oxford(['`' + c + '`' for c in _degen_zinb_cells])} "
+        f"{'cell' if len(_degen_zinb_cells) == 1 else 'cells'}, and "
+        f"{_n_degen_worse} of the {_n_degen_zinb} have worse AIC than the plain "
+        f"family selected at their own rung -- so they are not being silently "
+        f"scored as wins either. A degenerate fit is not evidence either "
+        f"way, which is why it is out of the tally in both directions.\n")
+    add(f"Two things to be clear about that tally before it is quoted. "
+        f"{sum(1 for r in mc if r['re_tier'] == 'rs')} of the {len(mc)} "
+        f"comparisons are at the mandated `(1 + time | state)` structure and "
+        f"{sum(1 for r in mc if r['re_tier'] == 'ri')} are at the "
+        f"`(1 | state)` fallback tier, so the evidence is not all from the "
+        f"structure the manuscript specifies. And \"every legitimate matched "
+        f"comparison in the ladder\" means every one that exists, which is "
+        f"{' and '.join(sorted({r['model'] for r in mc}))} only: the ladder fits "
+        f"Model 2 under the already-selected family alone, so Model 2 contributes "
+        f"no cross-family comparison to make.\n")
     add("| Cell | Model | RE structure | ZI family | N | NB1 AIC | ZI-NB AIC | "
         "AIC margin to ZI-NB | Distinct model? |")
     add("|---|---|---|---|---|---|---|---|---|")
@@ -1136,9 +1234,20 @@ def write_memo(raw, meta, tab, ws, ev):
     mc2_dist = [r for r in mc2 if not r['collapsed']]
     mc2_dist_wins = [r for r in mc2_dist if r['margin'] > 0]
     m2lo, m2hi = (min(r['margin'] for r in mc2), max(r['margin'] for r in mc2))
-    _nb2_better = sum(1 for a, b in zip(sorted(mc, key=_mc_key),
-                                        sorted(mc2, key=_mc_key))
-                      if b['plain_aic'] < a['plain_aic'])
+    # pair_matched() refuses to zip sets that are not over the same rungs.
+    _pairs = pair_matched(mc, mc2)
+    _nb2_tougher = sum(1 for a, b in _pairs if b['margin'] < a['margin'])
+    _nb1_tougher = sum(1 for a, b in _pairs if a['margin'] < b['margin'])
+    _tied = len(_pairs) - _nb2_tougher - _nb1_tougher
+    # Which cell drives NB2's lower MEAN margin, and by how much -- derived, so
+    # the "range effect, not a majority" explanation carries its own evidence.
+    _drops = {}
+    for a, b in _pairs:
+        _drops.setdefault(a['cell'], []).append((a['margin'], b['margin']))
+    _drop_cell = max(_drops, key=lambda c: sum(x - y for x, y in _drops[c]))
+    _drop_n = len(_drops[_drop_cell])
+    _drop_from = sum(x for x, _ in _drops[_drop_cell]) / _drop_n
+    _drop_to = sum(y for _, y in _drops[_drop_cell]) / _drop_n
     add(f"#### The same result against NB2, not just NB1\n")
     add(f"NB1 is one of two negative-binomial parameterisations in this ladder, "
         f"and it is not the one the 2019 violations columns select. So the "
@@ -1162,10 +1271,20 @@ def write_memo(raw, meta, tab, ws, ev):
                f"{FAMILY_LABEL.get(r['collapsed_to'], r['collapsed_to'])}")
             + " |")
     add("")
-    add(f"The NB2 margins are the smaller of the two sets -- NB2 is the better of "
-        f"the two plain families at {_nb2_better} of these {len(mc2)} rungs -- so "
-        f"NB2 is the harder comparison, and the zero-inflated model still wins it "
-        f"every time.\n")
+    add(f"Which of the two plain families is the tougher competitor is a "
+        f"rung-by-rung question, not a global one: NB2 has the smaller margin at "
+        f"{_nb2_tougher} of the {len(_pairs)} rungs and NB1 at the other "
+        f"{_nb1_tougher}"
+        + (f" ({_tied} tied)" if _tied else "")
+        + f". NB2's mean margin is the lower of the two "
+        f"({_f(sum(r['margin'] for r in mc2) / len(mc2), '.1f')} against "
+        f"{_f(sum(r['margin'] for r in mc) / len(mc), '.1f')} AIC) only because "
+        f"the {_drop_n} `{_drop_cell}` rungs fall from "
+        f"{_f(_drop_from, '.0f')} to {_f(_drop_to, '.0f')} AIC -- a range effect "
+        f"in a handful of rungs, not a majority. The claim that survives is the "
+        f"stronger one: "
+        f"whichever plain family is the tougher competitor at a given rung, the "
+        f"zero-inflated model beats it, at every one of the {len(_pairs)} rungs.\n")
 
     # Which violations cells lose a ZI-NB rung between M1 and M3 versus never
     # having had one. Derived, because asserting the first for all of them was a
@@ -1329,9 +1448,13 @@ def write_memo(raw, meta, tab, ws, ev):
                 + (f", with a ZI intercept of {_f(zi['b'], '+.4f')} "
                    f"(SE {_f(zi['se'], '.4f')}, p = {_f(zi['p'], '.3g')})"
                    if zi else "")
-                + f". So the correct statement is that the ZI-NB rungs drop out "
-                f"**as covariates are added**, not that they were never estimable "
-                f"at this structure.\n")
+                + f". So the correct statement, **for this cell**, is that its "
+                f"ZI-NB rung drops out **as covariates are added** rather than "
+                f"never having been estimable at this structure. That is a "
+                f"statement about `{cell}` only: the other "
+                f"{len(zinb_eligibility_at_rs(meta, viol_cells)['never'])} "
+                f"violations cells have no ZI-NB rung at this structure at "
+                f"either model, so nothing drops out of them.\n")
     else:
         add("No cell's Model-1 winner at the `rs` tier is a zero-inflated family, "
             "so there is no Model-1 counter-example to record.\n")

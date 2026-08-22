@@ -1763,7 +1763,10 @@ MEMO_REQUIRED_PHRASES = (
     # a ZI-NB never lost a matched comparison (ZIP did, repeatedly), that the
     # NB2 comparison is shown and not just asserted, and that the fallback tier
     # supplies part of the evidence.
-    'never lost a matched comparison',
+    # NOTE: 'never lost a matched comparison' is deliberately NOT listed here.
+    # As a bare substring it is satisfied by "A zero-inflated model never lost a
+    # matched comparison", i.e. by the exact overstatement round 3 removed. The
+    # QUALIFIED form is required by a regex further down instead.
     'The same result against NB2, not just NB1',
     'fallback tier',
 )
@@ -1794,6 +1797,19 @@ MEMO_FORBIDDEN_PATTERNS = (
     # Round 3, overstatement 3: viol_cov_2019 is ZI-degenerate at Model 1 too,
     # so the collapse is NOT a Model-3 phenomenon in both 2019 cells.
     r'collapse is a Model-3 phenomenon in these cells too',
+    # Round 4: the "never lost" claim is only true of the zero-inflated NEGATIVE
+    # BINOMIAL. Any unqualified subject reinstates the overstatement.
+    r'zero-inflated models?\s+never lost',
+    r'\bZI models?\s+never lost',
+    # Round 4: inflation on a Poisson is NOT "beaten wherever it is tested" --
+    # ZIP beats plain Poisson 12-1. It is beaten wherever tested AGAINST A
+    # NEGATIVE BINOMIAL, and the qualifier is the whole point.
+    r'beaten wherever it is tested(?!\s+against)',
+    # NOTE on the "about as economically" explanation: it is NOT listed here,
+    # because the memo legitimately QUOTES it in order to refute it. A blanket
+    # forbidden pattern would fire on the refutation. The property that actually
+    # matters -- every occurrence is immediately refuted -- is enforced by a
+    # contextual check in validate_memo() instead.
 )
 
 
@@ -1957,6 +1973,28 @@ def validate_memo():
         s = f"{want:.4f}"
         check(f"memo quotes the {label} ({s}) from the audit artifact",
               s in text, f"{s!r} not found in memo")
+    # ROUND 4: the four checks above are satisfied by the memo's audit TABLE row
+    # alone, which left the PROSE repetition of the same four numbers unguarded
+    # (perturbing 2.4438 -> 2.9438 there gave 0 FAILs). Anchor the prose site.
+    check("memo's prose repetition of the non-converged published values is "
+          "anchored to the audit artifact, not only its table row",
+          re.search(rf"The published values are the non-converged ones: "
+                    rf"b\(log_inspections\) = "
+                    rf"{aff['published_b_log_inspections']:.4f} and sigma\^2_u0 "
+                    rf"= {aff['published_sigma2_u0']:.4f}\. Converged, they are "
+                    rf"{aff['cg']['b_log_inspections']:.4f} and "
+                    rf"{aff['cg']['sigma2_u0']:.4f}\.", text) is not None,
+          f"published {aff['published_b_log_inspections']:.4f}/"
+          f"{aff['published_sigma2_u0']:.4f}, converged "
+          f"{aff['cg']['b_log_inspections']:.4f}/{aff['cg']['sigma2_u0']:.4f}")
+    check("memo's prose repetition of the failed gradient norm and both "
+          "log-likelihoods is anchored in situ",
+          re.search(rf"\|grad\| = {aff['lbfgs']['grad_norm']:.4f}` at a "
+                    rf"log-likelihood of {aff['lbfgs']['llf']:.3f}, while `cg` "
+                    rf"and `powell` independently reach "
+                    rf"{aff['cg']['llf']:.3f}", text) is not None,
+          f"grad={aff['lbfgs']['grad_norm']:.4f}, "
+          f"llf={aff['lbfgs']['llf']:.3f}/{aff['cg']['llf']:.3f}")
     check(f"memo quotes the non-converged log-likelihood "
           f"({aff['lbfgs']['llf']:.3f})", f"{aff['lbfgs']['llf']:.3f}" in text)
     check(f"memo quotes the converged log-likelihood "
@@ -2135,21 +2173,46 @@ def validate_memo():
           f"negative/zero margins: "
           f"{[(r['cell'], r['model'], r['margin']) for r in mc if r['margin'] <= 0]!r}")
     n_wins = sum(1 for r in mc if r['margin'] > 0)
-    check(f"memo states the matched-comparison tally as "
-          f"{n_wins} of {len(mc)} (both in the Bottom line and in the "
-          f"mechanism section)",
-          text.count(f"{n_wins} of {len(mc)}") >= 1
-          and f"{n_wins} times out of {len(mc)}" in text,
-          f"n_wins={n_wins}, n={len(mc)}")
+    # ROUND 4: these two were substring-anywhere (`text.count("17 of 17") >= 1`,
+    # `"15 of 15" in text`). Once the NB2 section landed it contained both
+    # strings, so perturbing the NB1 mechanism-section tally to "16 of 17" gave
+    # 0 FAILs. Both are now anchored to their own sentence.
     mc_dist = [r for r in mc if not r['collapsed']]
-    check(f"memo also reports the distinct-model subtotal "
-          f"({sum(1 for r in mc_dist if r['margin'] > 0)} of {len(mc_dist)}), so "
-          f"the collapsed duplicates are not silently inflating the count",
-          f"{sum(1 for r in mc_dist if r['margin'] > 0)} of {len(mc_dist)}" in text)
-    check("memo does NOT still claim the negative binomial explains the zeros "
-          "'about as economically' as an inflation term",
-          not re.search(r'accounts for those same zeros about as\s+economically',
-                        text))
+    n_dist_wins = sum(1 for r in mc_dist if r['margin'] > 0)
+    check(f"memo states the NB1 matched-comparison tally in the Bottom line, in "
+          f"situ ({n_wins} times out of {len(mc)})",
+          re.search(rf"beats\s+plain NB1 {n_wins} times out of {len(mc)}, by at "
+                    rf"least", text) is not None,
+          f"n_wins={n_wins}, n={len(mc)}")
+    check(f"memo states the NB1 matched-comparison tally in the mechanism "
+          f"section, in situ ({n_wins} of {len(mc)})",
+          re.search(rf"the\s+zero-inflated model wins \*\*{n_wins} of {len(mc)}"
+                    rf"\*\* times, by", text) is not None,
+          f"n_wins={n_wins}, n={len(mc)}")
+    check(f"memo reports the NB1 distinct-model subtotal in situ "
+          f"({n_dist_wins} of {len(mc_dist)}), so the collapsed duplicates are "
+          f"not silently inflating the count",
+          re.search(rf"the zero-inflated family still wins\s+{n_dist_wins} of "
+                    rf"{len(mc_dist)}\.", text) is not None,
+          f"n_dist_wins={n_dist_wins}, n_dist={len(mc_dist)}")
+    # ROUND 4: the round-2 pattern required the literal word "same", so dropping
+    # it evaded the guard entirely (0 FAILs). The memo legitimately QUOTES this
+    # explanation in order to refute it, so a blanket forbidden pattern is wrong;
+    # what must hold is that EVERY occurrence is refuted in the same breath.
+    REFUTATION = '**That explanation is wrong'
+    mech_claim = re.compile(
+        r'(?:accounts? for|explains?)\s+(?:those|the|these)?\s*(?:same\s+)?'
+        r'zeros\s+about as\s+(?:economically|well)', re.I)
+    unrefuted = [text[m.start():m.start() + 40]
+                 for m in mech_claim.finditer(text)
+                 if REFUTATION not in text[m.end():m.end() + 260]]
+    check("every occurrence of the 'explains the zeros about as economically' "
+          "explanation is refuted within the same passage (the memo may quote it "
+          "to reject it, and may not assert it)",
+          not unrefuted, f"unrefuted at: {unrefuted!r}")
+    check("the 'about as economically' guard is not vacuous (the memo does quote "
+          "the explanation, so there is something to police)",
+          mech_claim.search(text) is not None)
     check("memo states plainly that NB1's win is a default rather than a merit "
           "win", re.search(r'by default', text) is not None
           and re.search(r'default, not a merit win', text) is not None)
@@ -2210,19 +2273,129 @@ def validate_memo():
           "(so the memo may attribute them to ZIP by name)",
           n_zip_loss == len(zl['distinct_losers']),
           f"zip={n_zip_loss}, all={len(zl['distinct_losers'])}")
+    check("distinct losses keyed on (cell, model, re_tier, family) and on the "
+          "RUNG alone give the same count, so the memo's '(cell, model, "
+          "RE-tier) rungs' phrasing is not double-counting",
+          len(zl['distinct_losers']) == len(zl['distinct_loser_rungs']),
+          f"{len(zl['distinct_losers'])} tuples vs "
+          f"{len(zl['distinct_loser_rungs'])} rungs")
     check(f"memo states the ZIP-loss count in situ ({n_zip_loss} distinct "
           f"(cell, model, RE-tier) rungs)",
-          re.search(rf"beaten by a plain family at {n_zip_loss} distinct",
-                    text) is not None,
+          re.search(rf"loses at {n_zip_loss} distinct "
+                    rf"\(cell, model, RE-tier\) rungs", text) is not None,
           f"n_zip_loss={n_zip_loss}")
     check(f"memo states how many ZIP losses are at the mandated rs tier "
           f"({n_zip_loss_rs}) in situ",
           re.search(rf"{n_zip_loss_rs} of them at the mandated", text)
           is not None, f"n_zip_loss_rs={n_zip_loss_rs}")
     check(f"memo states the ZI-NB loss count ({zl['n_zinb_losses']}) in situ",
-          re.search(rf"never lost a matched comparison anywhere in this "
-                    rf"pipeline: {zl['n_zinb_losses']} losses", text)
+          re.search(rf"lost a single matched comparison: "
+                    rf"{zl['n_zinb_losses']} losses in total", text)
           is not None, f"n_zinb_losses={zl['n_zinb_losses']}")
+    # ROUND 4, item 3: the headline claim must carry its SUBJECT. As a bare
+    # substring 'never lost a matched comparison' is satisfied by "A
+    # zero-inflated model never lost ...", which is the overstatement round 3
+    # was dispatched to remove.
+    check("the memo's 'never lost' claim names the zero-inflated NEGATIVE "
+          "BINOMIAL as its subject (an unqualified 'zero-inflated model never "
+          "lost' is the overstatement this round removed)",
+          re.search(r'zero-inflated \*negative binomial\* never lost a matched '
+                    r'comparison', text) is not None)
+    check("the memo does not carry an unqualified 'never lost' claim anywhere",
+          not re.search(r'never lost a matched comparison', text)
+          or all('negative binomial' in text[max(0, m.start() - 60):m.start()]
+                 for m in re.finditer(r'never lost a matched comparison', text)),
+          "an occurrence of 'never lost a matched comparison' has no "
+          "'negative binomial' qualifier in the preceding 60 characters")
+
+    # ---- ROUND 4: the three-tier hierarchy, all tallies generated ----
+    # "inflation on a Poisson is beaten wherever it is tested" was FALSE: ZIP
+    # beats plain Poisson decisively. The memo now states the full hierarchy.
+    rec = zl['record']
+    zp, zn1, zn2 = rec[('zip', 'poisson')], rec[('zip', 'nbinom1')], rec[('zip', 'nbinom2')]
+    # tier 3 needs the NB2 set, which (h4) below also builds; computed here so
+    # this block does not depend on statement order.
+    _mc2 = matched_zinb_vs_plain(tab_live, meta_live, 'nbinom2')
+    _mc2_wins = sum(1 for r in _mc2 if r['margin'] > 0)
+    _mc_wins = sum(1 for r in mc if r['margin'] > 0)
+    check(f"artifact fact: inflation DOES help a Poisson -- ZIP beats plain "
+          f"Poisson {zp['wins']}-{zp['losses']}, so the old 'beaten wherever it "
+          f"is tested' claim was false", zp['wins'] > zp['losses'],
+          f"{zp['wins']}-{zp['losses']}")
+    check(f"artifact fact: ZIP never beats a negative binomial "
+          f"({zn1['wins']} wins vs NB1, {zn2['wins']} vs NB2), which is what "
+          f"scopes the claim to 'against a negative binomial'",
+          zn1['wins'] == 0 and zn2['wins'] == 0,
+          f"NB1 {zn1['wins']}-{zn1['losses']}, NB2 {zn2['wins']}-{zn2['losses']}")
+    check(f"memo states tier 1 of the hierarchy in situ (ZIP beats plain Poisson "
+          f"{zp['wins']}-{zp['losses']}, margins {zp['margin_lo']:.1f} to "
+          f"{zp['margin_hi']:.1f})",
+          re.search(rf"beats a plain Poisson\s+{zp['wins']}-{zp['losses']} "
+                    rf"\(margins {zp['margin_lo']:.1f} to "
+                    rf"{zp['margin_hi']:.1f} AIC\)", text) is not None,
+          f"{zp['wins']}-{zp['losses']}, {zp['margin_lo']:.1f}..{zp['margin_hi']:.1f}")
+    check(f"memo states tier 2 of the hierarchy in situ (NB beats that ZIP "
+          f"{zn1['losses']}-{zn1['wins']} against NB1 and "
+          f"{zn2['losses']}-{zn2['wins']} against NB2)",
+          re.search(rf"{zn1['losses']}-{zn1['wins']} against NB1 and\s+"
+                    rf"{zn2['losses']}-{zn2['wins']} against NB2", text)
+          is not None)
+    check(f"memo states tier 3 of the hierarchy in situ (ZI-NB beats NB1 "
+          f"{_mc_wins}-{len(mc) - _mc_wins} and NB2 "
+          f"{_mc2_wins}-{len(_mc2) - _mc2_wins})",
+          re.search(rf"beats NB1 {_mc_wins}-{len(mc) - _mc_wins} and NB2\s+"
+                    rf"{_mc2_wins}-{len(_mc2) - _mc2_wins}", text) is not None)
+    check("memo scopes the Poisson-inflation limit to negative-binomial "
+          "competitors rather than claiming it loses to everything",
+          'cannot close the gap to a negative binomial' in text
+          and 'always to a negative binomial, never to a plain Poisson' in text)
+
+    # ---- ROUND 4, minor: the headline's definition of a matched comparison ----
+    check("the memo's headline definition of a legitimate matched comparison "
+          "carries the convergence and non-degeneracy criteria (they are what "
+          "produce the zero ZI-NB losses)",
+          re.search(r'same\s+random-effects tier, same N, both converged, '
+                    r'neither ZI-degenerate -- a\s+zero-inflated negative '
+                    r'binomial beats plain NB1', text) is not None)
+    degen_zinb = tab_live[tab_live['zi_degenerate']
+                          & tab_live['family'].isin(ZINB_FAMILIES)]
+    dz_cells = sorted(set(degen_zinb['cell']))
+    check(f"there ARE ZI-NB fits excluded by the degeneracy criterion "
+          f"({len(degen_zinb)}), so the memo's exclusion paragraph is not "
+          f"decorative", len(degen_zinb) >= 1, f"got {len(degen_zinb)}")
+    check(f"memo states how many ZI-NB fits the degeneracy criterion excludes "
+          f"({len(degen_zinb)}) and that they are excluded rather than counted "
+          f"as losses",
+          re.search(rf"{len(degen_zinb)} ZI-NB fits in the ladder are "
+                    rf"`zi_degenerate`", text) is not None
+          and 'excluded** from the comparison rather than counted' in text,
+          f"n_degen_zinb={len(degen_zinb)}")
+    check("memo names exactly the cells holding those excluded ZI-NB fits",
+          all(f'`{c}`' in text for c in dz_cells)
+          and re.search(r'All of them are in the ((?:`\w+`(?:, | and )?)+)',
+                        text) is not None
+          and sorted(re.findall(
+              r'`(\w+)`',
+              re.search(r'All of them are in the ((?:`\w+`(?:, | and )?)+)',
+                        text).group(1))) == dz_cells,
+          f"derived {dz_cells!r}")
+    n_worse = 0
+    for _, dr in degen_zinb.iterrows():
+        if dr['model'] not in ('M1', 'M3'):
+            continue
+        wf = fits[f"{dr['cell']}__meta"][f"m{dr['model'][1:]}_winner_rs"]
+        w = tab_live[(tab_live['cell'] == dr['cell'])
+                     & (tab_live['model'] == dr['model'])
+                     & (tab_live['re_tier'] == dr['re_tier'])
+                     & (tab_live['family'] == wf)]
+        if not w.empty and dr['aic'] > float(w['aic'].iloc[0]):
+            n_worse += 1
+    check(f"memo states, derived, how many of the excluded ZI-NB fits have worse "
+          f"AIC than the plain family selected at their own rung "
+          f"({n_worse} of {len(degen_zinb)}) -- so exclusion is not hiding wins",
+          re.search(rf"{n_worse} of the {len(degen_zinb)} have worse AIC than "
+                    rf"the plain family selected at their own rung", text)
+          is not None, f"n_worse={n_worse}, n={len(degen_zinb)}")
     check(f"memo quotes the ZIP loss-margin range in situ "
           f"({zl['loss_margin_lo']:.1f} to {zl['loss_margin_hi']:.1f} AIC)",
           re.search(rf"by {zl['loss_margin_lo']:.1f} to "
@@ -2264,18 +2437,62 @@ def validate_memo():
           re.search(rf"wins \*\*{n2_wins} of {len(mc2)}\*\* here too, by "
                     rf"{m2lo:.1f} to {m2hi:.1f} AIC", text) is not None,
           f"n2_wins={n2_wins}, lo={m2lo:.2f}, hi={m2hi:.2f}")
+    mc2_dist = [r for r in mc2 if not r['collapsed']]
+    n2_dist_wins = sum(1 for r in mc2_dist if r['margin'] > 0)
+    check(f"memo states the NB2 distinct-model subtotal in situ "
+          f"({n2_dist_wins} of {len(mc2_dist)}) -- found unguarded by a round-4 "
+          f"break test",
+          re.search(rf"and {n2_dist_wins} of {len(mc2_dist)} counting distinct "
+                    rf"models\s+only\.", text) is not None,
+          f"n2_dist_wins={n2_dist_wins}, n2_dist={len(mc2_dist)}")
     check(f"memo states the NB2 tally in the Bottom line too "
           f"(beats plain NB2 {n2_wins} times out of {len(mc2)})",
           re.search(rf"beats plain NB2 {n2_wins} times out of {len(mc2)}, by at "
                     rf"least {m2lo:.1f} AIC", text) is not None)
-    nb2_better = sum(1 for a, b in zip(sorted(mc, key=lambda r: (r['cell'], r['model'], r['re_tier'], r['zi_family'])),
-                                       sorted(mc2, key=lambda r: (r['cell'], r['model'], r['re_tier'], r['zi_family'])))
-                     if b['plain_aic'] < a['plain_aic'])
-    check(f"memo's 'NB2 is the harder comparison' sentence quotes the derived "
-          f"count of rungs where NB2 beats NB1 ({nb2_better} of {len(mc2)})",
-          re.search(rf"better of the two plain families at {nb2_better} of "
-                    rf"these {len(mc2)} rungs", text) is not None,
-          f"nb2_better={nb2_better}")
+    # ROUND 4, item 1: "NB2 is the harder comparison" was FALSE -- NB2 has the
+    # smaller margin at 8 of 17 rungs and NB1 at 9. pair_matched() refuses to
+    # pair sets that are not over the same rungs, so a membership difference
+    # raises instead of silently misaligning.
+    from report_count_models import pair_matched
+    pairs = pair_matched(mc, mc2)
+    check("the NB1 and NB2 matched-comparison sets are over exactly the same "
+          "rungs, so pairing them is legitimate", len(pairs) == len(mc) == len(mc2),
+          f"{len(pairs)} pairs, {len(mc)} NB1, {len(mc2)} NB2")
+    nb2_tougher = sum(1 for a, b in pairs if b['margin'] < a['margin'])
+    nb1_tougher = sum(1 for a, b in pairs if a['margin'] < b['margin'])
+    check(f"neither plain family is the tougher competitor at a majority of "
+          f"rungs (NB2 {nb2_tougher}, NB1 {nb1_tougher} of {len(pairs)}), which "
+          f"is why 'NB2 is the harder comparison' was a defect",
+          nb2_tougher < len(pairs) and nb1_tougher < len(pairs)
+          and nb2_tougher + nb1_tougher == len(pairs),
+          f"NB2 {nb2_tougher}, NB1 {nb1_tougher}, n {len(pairs)}")
+    check(f"memo states BOTH per-rung 'tougher competitor' counts in situ "
+          f"(NB2 {nb2_tougher} of {len(pairs)}, NB1 the other {nb1_tougher})",
+          re.search(rf"NB2 has the smaller margin at {nb2_tougher} of the "
+                    rf"{len(pairs)} rungs and NB1 at the other {nb1_tougher}",
+                    text) is not None,
+          f"NB2 {nb2_tougher}, NB1 {nb1_tougher}")
+    mean1 = sum(r['margin'] for r in mc) / len(mc)
+    mean2 = sum(r['margin'] for r in mc2) / len(mc2)
+    check(f"memo quotes both mean margins ({mean2:.1f} against {mean1:.1f} AIC) "
+          f"rather than inferring a majority from them",
+          re.search(rf"\({mean2:.1f} against {mean1:.1f} AIC\)", text)
+          is not None, f"mean NB2 {mean2:.4f}, mean NB1 {mean1:.4f}")
+    drops = {}
+    for a, b in pairs:
+        drops.setdefault(a['cell'], []).append((a['margin'], b['margin']))
+    dcell = max(drops, key=lambda c: sum(x - y for x, y in drops[c]))
+    dn = len(drops[dcell])
+    dfrom = sum(x for x, _ in drops[dcell]) / dn
+    dto = sum(y for _, y in drops[dcell]) / dn
+    check(f"memo's 'range effect' explanation names the cell that drives it and "
+          f"both of its mean margins ({dn} x {dcell}, {dfrom:.0f} -> {dto:.0f})",
+          re.search(rf"the {dn} `{dcell}` rungs fall from {dfrom:.0f} to "
+                    rf"{dto:.0f} AIC", text) is not None,
+          f"cell={dcell}, n={dn}, {dfrom:.2f} -> {dto:.2f}")
+    check("memo states the surviving claim -- the ZI model beats whichever plain "
+          "family is tougher at each rung",
+          'whichever plain family is the tougher competitor at a given rung' in text)
 
     # ---- (h5) ROUND 3: the matched-comparison framing numbers ----
     n_rs_mc = sum(1 for r in mc if r['re_tier'] == 'rs')
@@ -2358,24 +2575,45 @@ def validate_memo():
               "had one (no fabricated cell, none omitted)",
               sorted(named) == sorted(never_cells),
               f"memo {sorted(named)!r} vs derived {sorted(never_cells)!r}")
-    # Same guarantee for the Bottom line's own cell lists.
-    bl = re.search(r'only one of them fits the phrase "stops being '
-                   r'estimable": (.*?)\. For ', text, re.S)
+    # Same guarantee for the Bottom line's own (now shorter) scoping sentence.
+    # ROUND 4: the sentence was compressed -- it names the cells that DO fit
+    # "stops being estimable" and gives a COUNT for the rest, rather than
+    # carrying two full cell lists inside one 100-word sentence.
+    bl = re.search(r'Only ((?:`\w+`(?:, | and )?)+) of them fits? the phrase '
+                   r'"stops being estimable"; the other (\d+) never had such a '
+                   r'rung at this structure at either model', text)
     check("Bottom line's per-cell scoping sentence is present and parseable",
           bl is not None)
     if bl:
-        seg = bl.group(1)
-        lost_seg, _, never_seg = seg.partition(';')
-        check("Bottom line attributes 'gone by Model 3' to exactly the derived "
-              "cells", sorted(re.findall(r'`(\w+)`', lost_seg))
-              == sorted(lost_cells),
-              f"memo {sorted(re.findall(r'`(.w+)`', lost_seg))!r} vs "
-              f"{sorted(lost_cells)!r}")
-        check("Bottom line attributes 'none at either model' to exactly the "
+        check("Bottom line attributes 'stops being estimable' to exactly the "
               "derived cells",
-              sorted(re.findall(r'`(\w+)`', never_seg)) == sorted(never_cells),
-              f"memo {sorted(re.findall(r'`(.w+)`', never_seg))!r} vs "
-              f"{sorted(never_cells)!r}")
+              sorted(re.findall(r'`(\w+)`', bl.group(1))) == sorted(lost_cells),
+              f"memo {sorted(re.findall(chr(96) + '(.w+)' + chr(96), bl.group(1)))!r}"
+              f" vs {sorted(lost_cells)!r}")
+        check("Bottom line's count of the remaining violations cells matches "
+              "the derived set", int(bl.group(2)) == len(never_cells),
+              f"memo {bl.group(2)}, derived {len(never_cells)}")
+    # ROUND 4, minor: the counter-example paragraph's conclusion must be scoped
+    # to its own cell -- "the ZI-NB rungs drop out as covariates are added" is
+    # false of the other three violations cells.
+    check("the Model-1 counter-example scopes its 'drops out as covariates are "
+          "added' conclusion to the one cell it holds for",
+          re.search(r'the correct statement, \*\*for this cell\*\*, is that its'
+                    r'\s+ZI-NB rung drops out \*\*as covariates are added\*\*',
+                    text) is not None
+          and re.search(rf'the other {len(never_cells)}\s+violations cells have '
+                        rf'no ZI-NB rung at this structure at\s+either model',
+                        text) is not None,
+          f"never_cells={never_cells!r}")
+    # ROUND 4, minor: the mechanism heading justifies BOTH plain families, so its
+    # opening sentence must name the per-cell selections rather than NB1 alone.
+    for c in viol_cells:
+        fam = fits[f'{c}__meta']['m3_winner_rs']
+        lbl = FAMILY_LABEL.get(fam, fam)
+        check(f"the mechanism section names {c}'s actual Model-3 rs selection "
+              f"({lbl}), so its heading cannot generalise NB1 to a cell that "
+              f"selects {lbl}", f"{lbl} in `{c}`" in text,
+              f"expected '{lbl} in `{c}`' in the memo")
 
     # ---- (h7) ROUND 3: the two prose bullet LISTS, cells and counts ----
     # A fabricated bullet in either list used to produce 0 FAILs.
