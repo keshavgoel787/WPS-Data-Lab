@@ -8,9 +8,13 @@ Joe asked whether we could replicate the analytic model of Jafari et al. (*PLOS 
 
 ## Bottom line
 
-**Jafari's model class fits these data better than the plain negative binomial everywhere it can be estimated.** Across every legitimate matched comparison in the ladder -- same cell, same model, same random-effects tier, same N -- a zero-inflated negative binomial beats plain NB1 17 times out of 17, by at least 34.7 AIC, with no exception. The binding constraint on using it is **identifiability at the random-slope structure**, not evidence against zero-inflation.
+**Jafari's model class fits these data better than the plain negative binomial everywhere it can be estimated.** Across every legitimate matched comparison in the ladder -- same cell, same model, same random-effects tier, same N -- a zero-inflated negative binomial beats plain NB1 17 times out of 17, by at least 34.7 AIC, and beats plain NB2 17 times out of 17, by at least 24.1 AIC. There is no exception against either parameterisation. The binding constraint on using it is **identifiability at the random-slope structure**, not evidence against zero-inflation.
 
-Concretely: at the structure the manuscript mandates, `(1 + time | state)`, the zero-inflated negative-binomial rungs stop being estimable for the violations cells once the Model-3 covariates enter -- so a plain negative binomial wins those columns **by default, having been the only kind of model left in the race**. For the inspections cells the ZI rungs do survive to Model 3 and are duly selected (`insp_2019`, `insp_2021`). Nowhere in this pipeline did a zero-inflated model get tested and lose on merit.
+Two things to be clear about in that tally before it is quoted. 9 of the 17 comparisons are at the mandated `(1 + time | state)` structure and 8 are at the `(1 | state)` fallback tier, so the evidence is not all from the structure the manuscript specifies. And "every legitimate matched comparison in the ladder" means every one that exists, which is M1 and M3 only: the ladder fits Model 2 under the already-selected family alone, so Model 2 contributes no cross-family comparison to make.
+
+**Which zero-inflated family it is matters, and this is the sharper result.** A zero-inflated *negative binomial* never lost a matched comparison anywhere in this pipeline: 0 losses. A zero-inflated *Poisson* loses often and enormously -- beaten by a plain family at 13 distinct (cell, model, RE-tier) rungs, 9 of them at the mandated `(1 + time | state)` structure, by 1.9 to 2967.5 AIC. So the ingredient that wins is inflation **combined with** negative-binomial overdispersion -- which is precisely Jafari's specification. Inflation bolted onto a Poisson mean-variance structure cannot represent this overdispersion and is beaten wherever it is tested.
+
+Concretely: at the structure the manuscript mandates, `(1 + time | state)`, no zero-inflated negative-binomial rung is eligible at Model 3 in any of the 4 violations cells, so a plain negative binomial wins those columns **by default, having been the only kind of model left in the race** -- and it remains the selected family for them under the pre-registered protocol. But the reason differs by cell, and only one of them fits the phrase "stops being estimable": `viol_off_2021` has a ZI-NB rung at Model 1 that is gone by Model 3; `viol_cov_2019`, `viol_cov_2021` and `viol_off_2019` have none at either model, so nothing stops -- they never had one at this structure. For the inspections cells the ZI rungs do survive to Model 3 and are duly selected (`insp_2019`, `insp_2021`).
 
 Two further findings are corrections to work already in print rather than additions to it, and both need your decision: the published Table 3 Model 1 comes from a fit that never converged, and the violations time trend is materially less COVID-robust than `CLAUDE.md` currently records. Both are documented below with the numbers.
 
@@ -112,14 +116,45 @@ It is tempting to explain the result by saying a negative binomial's own overdis
 
 2 of those 17 rows are not independent evidence -- they are a ZINB+ZI-RE fit that collapsed onto its own ZINB twin, so it reports the same likelihood. Counting only the 15 distinct models, the zero-inflated family still wins 15 of 15. Either way the direction is unanimous.
 
-So the honest mechanism is not that NB1 explains the zeros comparably well. **NB1 wins the Model-3 random-slope comparison by default**: the zero-inflated negative-binomial rungs cannot be estimated at that specific structure once the Model-3 covariates enter, so they are not in the race. Where they are in the race, they win. That is a statement about identifiability, not about zero-inflation being unnecessary.
+#### The same result against NB2, not just NB1
 
-### At Model 3, for the 2021 violations cells, the family comparison is an identifiability statement
+NB1 is one of two negative-binomial parameterisations in this ladder, and it is not the one the 2019 violations columns select. So the identical set of matched comparisons is run against plain **NB2** as well -- otherwise "better than the plain negative binomial" would be shown for one parameterisation and asserted for the other. The zero-inflated model wins **17 of 17** here too, by 24.1 to 83.2 AIC, and 15 of 15 counting distinct models only.
 
-- `viol_off_2021`: at **Model 3**, only 4 of the 6 families were eligible at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. The 2 absent ones are ZINB (no fit at this structure; it fell back to (1 | state)); ZINB + ZI RE (no fit at this structure; it fell back to (1 | state)).
+| Cell | Model | RE structure | ZI family | N | NB2 AIC | ZI-NB AIC | AIC margin to ZI-NB (NB2) | Distinct model? |
+|---|---|---|---|---|---|---|---|---|
+| viol_off_2021 | M1 | (1 \| state) | ZINB + ZI RE | 526 | 3927.62 | 3844.43 | **+83.20** | yes |
+| viol_cov_2021 | M1 | (1 \| state) | ZINB + ZI RE | 533 | 3901.48 | 3819.81 | **+81.68** | yes |
+| viol_off_2021 | M3 | (1 \| state) | ZINB + ZI RE | 494 | 3701.70 | 3632.61 | **+69.09** | yes |
+| viol_cov_2021 | M3 | (1 \| state) | ZINB + ZI RE | 501 | 3688.65 | 3624.02 | **+64.64** | yes |
+| viol_off_2021 | M1 | (1 \| state) | ZINB | 526 | 3927.62 | 3869.38 | **+58.24** | yes |
+| viol_cov_2021 | M1 | (1 \| state) | ZINB | 533 | 3901.48 | 3844.36 | **+57.12** | yes |
+| viol_off_2021 | M1 | (1 + time \| state) | ZINB + ZI RE | 526 | 3866.02 | 3808.92 | **+57.10** | yes |
+| viol_off_2021 | M3 | (1 \| state) | ZINB | 494 | 3701.70 | 3652.75 | **+48.95** | yes |
+| viol_cov_2021 | M3 | (1 \| state) | ZINB | 501 | 3688.65 | 3642.97 | **+45.68** | yes |
+| insp_2021 | M3 | (1 + time \| state) | ZINB | 506 | 4565.97 | 4532.61 | **+33.36** | yes |
+| insp_2021 | M3 | (1 + time \| state) | ZINB + ZI RE | 506 | 4565.97 | 4532.61 | **+33.36** | no -- numerically identical to ZINB |
+| insp_2021 | M1 | (1 + time \| state) | ZINB | 539 | 4748.35 | 4715.61 | **+32.74** | yes |
+| insp_2021 | M1 | (1 + time \| state) | ZINB + ZI RE | 539 | 4748.35 | 4715.61 | **+32.74** | no -- numerically identical to ZINB |
+| insp_2019 | M3 | (1 + time \| state) | ZINB + ZI RE | 423 | 3189.68 | 3160.05 | **+29.63** | yes |
+| insp_2019 | M1 | (1 + time \| state) | ZINB + ZI RE | 450 | 3292.62 | 3264.48 | **+28.14** | yes |
+| insp_2019 | M3 | (1 + time \| state) | ZINB | 423 | 3189.68 | 3164.08 | **+25.60** | yes |
+| insp_2019 | M1 | (1 + time \| state) | ZINB | 450 | 3292.62 | 3268.54 | **+24.08** | yes |
+
+The NB2 margins are the smaller of the two sets -- NB2 is the better of the two plain families at 8 of these 17 rungs -- so NB2 is the harder comparison, and the zero-inflated model still wins it every time.
+
+So the honest mechanism is not that NB1 explains the zeros comparably well. **NB1 wins the Model-3 random-slope comparison by default**: no zero-inflated negative-binomial rung is eligible at that specific structure at Model 3, in any of the 4 violations cells, so none of them is in the race. Where they are in the race, they win. That is a statement about identifiability, not about zero-inflation being unnecessary.
+
+The identifiability has two different causes, and only one of them is the "covariates knock the rung out" story:
+
+- `viol_off_2021`: a ZI-NB rung **is** eligible at Model 1 at `(1 + time | state)` and is gone by Model 3. Here the rung genuinely stops being estimable once the Model-3 covariates enter.
+- `viol_cov_2019`, `viol_cov_2021` and `viol_off_2019`: no ZI-NB rung is eligible at `(1 + time | state)` at **either** Model 1 or Model 3, so nothing stops -- there was never one at this structure to lose. (In the 2019 pair the reason is ZI degeneracy, not non-estimability; the eligibility table below separates the two.)
+
+### At Model 3, the family comparison for `viol_cov_2021` and `viol_off_2021` are identifiability statements
+
 - `viol_cov_2021`: at **Model 3**, only 4 of the 6 families were eligible at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. The 2 absent ones are ZINB (no fit at this structure; it fell back to (1 | state)); ZINB + ZI RE (no fit at this structure; it fell back to (1 | state)).
+- `viol_off_2021`: at **Model 3**, only 4 of the 6 families were eligible at `(1 + time | state)` -- NB1, NB2, Poisson, ZIP. The 2 absent ones are ZINB (no fit at this structure; it fell back to (1 | state)); ZINB + ZI RE (no fit at this structure; it fell back to (1 | state)).
 
-The same accounting for every cell and both build-up steps, so nothing here rests on a sentence about two of them. All rows are at the mandated `(1 + time | state)` structure; "eligible" means converged, non-degenerate, and not numerically identical to a simpler family.
+The same accounting for every cell and both build-up steps, so nothing here rests on a sentence about a subset of them. All rows are at the mandated `(1 + time | state)` structure; "eligible" means converged, non-degenerate, and not numerically identical to a simpler family.
 
 | Cell | Model | Eligible families | Eligible count | Absent families | Why absent |
 |---|---|---|---|---|---|
@@ -136,7 +171,7 @@ The same accounting for every cell and both build-up steps, so nothing here rest
 | viol_off_2021 | M1 | NB1, NB2, Poisson, ZINB + ZI RE, ZIP | 5 of 6 | ZINB | ZINB: no fit at this structure; it fell back to (1 \| state) |
 | viol_off_2021 | M3 | NB1, NB2, Poisson, ZIP | 4 of 6 | ZINB, ZINB + ZI RE | ZINB: no fit at this structure; it fell back to (1 \| state); ZINB + ZI RE: no fit at this structure; it fell back to (1 \| state) |
 
-So at the structure the manuscript specifies, the Model-3 comparison for these two cells runs over 4 families, and the 2 that are missing are exactly the zero-inflated negative-binomial rungs -- ZINB, ZINB + ZI RE in both cells. None of the 4 that were compared is a ZI-NB. A reader must not take the result as evidence against zero-inflation; it is an **identifiability** result about the random-slope structure at Model 3.
+So at the structure the manuscript specifies, the Model-3 comparison for those cells runs over 4 families, and the 2 that are missing are exactly the zero-inflated negative-binomial rungs -- ZINB, ZINB + ZI RE in both cells. None of the 4 that were compared is a ZI-NB. A reader must not take the result as evidence against zero-inflation; it is an **identifiability** result about the random-slope structure at Model 3.
 
 #### At Model 1 the candidate sets differ -- and for one cell that difference favours zero-inflation
 
@@ -174,9 +209,12 @@ Consistent with that, all 3 zero-inflated families collapse **at Model 3** at th
 |---|---|---|---|---|---|---|
 | viol_off_2019 | M1 | (1 + time \| state) | ZIP | -6.1675 | 3.2459 | 0.0574+ |
 
-So the collapse is a Model-3 phenomenon in these cells too, exactly as it is for the 2021 violations cells: the zero-inflation term is estimable at Model 1 and stops being estimable once the covariates enter. It is the same pattern, not a different one.
+So the Model-3 scoping buys something for `viol_off_2019` and nothing for `viol_cov_2019`, and the difference is worth stating rather than averaging over.
 
-**Scope, precisely.** The fallback `(1 | state)` tier was never attempted for these cells -- they did not need it, because a non-ZI family fit fine at the mandated structure. So the supportable claim is *no estimable zero-inflation at Model 3 at the specified structure, where all 3 ZI families collapse*. It is **not** a claim that zero-inflation is degenerate at every model, nor at every tier, and this memo makes neither.
+- `viol_off_2019`: its ZIP is estimable and non-degenerate at Model 1 and degenerate by Model 3, so there the collapse **is** a Model-3 phenomenon -- the same pattern as `viol_off_2021`, where the ZI-NB rung is available at Model 1 and gone once the covariates enter.
+- `viol_cov_2019`: **no exception.** All 3 zero-inflated families are ZI-degenerate at Model 1 and Model 3 alike (6 degenerate fits), so for this cell the collapse is not Model-3-specific at all -- the zero-inflation term never estimated anything at this structure, with or without the covariates.
+
+**Scope, precisely.** The fallback `(1 | state)` tier was never attempted for these cells -- they did not need it, because a non-ZI family fit fine at the mandated structure. So the supportable claim is *no estimable zero-inflation at Model 3 at the specified structure, where all 3 ZI families collapse*. Whether it extends to Model 1 differs by cell and is stated above: it does for `viol_cov_2019`, not for `viol_off_2019`. It is also **not** a claim about the fallback `(1 | state)` tier, which was never tried for these cells, and this memo makes none.
 
 ## Coefficients under the selected family
 
@@ -600,5 +638,5 @@ Every fit in the ladder. AIC is only ever comparable **within** one RE-structure
 
 ## Honest expectations
 
-A better-specified model can confirm weak associations as readily as it can strengthen them. If a zero-inflated or negative-binomial model is the right model for these counts -- and the selection evidence above is what we have on that -- then its answer is the answer, whichever direction it points. This was recorded as the expected risk in the design spec before any model was fit. In the event the risk did not land the way it might have: the model class did not weaken the case for zero-inflation, it strengthened it -- 17 of 17 matched comparisons favour the zero-inflated negative binomial, none against. What it did do is expose that the structure we are committed to cannot always estimate that model. Read the rest with the genuine limits in view: the inspections zero-inflation is real but is a left-tail-fit result rather than a latent non-inspecting subpopulation; the violations zero-inflation is real and, at Model 3, unavailable at the structure we are committed to -- though at Model 1 it actually wins that tier for `viol_off_2021`, which is why the Model-3 scoping above matters, and why 'unavailable' is the right word rather than 'outcompeted'; and the two genuinely new findings -- the non-converged published Model 1 and the weaker COVID robustness for violations -- are corrections to the existing paper rather than additions to it.
+A better-specified model can confirm weak associations as readily as it can strengthen them. If a zero-inflated or negative-binomial model is the right model for these counts -- and the selection evidence above is what we have on that -- then its answer is the answer, whichever direction it points. This was recorded as the expected risk in the design spec before any model was fit. In the event the risk did not land the way it might have: the model class did not weaken the case for zero-inflation, it strengthened it -- 17 of 17 matched comparisons favour the zero-inflated negative binomial, none against, and the same 17 of 17 against NB2. What it did do is expose that the structure we are committed to cannot always estimate that model, and that the strengthening is specific to the zero-inflated negative binomial: zero-inflated Poisson loses 13 matched comparisons, so "zero-inflation" on its own is not the finding. Read the rest with the genuine limits in view: the inspections zero-inflation is real but is a left-tail-fit result rather than a latent non-inspecting subpopulation; the 2021 violations zero-inflation is real and, at Model 3, unavailable at the structure we are committed to -- though at Model 1 it actually wins that tier for `viol_off_2021`, which is why the Model-3 scoping above matters, and why 'unavailable' is the right word rather than 'outcompeted'; the 2019 violations series is a different case again -- it is zero-**deflated**, so there is no excess of zeros to inflate in the first place; and the two genuinely new findings -- the non-converged published Model 1 and the weaker COVID robustness for violations -- are corrections to the existing paper rather than additions to it.
 

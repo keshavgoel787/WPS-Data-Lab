@@ -254,7 +254,19 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   random-slope structure**, not evidence against zero-inflation. Where a plain NB wins a
   column it wins **by default**, the ZI-NB rungs having been unavailable at that structure —
   never on merit. Do not write that a negative binomial's own overdispersion explains the
-  zeros "about as well"; that is false in every matched comparison.
+  zeros "about as well"; that is false in every matched comparison. The same 17 comparisons
+  run against plain **NB2** also give 17 of 17, by 24.1–83.2 AIC, so the claim covers both
+  negative-binomial parameterisations, not just NB1.
+- **But it is the ZI-NB specifically, not zero-inflation generally, and do NOT write that a
+  zero-inflated model never lost on merit anywhere.** Over all matched ZI-vs-plain
+  comparisons a zero-inflated **Poisson** is beaten by a plain family at **13** distinct
+  (cell, model, `re_tier`) rungs — **9 of them at the mandated `rs` tier** — by 1.9–2967.5
+  AIC. No `zinb` or `zinb_re` ever lost one (**0** losses). The winning ingredient is
+  inflation *combined with* NB overdispersion, i.e. Jafari's specification; inflation on a
+  Poisson mean–variance structure loses wherever it is tested. Also note that **8 of the 17**
+  ZI-NB-vs-NB1 comparisons are at the `(1 | state)` fallback tier, and that **M2 contributes
+  none** (the ladder fits M2 under the already-selected family only), so "every comparison in
+  the ladder" means M1 and M3.
 - **Selected families**: inspections selects a zero-inflated family in both windows (2019
   ZINB+ZI-RE, 2021 ZINB); violations select a plain negative binomial in both (2019 NB2, 2021
   NB1) at the mandated tier. **This is NOT evidence against zero-inflation for violations** —
@@ -264,13 +276,21 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   tier, so the family comparison there is an *identifiability* result, not a test of
   zero-inflation. **Scope this to Model 3**: at **Model 1**, `viol_off_2021` does admit
   ZINB+ZI-RE at `(1 + time | state)` and it wins that tier by 53.48 AIC (which is what
-  `__meta.stable_rs = False` records) — the ZI-NB rungs drop out *as covariates are added*.
+  `__meta.stable_rs = False` records) — for **that cell** the ZI-NB rung drops out *as
+  covariates are added*. **Scope this to that one cell too**: `viol_off_2021` is the ONLY
+  violations cell with a ZI-NB rung at `rs`/M1 that is absent by M3. `viol_cov_2021`,
+  `viol_off_2019` and `viol_cov_2019` have **no** ZI-NB rung at `rs` at *either* model, so
+  nothing "stops" for them — do not write that the ZI-NB rungs stop being estimable "for the
+  violations cells".
   The 2019 violations series is zero-**deflated** (every family overpredicts its zeros).
-  **The 2019 violations ZI collapse is also Model-3-only**: `__meta.zi_evidence` records the
-  Model-3 rung only, and `viol_off_2019__M1__zip` is `re_tier='rs'`, converged and
-  non-degenerate (ZI intercept −6.1675, SE 3.246, p = 0.0574). Same pattern as the 2021 cells
-  — the ZI term stops being estimable when the covariates enter. Any claim of the form "all
-  ZI families collapse" must be scoped to Model 3.
+  **The 2019 violations ZI collapse is Model-3-only in `viol_off_2019` and in NO other cell**:
+  `__meta.zi_evidence` records the Model-3 rung only, and `viol_off_2019__M1__zip` is
+  `re_tier='rs'`, converged and non-degenerate (ZI intercept −6.1675, SE 3.246, p = 0.0574) —
+  same pattern as `viol_off_2021`. But `viol_cov_2019` has all **3** ZI families
+  `zi_degenerate` at **both** M1 and M3 (that is exactly what its 6 degenerate fits are), so
+  for that cell the collapse is not Model-3-specific at all. Any claim of the form "all ZI
+  families collapse" must be scoped to Model 3; any claim that the collapse is Model-3-only
+  must be scoped to `viol_off_2019`.
 - **σ²_u1 is not a published quantity.** Tables 2/3 report `sigma2_u0_ri`, `sigma2_e_ri` and
   `delta_pct_ri`; σ²_u1 exists in `paper_table_params_2021.json` but reaches no published
   table. The NB1-vs-NB2 σ²_u1 disagreement (≈3.2–3.8×) therefore changes nothing currently

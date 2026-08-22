@@ -1759,6 +1759,13 @@ MEMO_REQUIRED_PHRASES = (
     # I3: the crossed design discards the state-specific SLOPE, not the fixed
     # cubic trend.
     'state-specific time slope',
+    # Round 3: the pro-zero-inflation overstatements. The honest claims are that
+    # a ZI-NB never lost a matched comparison (ZIP did, repeatedly), that the
+    # NB2 comparison is shown and not just asserted, and that the fallback tier
+    # supplies part of the evidence.
+    'never lost a matched comparison',
+    'The same result against NB2, not just NB1',
+    'fallback tier',
 )
 
 # Framings that were WRONG in earlier drafts and must never reappear. Each is a
@@ -1776,6 +1783,17 @@ MEMO_FORBIDDEN_PATTERNS = (
     r'[Nn]either ZINB nor ZINB\+ZI-RE could be fit there',
     # I3: the wrong rationale for rejecting Jafari's RE structure.
     r'would discard the cubic time trend',
+    # Round 3, overstatement 1: a zero-inflated POISSON loses matched
+    # comparisons 13 times, 9 of them at the mandated tier, so no blanket
+    # "never lost on merit" claim is admissible.
+    r'[Nn]owhere in this pipeline did a zero-inflated model get tested and lose',
+    # Round 3, overstatement 2: only 1 of the 4 violations cells has a ZI-NB
+    # rung at M1 that is gone by M3; the other 3 never had one.
+    r'rungs stop being estimable for the violations cells',
+    r'rungs cannot be estimated at that specific structure',
+    # Round 3, overstatement 3: viol_cov_2019 is ZI-degenerate at Model 1 too,
+    # so the collapse is NOT a Model-3 phenomenon in both 2019 cells.
+    r'collapse is a Model-3 phenomenon in these cells too',
 )
 
 
@@ -2167,6 +2185,294 @@ def validate_memo():
         check(f"that margin genuinely favours the zero-inflated model for {cell}",
               margin > 0, f"margin={margin:.2f}")
 
+    # ---- (h3) ROUND 3: which zero-inflated family ever loses ----
+    # An earlier draft claimed "nowhere in this pipeline did a zero-inflated
+    # model get tested and lose on merit". False: zero-inflated POISSON loses 13
+    # distinct matched comparisons, 9 of them at the mandated rs tier. What is
+    # true -- and is the sharper claim -- is that no zero-inflated NEGATIVE
+    # BINOMIAL ever lost one. Both tallies are asserted here, against the
+    # artifacts, so neither direction of overstatement can survive.
+    from report_count_models import (ZINB_FAMILIES, matched_zinb_vs_plain,
+                                     zi_loss_summary, zinb_eligibility_at_rs)
+    zl = zi_loss_summary(tab_live, meta_live)
+    check("a zero-inflated model DOES lose matched comparisons in this ladder "
+          "(so the replacement claim is necessary, not decorative)",
+          zl['n_loss_pairings'] > 0,
+          f"n_loss_pairings={zl['n_loss_pairings']}")
+    zinb_losers = [d for d in zl['distinct_losers'] if d[3] in ZINB_FAMILIES]
+    check("no zero-inflated NEGATIVE BINOMIAL loses any matched comparison "
+          "anywhere in the ladder (the memo's sharpened claim)",
+          zl['n_zinb_losses'] == 0 and not zinb_losers,
+          f"ZI-NB losers: {zinb_losers!r}")
+    n_zip_loss = zl['n_losses_by_family']['zip']
+    n_zip_loss_rs = len(zl['distinct_losers_rs'])
+    check("every distinct matched-comparison loss in the ladder is a ZIP loss "
+          "(so the memo may attribute them to ZIP by name)",
+          n_zip_loss == len(zl['distinct_losers']),
+          f"zip={n_zip_loss}, all={len(zl['distinct_losers'])}")
+    check(f"memo states the ZIP-loss count in situ ({n_zip_loss} distinct "
+          f"(cell, model, RE-tier) rungs)",
+          re.search(rf"beaten by a plain family at {n_zip_loss} distinct",
+                    text) is not None,
+          f"n_zip_loss={n_zip_loss}")
+    check(f"memo states how many ZIP losses are at the mandated rs tier "
+          f"({n_zip_loss_rs}) in situ",
+          re.search(rf"{n_zip_loss_rs} of them at the mandated", text)
+          is not None, f"n_zip_loss_rs={n_zip_loss_rs}")
+    check(f"memo states the ZI-NB loss count ({zl['n_zinb_losses']}) in situ",
+          re.search(rf"never lost a matched comparison anywhere in this "
+                    rf"pipeline: {zl['n_zinb_losses']} losses", text)
+          is not None, f"n_zinb_losses={zl['n_zinb_losses']}")
+    check(f"memo quotes the ZIP loss-margin range in situ "
+          f"({zl['loss_margin_lo']:.1f} to {zl['loss_margin_hi']:.1f} AIC)",
+          re.search(rf"by {zl['loss_margin_lo']:.1f} to "
+                    rf"{zl['loss_margin_hi']:.1f} AIC", text) is not None,
+          f"{zl['loss_margin_lo']:.4f} .. {zl['loss_margin_hi']:.4f}")
+
+    # ---- (h4) ROUND 3: the NB2 companion table ----
+    # The memo's phrase is "better than the plain negative BINOMIAL", and NB1 is
+    # only one of the two parameterisations in the ladder. The NB2 comparison is
+    # therefore shown, and parsed back positionally exactly like the NB1 one.
+    mc2 = matched_zinb_vs_plain(tab_live, meta_live, 'nbinom2')
+    MC2_HEADER = ('Cell', 'Model', 'RE structure', 'ZI family', 'N', 'NB2 AIC',
+                  'ZI-NB AIC', 'AIC margin to ZI-NB (NB2)', 'Distinct model?')
+    mc2_rows = []
+    for blk_hdr, blk_rows in _memo_tables(text):
+        if tuple(blk_hdr) == MC2_HEADER:
+            mc2_rows.extend(blk_rows)
+    check(f"memo carries the NB2 companion table with exactly {len(mc2)} rows "
+          f"(recomputed) -- an added or dropped row fails",
+          len(mc2_rows) == len(mc2),
+          f"memo {len(mc2_rows)} vs computed {len(mc2)}")
+    want2 = sorted((r['cell'], r['model'], str(r['n_obs']),
+                    f"{r['plain_aic']:.2f}", f"{r['zi_aic']:.2f}",
+                    f"{r['margin']:+.2f}") for r in mc2)
+    got2 = sorted((r[0], r[1], r[4], r[5], r[6], r[7].replace('*', ''))
+                  for r in mc2_rows)
+    check("every row of the NB2 companion table matches a computed comparison "
+          "exactly (cell, model, N, NB2 AIC, ZI-NB AIC, margin)",
+          got2 == want2,
+          f"memo-only: {[g for g in got2 if g not in want2]!r}; "
+          f"computed-only: {[w for w in want2 if w not in got2]!r}")
+    n2_wins = sum(1 for r in mc2 if r['margin'] > 0)
+    check(f"every computed NB2 margin favours the zero-inflated model "
+          f"({n2_wins} of {len(mc2)})", all(r['margin'] > 0 for r in mc2),
+          f"losses: {[(r['cell'], r['model'], r['margin']) for r in mc2 if r['margin'] <= 0]!r}")
+    m2lo, m2hi = min(r['margin'] for r in mc2), max(r['margin'] for r in mc2)
+    check(f"memo states the NB2 tally ({n2_wins} of {len(mc2)}) and its margin "
+          f"range ({m2lo:.1f} to {m2hi:.1f} AIC) in situ",
+          re.search(rf"wins \*\*{n2_wins} of {len(mc2)}\*\* here too, by "
+                    rf"{m2lo:.1f} to {m2hi:.1f} AIC", text) is not None,
+          f"n2_wins={n2_wins}, lo={m2lo:.2f}, hi={m2hi:.2f}")
+    check(f"memo states the NB2 tally in the Bottom line too "
+          f"(beats plain NB2 {n2_wins} times out of {len(mc2)})",
+          re.search(rf"beats plain NB2 {n2_wins} times out of {len(mc2)}, by at "
+                    rf"least {m2lo:.1f} AIC", text) is not None)
+    nb2_better = sum(1 for a, b in zip(sorted(mc, key=lambda r: (r['cell'], r['model'], r['re_tier'], r['zi_family'])),
+                                       sorted(mc2, key=lambda r: (r['cell'], r['model'], r['re_tier'], r['zi_family'])))
+                     if b['plain_aic'] < a['plain_aic'])
+    check(f"memo's 'NB2 is the harder comparison' sentence quotes the derived "
+          f"count of rungs where NB2 beats NB1 ({nb2_better} of {len(mc2)})",
+          re.search(rf"better of the two plain families at {nb2_better} of "
+                    rf"these {len(mc2)} rungs", text) is not None,
+          f"nb2_better={nb2_better}")
+
+    # ---- (h5) ROUND 3: the matched-comparison framing numbers ----
+    n_rs_mc = sum(1 for r in mc if r['re_tier'] == 'rs')
+    n_ri_mc = sum(1 for r in mc if r['re_tier'] == 'ri')
+    mc_models = sorted({r['model'] for r in mc})
+    check(f"memo's headline discloses the RE-tier split of its own tally "
+          f"({n_rs_mc} rs / {n_ri_mc} ri) -- the fallback tier supplies part of "
+          f"the evidence and the headline must say so",
+          re.search(rf"{n_rs_mc} of the {len(mc)} comparisons are at the "
+                    rf"mandated `\(1 \+ time \| state\)` structure and "
+                    rf"{n_ri_mc} are at the `\(1 \| state\)` fallback tier",
+                    text) is not None,
+          f"rs={n_rs_mc}, ri={n_ri_mc}")
+    check(f"memo discloses that the tally spans "
+          f"{' and '.join(mc_models)} only (M2 contributes no cross-family "
+          f"comparison), so 'every comparison in the ladder' is not read as all "
+          f"three build-up steps",
+          re.search(rf"which is {' and '.join(mc_models)} only", text)
+          is not None and 'Model 2 contributes no cross-family' in text,
+          f"models={mc_models!r}")
+    check("the artifacts agree that no M2 matched comparison exists (so the "
+          "memo's M2 disclaimer is a measured fact)",
+          'M2' not in mc_models,
+          f"M2 rows: {[r for r in mc if r['model'] == 'M2']!r}")
+
+    # ---- (h6) ROUND 3: per-cell scoping of the estimability claim ----
+    # Derived INDEPENDENTLY of report_count_models' own helper: a ZI-NB rung is
+    # absent-because-non-estimable at (cell, model) iff no genuine fit record
+    # for it carries re_tier == 'rs'.
+    viol_cells = sorted({f['cell'] for k, f in fits.items()
+                         if isinstance(f, dict) and f.get('outcome') == 'violations'
+                         and f.get('cell')})
+    def _zinb_rs(cell, model):
+        out = set()
+        for fam in ZINB_FAMILIES:
+            r = fits.get(f'{cell}__{model}__{fam}')
+            if r is not None and r.get('re_tier') == 'rs' and r.get('converged') \
+                    and not r.get('zi_degenerate'):
+                out.add(fam)
+        return out
+    lost_cells, never_cells, kept_cells = [], [], []
+    for c in viol_cells:
+        e1, e3 = _zinb_rs(c, 'M1'), _zinb_rs(c, 'M3')
+        (kept_cells if e3 else lost_cells if e1 else never_cells).append(c)
+    ze = zinb_eligibility_at_rs(meta_live, viol_cells)
+    check("the independent re-derivation of which violations cells lose a ZI-NB "
+          "rung between M1 and M3 agrees with zinb_eligibility_at_rs()",
+          (lost_cells, never_cells, kept_cells)
+          == (ze['lost'], ze['never'], ze['kept']),
+          f"validator {(lost_cells, never_cells, kept_cells)!r} vs "
+          f"report {(ze['lost'], ze['never'], ze['kept'])!r}")
+    check(f"exactly the cells the memo may describe as 'stops being estimable' "
+          f"are the ones that do ({lost_cells!r}) -- fewer than all "
+          f"{len(viol_cells)} violations cells, which is why the blanket claim "
+          f"was a defect", 0 < len(lost_cells) < len(viol_cells),
+          f"lost={lost_cells!r}, all={viol_cells!r}")
+    # Prose bullets: each named cell must be in the derived set, and the derived
+    # set must be fully covered -- a FABRICATED bullet fails on the first test.
+    bullet_lost = re.search(
+        r'^- ((?:`\w+`(?:, | and )?)+): a ZI-NB rung \*\*is\*\* eligible at '
+        r'Model 1', text, re.M)
+    bullet_never = re.search(
+        r'^- ((?:`\w+`(?:, | and )?)+): no ZI-NB rung is eligible at '
+        r'`\(1 \+ time \| state\)` at \*\*either\*\* Model 1 or Model 3',
+        text, re.M)
+    check("memo carries the 'rung lost between M1 and M3' bullet",
+          bullet_lost is not None or not lost_cells,
+          f"lost_cells={lost_cells!r}")
+    check("memo carries the 'never had a rung at this structure' bullet",
+          bullet_never is not None or not never_cells)
+    if bullet_lost:
+        named = re.findall(r'`(\w+)`', bullet_lost.group(1))
+        check("the 'stops being estimable' bullet names exactly the cells that "
+              "do (no fabricated cell, none omitted)",
+              sorted(named) == sorted(lost_cells),
+              f"memo {sorted(named)!r} vs derived {sorted(lost_cells)!r}")
+    if bullet_never:
+        named = re.findall(r'`(\w+)`', bullet_never.group(1))
+        check("the 'never had a rung' bullet names exactly the cells that never "
+              "had one (no fabricated cell, none omitted)",
+              sorted(named) == sorted(never_cells),
+              f"memo {sorted(named)!r} vs derived {sorted(never_cells)!r}")
+    # Same guarantee for the Bottom line's own cell lists.
+    bl = re.search(r'only one of them fits the phrase "stops being '
+                   r'estimable": (.*?)\. For ', text, re.S)
+    check("Bottom line's per-cell scoping sentence is present and parseable",
+          bl is not None)
+    if bl:
+        seg = bl.group(1)
+        lost_seg, _, never_seg = seg.partition(';')
+        check("Bottom line attributes 'gone by Model 3' to exactly the derived "
+              "cells", sorted(re.findall(r'`(\w+)`', lost_seg))
+              == sorted(lost_cells),
+              f"memo {sorted(re.findall(r'`(.w+)`', lost_seg))!r} vs "
+              f"{sorted(lost_cells)!r}")
+        check("Bottom line attributes 'none at either model' to exactly the "
+              "derived cells",
+              sorted(re.findall(r'`(\w+)`', never_seg)) == sorted(never_cells),
+              f"memo {sorted(re.findall(r'`(.w+)`', never_seg))!r} vs "
+              f"{sorted(never_cells)!r}")
+
+    # ---- (h7) ROUND 3: the two prose bullet LISTS, cells and counts ----
+    # A fabricated bullet in either list used to produce 0 FAILs.
+    ident_cells = [c for c in viol_cells
+                   if not _zinb_rs(c, 'M3')
+                   and all(fits.get(f'{c}__M3__{f}') is None
+                           or fits[f'{c}__M3__{f}'].get('re_tier') != 'rs'
+                           for f in ZINB_FAMILIES)]
+    m3_bullets = re.findall(
+        r'^- `(\w+)`: at \*\*Model 3\*\*, only (\d+) of the (\d+) families',
+        text, re.M)
+    check(f"the Model-3 identifiability bullet list names exactly the cells "
+          f"whose ZI-NB rungs are absent for NON-estimability at the rs tier "
+          f"({ident_cells!r})",
+          sorted(c for c, _, _ in m3_bullets) == sorted(ident_cells),
+          f"memo {sorted(c for c, _, _ in m3_bullets)!r} vs derived "
+          f"{sorted(ident_cells)!r}")
+    check("the Model-3 identifiability bullet list is not empty (the check "
+          "would otherwise be vacuous)", len(m3_bullets) >= 1,
+          f"got {m3_bullets!r}")
+    for cell, n_el, n_all in m3_bullets:
+        want_el = len(fits[f'{cell}__meta'].get('eligible_rs_m3') or [])
+        check(f"Model-3 bullet for {cell} states its eligible count "
+              f"({want_el} of {len(ALL_FAMILIES)}) as the artifact records it",
+              int(n_el) == want_el and int(n_all) == len(ALL_FAMILIES),
+              f"memo {n_el} of {n_all}, artifact {want_el} of "
+              f"{len(ALL_FAMILIES)}")
+    changed_cells = [c for c in CELLS
+                     if set(fits[f'{c}__meta'].get('eligible_rs_m1') or [])
+                     != set(fits[f'{c}__meta'].get('eligible_rs_m3') or [])]
+    m1_bullets = re.findall(
+        r'^- `(\w+)`: (\d+) eligible at Model 1 vs (\d+) at Model 3', text, re.M)
+    check(f"the Model-1 differences bullet list names exactly the cells whose "
+          f"M1 and M3 eligible sets differ ({changed_cells!r})",
+          sorted(c for c, _, _ in m1_bullets) == sorted(changed_cells),
+          f"memo {sorted(c for c, _, _ in m1_bullets)!r} vs derived "
+          f"{sorted(changed_cells)!r}")
+    check("the Model-1 differences bullet list is not empty",
+          len(m1_bullets) >= 1, f"got {m1_bullets!r}")
+    for cell, n1, n3 in m1_bullets:
+        m = fits[f'{cell}__meta']
+        check(f"Model-1 bullet for {cell} states both eligible counts as the "
+              f"artifact records them",
+              int(n1) == len(m.get('eligible_rs_m1') or [])
+              and int(n3) == len(m.get('eligible_rs_m3') or []),
+              f"memo {n1}/{n3}, artifact "
+              f"{len(m.get('eligible_rs_m1') or [])}/"
+              f"{len(m.get('eligible_rs_m3') or [])}")
+
+    # ---- (h8) ROUND 3: the 2019 collapse is Model-3-only in ONE cell ----
+    CELLS_19 = ('viol_off_2019', 'viol_cov_2019')
+    exc_cells = sorted(set(zi_ok_19['cell']))
+    no_exc_cells = [c for c in CELLS_19 if c not in exc_cells]
+    check("the 2019 violations pair splits into cells WITH and WITHOUT a "
+          "non-degenerate ZI fit at the mandated structure -- which is why the "
+          "one-row exception table could not be generalised to both",
+          len(exc_cells) >= 1 and len(no_exc_cells) >= 1,
+          f"with={exc_cells!r}, without={no_exc_cells!r}")
+    for c in no_exc_cells:
+        dg = tab_live[(tab_live['cell'] == c) & tab_live['zi_degenerate']]
+        models = sorted(set(dg['model']))
+        check(f"{c} is ZI-degenerate at every model it was fit at ({models!r}), "
+              f"so the memo must NOT call its collapse Model-3-specific",
+              set(models) >= {'M1', 'M3'}, f"models={models!r}")
+        check(f"memo records {c} as the no-exception cell, with its degenerate "
+              f"family count ({len(set(dg['family']))}) and fit count "
+              f"({len(dg)})",
+              re.search(rf"`{c}`: \*\*no exception\.\*\* All "
+                        rf"{len(set(dg['family']))} zero-inflated families are "
+                        rf"ZI-degenerate at .{{0,40}}?alike \({len(dg)} "
+                        rf"degenerate fits\)", text) is not None,
+              f"n_fams={len(set(dg['family']))}, n_fits={len(dg)}")
+    for c in exc_cells:
+        rows_c = zi_ok_19[zi_ok_19['cell'] == c]
+        mods = sorted({'Model ' + m[1:] for m in rows_c['model']})
+        check(f"memo records {c} as the Model-3-phenomenon cell, naming the "
+              f"model(s) where its ZI fit IS estimable ({mods!r})",
+              re.search(rf"`{c}`: its .{{0,40}}? is estimable and "
+                        rf"non-degenerate at {re.escape(' and '.join(mods))} "
+                        rf"and degenerate by Model 3", text) is not None,
+              f"mods={mods!r}")
+    exc_named = re.findall(r'the Model-3 scoping buys something for '
+                           r'((?:`\w+`(?:, | and )?)+) and nothing for '
+                           r'((?:`\w+`(?:, | and )?)+)', text)
+    check("memo's 2019 scoping sentence names both groups explicitly",
+          len(exc_named) == 1, f"got {exc_named!r}")
+    if exc_named:
+        a, b = exc_named[0]
+        check("the 2019 scoping sentence's 'buys something for' list is exactly "
+              "the cells with an exception",
+              sorted(re.findall(r'`(\w+)`', a)) == sorted(exc_cells),
+              f"memo {sorted(re.findall(r'`(.w+)`', a))!r} vs {exc_cells!r}")
+        check("the 2019 scoping sentence's 'nothing for' list is exactly the "
+              "cells without one",
+              sorted(re.findall(r'`(\w+)`', b)) == sorted(no_exc_cells),
+              f"memo {sorted(re.findall(r'`(.w+)`', b))!r} vs {no_exc_cells!r}")
+
     # ---- (i) I2: expected-zero COVERAGE, enforced structurally ----
     # The first version of this check counted rows CONTAINING '+/-' and required
     # >= 6, so a row that DROPPED its SE was invisible -- the reviewer stripped
@@ -2210,33 +2516,45 @@ def validate_memo():
           "columns and cells to cover)", n_cols >= 6 and n_checked >= 40,
           f"n_cols={n_cols}, n_checked={n_checked}")
     # And the same guarantee for PROSE: any sentence quoting an expected-zero
-    # count outside a table must carry the SE too (this is what caught the
-    # 16.1-55.0 range being quoted bare).
-    # An expected-zero count adjacent to the word "expected" -- INTEGER or
-    # decimal. Round 1's version required a decimal on the line, so an integer
-    # count ("7 observed against 21 expected") would have slipped through.
-    # Anchored on adjacency so that incidental numbers elsewhere in a sentence
-    # (simulation counts, years) are not false positives.
-    exp_adjacent = re.compile(
-        r'(?:(\d+(?:\.\d+)?)\s*(?:\+/-\s*\d+(?:\.\d+)?\s*)?expected'
-        r'|expected[^.|]{0,25}?(\d+(?:\.\d+)?))', re.I)
-    bare_prose = []
+    # count outside a table must carry the SE too.
+    #
+    # ROUND 3, Minor 1. Round 2's version skipped any line containing 'MC SE',
+    # which exempted the memo's ONLY prose site quoting expected-zero counts
+    # (the 16.1/55.0 range, whose sentence ends "MC SEs from 2000 simulations")
+    # from the guard that exists for it -- stripping both +/- there yielded 0
+    # FAILs. The skip existed because the old pattern allowed 25 arbitrary
+    # characters between "expected" and a number, making "expected across the 6
+    # families" a false positive on the FAMILY count.
+    #
+    # This version needs no skip. A candidate expected-zero count is a number
+    # that is followed -- across at most an optional "+/- <se>" and an optional
+    # parenthetical attribution -- by either "expected" or the "to" of a range
+    # that ends in "expected"; or a number that FOLLOWS "expected". The SE must
+    # be part of that match, so each count is policed individually: stripping
+    # one of the two in the range still fails.
+    prose_count_pats = (
+        re.compile(r'(\d+(?:\.\d+)?)((?:\s*\+/-\s*\d+(?:\.\d+)?)?)'
+                   r'(?:\s*\([^)]*\))?\s*(?=(?:to\b|expected\b))', re.I),
+        re.compile(r'expected(?:\s+zeros?)?\s*(?:of|is|are|about|around|[:=])?'
+                   r'\s*(\d+(?:\.\d+)?)((?:\s*\+/-\s*\d+(?:\.\d+)?)?)',
+                   re.I),
+    )
+    bare_prose, n_prose_counts = [], 0
     for ln in lines:
-        if ln.startswith('|') or 'MC SE' in ln:
+        if ln.startswith('|') or not re.search(r'expected', ln, re.I):
             continue
-        for mt in exp_adjacent.finditer(ln):
-            num = mt.group(1) or mt.group(2)
-            # the SE must sit next to THAT number, not merely somewhere on the line
-            window = ln[mt.start():mt.end() + 12]
-            if '+/-' not in window:
-                bare_prose.append((ln.strip()[:140], num))
+        for pat in prose_count_pats:
+            for mt in pat.finditer(ln):
+                n_prose_counts += 1
+                if not mt.group(2).strip():
+                    bare_prose.append((ln.strip()[:140], mt.group(0)[:60]))
     check("no prose sentence in the memo quotes an expected-zero count -- "
-          "integer or decimal -- without its Monte-Carlo SE alongside it",
+          "integer or decimal, and each one separately -- without its "
+          "Monte-Carlo SE alongside it",
           not bare_prose, f"{len(bare_prose)} site(s): {bare_prose!r}")
     check("the prose MC-SE check is not vacuous (it found expected-zero counts "
-          "in prose to cover)",
-          any(exp_adjacent.search(ln) for ln in lines if not ln.startswith('|')),
-          "no prose expected-zero counts found at all")
+          "in prose to cover, with no line-level skip)",
+          n_prose_counts >= 3, f"n_prose_counts={n_prose_counts}")
 
     # ---- (j) I5: the re-declared published spec must still match ----
     aud = ev['published_audit']
