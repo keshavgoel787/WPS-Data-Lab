@@ -438,6 +438,9 @@ ZINB_FAMILIES = ['zinb', 'zinb_re']
 # is the family that DOES lose -- see zi_loss_summary().
 ZI_FAMILIES = ['zip', 'zinb', 'zinb_re']
 PLAIN_FAMILIES = ['poisson', 'nbinom1', 'nbinom2']
+# The plain families that ARE negative binomials -- so "beaten only by a
+# negative binomial" can be tested rather than asserted.
+NB_FAMILIES = ['nbinom1', 'nbinom2']
 
 
 def matched_zi_vs_plain(tab, meta, zi_families=None, plain_families=None):
@@ -584,9 +587,28 @@ def zi_loss_summary(tab, meta):
                 'margin_lo': min(r['margin'] for r in sub),
                 'margin_hi': max(r['margin'] for r in sub),
             }
+    # For each losing rung, WHICH plain families beat it. Needed because "the
+    # ZIP is only ever beaten by a negative binomial" is FALSE at one rung
+    # (viol_off_2019/M1/rs, where a plain Poisson beats it by 1.94 AIC) -- and
+    # that rung is the source of the 1.9 lower bound the memo quotes. The clause
+    # was hardcoded and wrong; it is derived from this field now.
+    rung_beaters = {}
+    for r in losses:
+        rung_beaters.setdefault(
+            (r['cell'], r['model'], r['re_tier'], r['zi_family']),
+            []).append(r['plain_family'])
+    for k in rung_beaters:
+        rung_beaters[k] = sorted(set(rung_beaters[k]))
+    nb_only = sorted(k for k, v in rung_beaters.items()
+                     if set(v) <= set(NB_FAMILIES))
+    with_poisson = sorted(k for k, v in rung_beaters.items()
+                          if 'poisson' in v)
     return {
         'n_comparisons': len(allcmp),
         'n_win_pairings': len(wins),
+        'rung_beaters': rung_beaters,
+        'rungs_beaten_by_nb_only': nb_only,
+        'rungs_beaten_by_a_plain_poisson': with_poisson,
         'n_loss_pairings': len(losses),
         'distinct_losers': distinct,
         'distinct_loser_rungs': distinct_rungs,
@@ -913,15 +935,51 @@ def write_memo(raw, meta, tab, ws, ev):
         f"{_mc2_wins}-{len(_mc2) - _mc2_wins}. No `zinb` or `zinb_re` fit lost a "
         f"single matched comparison: {_zl['n_zinb_losses']} losses in total.")
     add("")
+    # Tier 0, one sentence: the base of the ladder, where both ingredients face
+    # a family with neither. Generated from the same `record`.
+    _t0 = [(f, _zl['record'][(f, 'poisson')]) for f in ZINB_FAMILIES
+           if (f, 'poisson') in _zl['record']]
+    if _t0:
+        add("At the base of that ladder, against a plain Poisson -- a family with "
+            "neither ingredient -- the two ZI-NB rungs are "
+            + _oxford([f"{v['wins']}-{v['losses']} ({FAMILY_LABEL.get(f, f)})"
+                       for f, v in _t0])
+            + f", by {_f(min(v['margin_lo'] for _, v in _t0), '.1f')} to "
+            f"{_f(max(v['margin_hi'] for _, v in _t0), '.1f')} AIC.\n")
+    # A "rung" and a "rung loss" have to be defined, or tier 1's pairwise 12-1
+    # and the 13 losing rungs below read as contradictory when they are not.
+    add(f"One definition, because two of those numbers look like they disagree "
+        f"and do not. A **rung** is one (cell, model, RE-tier) combination, and a "
+        f"rung counts as a *loss* for a family if **at least one** plain family "
+        f"beats it there. Tier 1's {_zp['wins']}-{_zp['losses']} is pairwise, "
+        f"ZIP against plain Poisson only; the losing-rung count below is against "
+        f"**any** plain family. They are counting different things.\n")
+    _nb_only = _zl['rungs_beaten_by_nb_only']
+    _with_p = _zl['rungs_beaten_by_a_plain_poisson']
     add(f"So the ingredient that wins is inflation **combined with** "
-        f"negative-binomial overdispersion, which is precisely Jafari's model. A "
+        f"negative-binomial overdispersion, which is precisely Jafari's model: a "
         f"zero-inflated *negative binomial* never lost a matched comparison "
-        f"anywhere in this pipeline; a zero-inflated *Poisson* loses at "
-        f"{_zip_losses} distinct (cell, model, RE-tier) rungs, "
-        f"{len(_zl['distinct_losers_rs'])} of them at the mandated "
-        f"`(1 + time | state)` structure, by {_f(_zl['loss_margin_lo'], '.1f')} to "
-        f"{_f(_zl['loss_margin_hi'], '.1f')} AIC -- always to a negative "
-        f"binomial, never to a plain Poisson.\n")
+        f"anywhere in this pipeline.\n")
+    add(f"The zero-inflated *Poisson* is the other story. It loses at "
+        f"{_zip_losses} rungs, {len(_zl['distinct_losers_rs'])} of them at the "
+        f"mandated `(1 + time | state)` structure, by "
+        f"{_f(_zl['loss_margin_lo'], '.1f')} to "
+        f"{_f(_zl['loss_margin_hi'], '.1f')} AIC. At {len(_nb_only)} of those "
+        f"{_zip_losses} rungs every family that beats it is a negative binomial"
+        + ((f", and at the remaining {len(_with_p)} -- "
+            + _oxford([f"`{c}` {m}" for c, m, _t, _f_ in _with_p])
+            + f" -- a plain Poisson beats it as well, by "
+            + _oxford([_f(min(abs(r['margin']) for r in _zl['raw_losses']
+                              if (r['cell'], r['model'], r['re_tier'],
+                                  r['zi_family']) == k
+                              and r['plain_family'] == 'poisson'), '.1f')
+                       for k in _with_p])
+            + " AIC. That is the single loss tier 1 already reports, and it is "
+              "why inflation is described above as buying a great deal for a "
+              "Poisson rather than as always helping one")
+           if _with_p else
+           ", at every one of them")
+        + ".\n")
     add(f"**What stops us using it is identifiability, not evidence.** At the "
         f"structure the manuscript mandates, `(1 + time | state)`, no "
         f"zero-inflated negative-binomial rung is eligible at Model 3 in any of "
@@ -1291,13 +1349,24 @@ def write_memo(raw, meta, tab, ws, ev):
     # defect: it is true of exactly one cell.
     viol_cells = sorted(set(tab[tab['outcome'] == 'violations']['cell']))
     ze = zinb_eligibility_at_rs(meta, viol_cells)
-    add(f"So the honest mechanism is not that NB1 explains the zeros comparably "
-        f"well. **NB1 wins the Model-3 random-slope comparison by default**: no "
-        f"zero-inflated negative-binomial rung is eligible at that specific "
-        f"structure at Model 3, in any of the {len(viol_cells)} violations cells, "
-        f"so none of them is in the race. Where they are in the race, they win. "
-        f"That is a statement about identifiability, not about zero-inflation "
-        f"being unnecessary.\n")
+    # Subject derived from m3_winner_rs, grouped by family: NB1 is the Model-3
+    # rs selection in the 2021 pair only -- the 2019 pair selects NB2 -- so
+    # "NB1 wins ... in any of the 4 violations cells" was a generalisation, and
+    # this is the paragraph a quoter is most likely to lift.
+    _by_fam = {}
+    for c in viol_cells:
+        _by_fam.setdefault(meta[c]['m3_winner_rs'], []).append(c)
+    _fam_txt = "; ".join(
+        f"{FAMILY_LABEL.get(f, f)} in " + _oxford(['`' + c + '`' for c in cs])
+        for f, cs in sorted(_by_fam.items()))
+    add(f"So the honest mechanism is not that a negative binomial explains the "
+        f"zeros comparably well. **The plain negative binomial wins the Model-3 "
+        f"random-slope comparison by default** -- {_fam_txt}: no zero-inflated "
+        f"negative-binomial rung is eligible at that specific structure at "
+        f"Model 3, in any of the {len(viol_cells)} violations cells, so none of "
+        f"them is in the race. Where they are in the race, they win. That is a "
+        f"statement about identifiability, not about zero-inflation being "
+        f"unnecessary.\n")
     add("The identifiability has two different causes, and only one of them is "
         "the \"covariates knock the rung out\" story:\n")
     if ze['lost']:

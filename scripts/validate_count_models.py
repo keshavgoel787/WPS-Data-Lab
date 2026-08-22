@@ -1801,6 +1801,11 @@ MEMO_FORBIDDEN_PATTERNS = (
     # BINOMIAL. Any unqualified subject reinstates the overstatement.
     r'zero-inflated models?\s+never lost',
     r'\bZI models?\s+never lost',
+    # Round 5: the ZIP's 13th losing rung is beaten by a plain POISSON
+    # (viol_off_2019/M1/rs, by 1.94 AIC), so it is not "always" beaten by a
+    # negative binomial and a plain Poisson does beat it once.
+    r'always to a negative binomial',
+    r'never to a plain Poisson',
     # Round 4: inflation on a Poisson is NOT "beaten wherever it is tested" --
     # ZIP beats plain Poisson 12-1. It is beaten wherever tested AGAINST A
     # NEGATIVE BINOMIAL, and the qualifier is the whole point.
@@ -2279,11 +2284,12 @@ def validate_memo():
           len(zl['distinct_losers']) == len(zl['distinct_loser_rungs']),
           f"{len(zl['distinct_losers'])} tuples vs "
           f"{len(zl['distinct_loser_rungs'])} rungs")
-    check(f"memo states the ZIP-loss count in situ ({n_zip_loss} distinct "
-          f"(cell, model, RE-tier) rungs)",
-          re.search(rf"loses at {n_zip_loss} distinct "
-                    rf"\(cell, model, RE-tier\) rungs", text) is not None,
-          f"n_zip_loss={n_zip_loss}")
+    check(f"memo states the ZIP-loss count in situ ({n_zip_loss} rungs, "
+          f"{n_zip_loss_rs} of them at the mandated structure)",
+          re.search(rf"It loses at\s+{n_zip_loss} rungs, {n_zip_loss_rs} of them "
+                    rf"at the\s+mandated `\(1 \+ time \| state\)` structure",
+                    text) is not None,
+          f"n_zip_loss={n_zip_loss}, rs={n_zip_loss_rs}")
     check(f"memo states how many ZIP losses are at the mandated rs tier "
           f"({n_zip_loss_rs}) in situ",
           re.search(rf"{n_zip_loss_rs} of them at the mandated", text)
@@ -2347,8 +2353,76 @@ def validate_memo():
                     rf"{_mc2_wins}-{len(_mc2) - _mc2_wins}", text) is not None)
     check("memo scopes the Poisson-inflation limit to negative-binomial "
           "competitors rather than claiming it loses to everything",
-          'cannot close the gap to a negative binomial' in text
-          and 'always to a negative binomial, never to a plain Poisson' in text)
+          'cannot close the gap to a negative binomial' in text)
+
+    # ---- ROUND 5: WHO beats the losing ZIP rungs, derived per rung ----
+    # The round-4 memo claimed the ZIP is beaten "always to a negative binomial,
+    # never to a plain Poisson". That is FALSE, and the counterexample is the
+    # 1.94 AIC lower bound quoted in the same sentence: at
+    # viol_off_2019/M1/rs a plain Poisson beats the ZIP. The clause was the last
+    # hardcoded claim in the memo and this guard REQUIRED it, so it would have
+    # survived every regeneration. Inverted: the false phrasing now fails and
+    # the derived split is asserted.
+    nb_only = zl['rungs_beaten_by_nb_only']
+    with_pois = zl['rungs_beaten_by_a_plain_poisson']
+    check("artifact fact: at least one losing ZI rung is beaten by a plain "
+          "Poisson, so 'never to a plain Poisson' is false and this guard is "
+          "not vacuous", len(with_pois) >= 1,
+          f"rungs with a plain-Poisson beater: {with_pois!r}")
+    check("every losing rung is accounted for as either NB-only-beaten or "
+          "also-beaten-by-a-plain-Poisson",
+          len(nb_only) + len(with_pois) == len(zl['distinct_losers']),
+          f"{len(nb_only)} + {len(with_pois)} != "
+          f"{len(zl['distinct_losers'])}")
+    check(f"memo states the derived split of losing rungs by who beats them "
+          f"({len(nb_only)} NB-only of {len(zl['distinct_losers'])})",
+          re.search(rf"At {len(nb_only)} of those {len(zl['distinct_losers'])} "
+                    rf"rungs every family that beats it is a negative binomial",
+                    text) is not None,
+          f"nb_only={len(nb_only)}, total={len(zl['distinct_losers'])}")
+    check(f"memo names the rung(s) where a plain Poisson also beats the "
+          f"zero-inflated model, with its margin",
+          all(f"`{c}` {m}" in text for c, m, _t, _f in with_pois)
+          and re.search(rf"at the remaining {len(with_pois)} -- .{{0,80}}? -- a "
+                        rf"plain Poisson beats it as well, by ", text)
+          is not None,
+          f"with_pois={with_pois!r}")
+    for k in with_pois:
+        marg = min(abs(r['margin']) for r in zl['raw_losses']
+                   if (r['cell'], r['model'], r['re_tier'],
+                       r['zi_family']) == k and r['plain_family'] == 'poisson')
+        check(f"memo quotes the plain-Poisson margin at {k[0]}/{k[1]} "
+              f"({marg:.1f} AIC) in situ",
+              re.search(rf"a plain Poisson beats it as well, by {marg:.1f} AIC",
+                        text) is not None, f"margin={marg:.4f}")
+
+    # ---- ROUND 5: the rung / rung-loss definition ----
+    check("memo defines a 'rung' and a 'rung loss', so tier 1's pairwise tally "
+          "and the losing-rung count cannot read as contradictory",
+          re.search(r'A \*\*rung\*\* is one \(cell, model, RE-tier\) combination'
+                    r', and a\s+rung counts as a \*loss\* for a family if '
+                    r'\*\*at least one\*\* plain family\s+beats it there',
+                    text) is not None
+          and re.search(rf"Tier 1's {zp['wins']}-{zp['losses']} is pairwise",
+                        text) is not None)
+
+    # ---- ROUND 5: tier 0 ----
+    t0 = [(f, rec[(f, 'poisson')]) for f in ZINB_FAMILIES
+          if (f, 'poisson') in rec]
+    check("artifact fact: both ZI-NB rungs are undefeated against a plain "
+          "Poisson (tier 0 of the hierarchy)",
+          t0 and all(v['losses'] == 0 and v['wins'] > 0 for _, v in t0),
+          f"{[(f, v['wins'], v['losses']) for f, v in t0]!r}")
+    for f, v in t0:
+        check(f"memo states tier 0 for {FAMILY_LABEL.get(f, f)} in situ "
+              f"({v['wins']}-{v['losses']})",
+              f"{v['wins']}-{v['losses']} ({FAMILY_LABEL.get(f, f)})" in text,
+              f"{v['wins']}-{v['losses']}")
+    t0lo = min(v['margin_lo'] for _, v in t0)
+    t0hi = max(v['margin_hi'] for _, v in t0)
+    check(f"memo quotes the tier-0 margin range ({t0lo:.1f} to {t0hi:.1f} AIC)",
+          re.search(rf"by {t0lo:.1f} to {t0hi:.1f} AIC\.", text) is not None,
+          f"{t0lo:.4f}..{t0hi:.4f}")
 
     # ---- ROUND 4, minor: the headline's definition of a matched comparison ----
     check("the memo's headline definition of a legitimate matched comparison "
@@ -2605,6 +2679,27 @@ def validate_memo():
                         rf'no ZI-NB rung at this structure at\s+either model',
                         text) is not None,
           f"never_cells={never_cells!r}")
+    # ROUND 5: the 'honest mechanism' conclusion is the paragraph most likely to
+    # be quoted, and it still said "NB1 wins ... in any of the 4 violations
+    # cells". Its subject must name each family with the cells that select it.
+    by_fam = {}
+    for c in viol_cells:
+        by_fam.setdefault(fits[f'{c}__meta']['m3_winner_rs'], []).append(c)
+    check("the 'honest mechanism' conclusion names the plain negative binomial "
+          "generically rather than generalising NB1 to all four violations cells",
+          re.search(r'\*\*The plain negative binomial wins the Model-3 '
+                    r'random-slope comparison by default\*\*', text)
+          is not None
+          and not re.search(r'\*\*NB1 wins the Model-3 random-slope '
+                            r'comparison by default\*\*', text))
+    for fam, cs in sorted(by_fam.items()):
+        lbl = FAMILY_LABEL.get(fam, fam)
+        want = f"{lbl} in " + (f"`{cs[0]}`" if len(cs) == 1 else
+                               ", ".join(f"`{c}`" for c in sorted(cs)[:-1])
+                               + f" and `{sorted(cs)[-1]}`")
+        check(f"that conclusion attributes {lbl} to exactly the cells that "
+              f"select it ({sorted(cs)!r})", want in text,
+              f"expected {want!r}")
     # ROUND 4, minor: the mechanism heading justifies BOTH plain families, so its
     # opening sentence must name the per-cell selections rather than NB1 alone.
     for c in viol_cells:

@@ -259,17 +259,24 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   negative-binomial parameterisations, not just NB1.
 - **But it is the ZI-NB specifically, not zero-inflation generally, and do NOT write that a
   zero-inflated model never lost on merit anywhere.** The evidence is a three-tier
-  **hierarchy**, and all three tallies are generated in `docs/count_models_zinb.md`:
-  (1) **inflation helps** — ZIP beats plain Poisson **12–1** (margins −1.9 to +625.7 AIC);
-  (2) **NB overdispersion helps more** — a plain NB beats that same ZIP **13–0** against NB1
-  and **13–0** against NB2; (3) **the two together win wherever they can be fit** — ZI-NB
-  beats NB1 **17–0** and NB2 **17–0**. That is precisely the case for Jafari's specification.
-  So a zero-inflated **Poisson** is beaten at **13** distinct (cell, model, `re_tier`) rungs —
-  **9 of them at the mandated `rs` tier** — by 1.9–2967.5 AIC, but **always by a negative
-  binomial and never by a plain Poisson**: do NOT write that inflation on a Poisson "is beaten
-  wherever it is tested" without the "against a negative binomial" qualifier; unqualified it
-  is false. No `zinb` or `zinb_re` ever lost a matched comparison (**0** losses); always name
-  the *negative binomial* as the subject of that claim. Also note that **8 of the 17**
+  **hierarchy**, and every tally is generated in `docs/count_models_zinb.md`:
+  (0) against a plain Poisson the two ZI-NB rungs are **8–0** (ZINB) and **9–0** (ZINB+ZI-RE),
+  by 390.2–3519.6 AIC; (1) **inflation helps** — ZIP beats plain Poisson **12–1** (margins
+  −1.9 to +625.7 AIC); (2) **NB overdispersion helps more** — a plain NB beats that same ZIP
+  **13–0** against NB1 and **13–0** against NB2; (3) **the two together win wherever they can
+  be fit** — ZI-NB beats NB1 **17–0** and NB2 **17–0**. That is precisely the case for
+  Jafari's specification.
+  A zero-inflated **Poisson** loses at **13** rungs (a *rung* is one (cell, model, `re_tier`);
+  a rung is a loss if **at least one** plain family beats it there — which is why the pairwise
+  12–1 in tier 1 and these 13 losing rungs are consistent, not contradictory) — **9 of them at
+  the mandated `rs` tier** — by 1.9–2967.5 AIC. At **12** of the 13 every family beating it is
+  a negative binomial; at the **13th** (`viol_off_2019` M1 `rs`) a **plain Poisson beats it
+  too, by 1.94 AIC**, and that rung IS the 1.9 lower bound and the single loss in tier 1. Do
+  NOT write "always by a negative binomial, never by a plain Poisson" — that was a round-4
+  defect. Also do NOT write that inflation on a Poisson "is beaten wherever it is tested"
+  without the "against a negative binomial" qualifier; unqualified it is false. No `zinb` or
+  `zinb_re` ever lost a matched comparison (**0** losses); always name the *negative binomial*
+  as the subject of that claim. Also note that **8 of the 17**
   ZI-NB-vs-NB1 comparisons are at the `(1 | state)` fallback tier, that **M2 contributes
   none** (the ladder fits M2 under the already-selected family only) so "every comparison in
   the ladder" means M1 and M3, and that **8 ZI-NB fits are excluded as `zi_degenerate`** (all

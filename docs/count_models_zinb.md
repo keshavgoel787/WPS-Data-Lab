@@ -16,7 +16,13 @@ Joe asked whether we could replicate the analytic model of Jafari et al. (*PLOS 
 2. **Negative-binomial overdispersion helps more.** A plain negative binomial beats that same zero-inflated Poisson 13-0 against NB1 and 13-0 against NB2. Inflation on a Poisson mean-variance structure cannot close the gap to a negative binomial -- not once, anywhere in the ladder.
 3. **The two together win wherever they can be fit.** A zero-inflated negative binomial beats NB1 17-0 and NB2 17-0. No `zinb` or `zinb_re` fit lost a single matched comparison: 0 losses in total.
 
-So the ingredient that wins is inflation **combined with** negative-binomial overdispersion, which is precisely Jafari's model. A zero-inflated *negative binomial* never lost a matched comparison anywhere in this pipeline; a zero-inflated *Poisson* loses at 13 distinct (cell, model, RE-tier) rungs, 9 of them at the mandated `(1 + time | state)` structure, by 1.9 to 2967.5 AIC -- always to a negative binomial, never to a plain Poisson.
+At the base of that ladder, against a plain Poisson -- a family with neither ingredient -- the two ZI-NB rungs are 8-0 (ZINB) and 9-0 (ZINB + ZI RE), by 390.2 to 3519.6 AIC.
+
+One definition, because two of those numbers look like they disagree and do not. A **rung** is one (cell, model, RE-tier) combination, and a rung counts as a *loss* for a family if **at least one** plain family beats it there. Tier 1's 12-1 is pairwise, ZIP against plain Poisson only; the losing-rung count below is against **any** plain family. They are counting different things.
+
+So the ingredient that wins is inflation **combined with** negative-binomial overdispersion, which is precisely Jafari's model: a zero-inflated *negative binomial* never lost a matched comparison anywhere in this pipeline.
+
+The zero-inflated *Poisson* is the other story. It loses at 13 rungs, 9 of them at the mandated `(1 + time | state)` structure, by 1.9 to 2967.5 AIC. At 12 of those 13 rungs every family that beats it is a negative binomial, and at the remaining 1 -- `viol_off_2019` M1 -- a plain Poisson beats it as well, by 1.9 AIC. That is the single loss tier 1 already reports, and it is why inflation is described above as buying a great deal for a Poisson rather than as always helping one.
 
 **What stops us using it is identifiability, not evidence.** At the structure the manuscript mandates, `(1 + time | state)`, no zero-inflated negative-binomial rung is eligible at Model 3 in any of the 4 violations cells, so a plain negative binomial wins those columns **by default, having been the only kind of model left in the race** -- and it remains the selected family for them under the pre-registered protocol. Only `viol_off_2021` of them fits the phrase "stops being estimable"; the other 3 never had such a rung at this structure at either model. The per-cell accounting is below. For the inspections cells the ZI rungs do survive to Model 3 and are duly selected (`insp_2019` and `insp_2021`).
 
@@ -150,7 +156,7 @@ NB1 is one of two negative-binomial parameterisations in this ladder, and it is 
 
 Which of the two plain families is the tougher competitor is a rung-by-rung question, not a global one: NB2 has the smaller margin at 8 of the 17 rungs and NB1 at the other 9. NB2's mean margin is the lower of the two (47.4 against 81.1 AIC) only because the 4 `insp_2021` rungs fall from 183 to 33 AIC -- a range effect in a handful of rungs, not a majority. The claim that survives is the stronger one: whichever plain family is the tougher competitor at a given rung, the zero-inflated model beats it, at every one of the 17 rungs.
 
-So the honest mechanism is not that NB1 explains the zeros comparably well. **NB1 wins the Model-3 random-slope comparison by default**: no zero-inflated negative-binomial rung is eligible at that specific structure at Model 3, in any of the 4 violations cells, so none of them is in the race. Where they are in the race, they win. That is a statement about identifiability, not about zero-inflation being unnecessary.
+So the honest mechanism is not that a negative binomial explains the zeros comparably well. **The plain negative binomial wins the Model-3 random-slope comparison by default** -- NB1 in `viol_cov_2021` and `viol_off_2021`; NB2 in `viol_cov_2019` and `viol_off_2019`: no zero-inflated negative-binomial rung is eligible at that specific structure at Model 3, in any of the 4 violations cells, so none of them is in the race. Where they are in the race, they win. That is a statement about identifiability, not about zero-inflation being unnecessary.
 
 The identifiability has two different causes, and only one of them is the "covariates knock the rung out" story:
 
