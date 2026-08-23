@@ -4,18 +4,28 @@ docs/count_models_zinb.md needs that are NOT already in
 count_model_results.json:
 
   1. panel descriptives + the within-state mean-variance scaling exponent,
-  2. a convergence AUDIT of all 12 published 2011-2021 manuscript fits,
-  3. the cross-software zero-inflation check (statsmodels FE-ZINB).
+  2. a convergence AUDIT of all 12 published 2011-2021 manuscript fits, plus
+     the same audit for the 2011-2019 window against
+     paper_table_params_corrected.json -- item 5 of the 2026-08-22 review: the
+     `reproduces_published` guard covered only the 2021 window, so nothing
+     checked that the 2019 specification re-declared here still matches
+     paper_table_models_corrected.py's published output,
+  3. the cross-software zero-inflation check (statsmodels FE-ZINB),
+  4. what the `log(inspections)` offset removes from each window -- item 4 of
+     the same review: the memo gave the offset/covariate sample gaps but never
+     said WHICH rows the offset drops.
 
 This lives in its own script (not in report_count_models.py) because it FITS
-MODELS -- 12 statsmodels MixedLM refits plus 2 ZeroInflatedNegativeBinomialP
-fits, ~15 s -- whereas report_count_models.py is a pure artifact reader that
-should re-render the memo in under a second. `report_count_models.py` loads the
-JSON this writes; if it is missing it delegates here once and caches.
+MODELS -- 24 statsmodels MixedLM refits (12 per window) plus 2
+ZeroInflatedNegativeBinomialP fits, ~30 s -- whereas report_count_models.py is a
+pure artifact reader that should re-render the memo in under a second.
+`report_count_models.py` loads the JSON this writes; if it is missing it
+delegates here once and caches.
 
 READ-ONLY with respect to the manuscript. It reads
-data/generated/paper_table_params_2021.json to check its own refits against the
-published values, and writes nothing under paper_table_*.
+data/generated/paper_table_params_2021.json AND
+data/generated/paper_table_params_corrected.json to check its own refits against
+the published values, and writes nothing under paper_table_*.
 
 Warnings are captured with `warnings.catch_warnings(record=True)` and STORED,
 never suppressed: a module-level `warnings.filterwarnings("ignore")` is exactly
@@ -84,9 +94,21 @@ def _panel_descriptives(window):
     return out
 
 
-def _audit_published_fits():
-    """Refit all 12 published 2011-2021 manuscript fits (2 outcome columns x
-    M1/M2/M3 x {random slope, random-intercept-only}) with the published
+# Which published JSON each window's audit checks itself against, and which
+# script produced it. 2021 -> paper_table_models_2021.py; 2019 ->
+# paper_table_models_corrected.py. Both scripts declare the SAME
+# specification (cubic time, Z_SPEND + Z_LABOR at M2, + Z_H2A at M3, lbfgs,
+# re_formula='~time'), verified line-for-line, which is why one audit function
+# serves both.
+_PUBLISHED_JSON = {
+    2021: 'paper_table_params_2021.json',
+    2019: 'paper_table_params_corrected.json',
+}
+
+
+def _audit_published_fits(window=2021):
+    """Refit all 12 published manuscript fits for one window (2 outcome columns
+    x M1/M2/M3 x {random slope, random-intercept-only}) with the published
     optimizer, recording each one's convergence warnings, and refit any
     non-converged one with 'cg' and 'powell'.
 
@@ -110,8 +132,8 @@ def _audit_published_fits():
     from statsmodels.regression.mixed_linear_model import MixedLM
     from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-    published = json.load(open(GEN + 'paper_table_params_2021.json'))
-    df = build_panel(2021)
+    published = json.load(open(GEN + _PUBLISHED_JSON[window]))
+    df = build_panel(window)
 
     def one_fit(dv, rhs, re_slope, method):
         d = df.dropna(subset=[dv] + rhs).copy()
@@ -164,12 +186,19 @@ def _audit_published_fits():
                         'outcome': outcome, 'model': model, 're_basis': basis,
                         'n_obs': r['n_obs'], 'n_states': r['n_states'],
                         'lbfgs': r, 'cg': alts['cg'], 'powell': alts['powell'],
-                        'published_b_log_inspections':
-                            float(published[outcome][model]['log_inspections']['b']),
+                        # The inspections column has no log_inspections term,
+                        # so this is None there rather than a KeyError -- the
+                        # 2019 arm's affected fit IS an inspections one.
+                        'published_b_log_inspections': (
+                            float(published[outcome][model]['log_inspections']['b'])
+                            if 'log_inspections' in published[outcome][model]
+                            else None),
                         'published_sigma2_u0': float(published[outcome][model][pubkey]),
                         'published_delta_pct_ri': float(published[outcome][model]['delta_pct_ri']),
                     }
     return {
+        'window': window,
+        'published_json': _PUBLISHED_JSON[window],
         'n_fits': len(fits),
         'n_nonconverged': sum(1 for r in fits if r['grad_warning']),
         'n_reproduces_published': sum(1 for r in fits if r['reproduces_published']),
@@ -178,6 +207,41 @@ def _audit_published_fits():
             1 for r in fits if r['re_basis'] == 'random intercept' and r['grad_warning']),
         'fits': fits,
         'affected': affected,
+    }
+
+
+def _offset_drop(window):
+    """What the `log(inspections)` offset removes from one window's panel.
+
+    Item 4 of the 2026-08-22 review. `count_models_zinb.R` drops every
+    `inspections == 0` row from the offset specification (the offset is
+    undefined there). The memo reported the resulting N gaps but never said
+    WHICH rows those are -- and if they are all zero-violation rows, the offset
+    specification is systematically removing precisely the "no enforcement
+    activity at all" state-years a structural-zero component exists to
+    represent. That property is DERIVED here, per window, rather than asserted:
+    `all_dropped_are_zero_violation` is computed, so the 2019 window is checked
+    on the same footing as the 2021 one and can come out either way.
+    """
+    d = pd.read_csv(GEN + f'count_model_panel_{window}.csv')
+    dropped = d[d['inspections'] == 0]
+    zero_v = dropped[dropped['violations'] == 0]
+    nan_v = dropped[dropped['violations'].isna()]
+    pos_v = dropped[dropped['violations'] > 0]
+    return {
+        'n_rows': int(len(d)),
+        'n_dropped': int(len(dropped)),
+        'n_dropped_zero_violation': int(len(zero_v)),
+        'n_dropped_violations_missing': int(len(nan_v)),
+        'n_dropped_violations_positive': int(len(pos_v)),
+        'all_dropped_are_zero_violation': bool(
+            len(dropped) > 0 and len(zero_v) == len(dropped)),
+        'dropped_state_years': [f"{r.state}-{int(r.year)}"
+                                for r in dropped.itertuples()],
+        'n_zero_violation_rows': int((d['violations'] == 0).sum()),
+        'pct_zero_violation_rows_dropped': (
+            float(100.0 * len(zero_v) / (d['violations'] == 0).sum())
+            if (d['violations'] == 0).sum() else float('nan')),
     }
 
 
@@ -271,8 +335,13 @@ def build_memo_evidence(raw):
     numbers against it independently of the prose."""
     ev = {
         'panel': {w: _panel_descriptives(w) for w in ('2019', '2021')},
-        'published_audit': _audit_published_fits(),
+        # `published_audit` stays the 2021 arm (the window the non-convergence
+        # finding is about, and the one the memo's audit table reports).
+        # `published_audit_2019` is the parity arm added by item 5.
+        'published_audit': _audit_published_fits(2021),
+        'published_audit_2019': _audit_published_fits(2019),
         'zi_crosscheck': _zi_crosscheck(raw),
+        'offset_drop': {str(w): _offset_drop(w) for w in (2019, 2021)},
     }
     with open(MEMO_EVIDENCE_PATH, 'w') as fh:
         json.dump(ev, fh, indent=1)
@@ -283,11 +352,20 @@ def build_memo_evidence(raw):
 def main():
     raw = json.load(open(GEN + 'count_model_results.json'))
     ev = build_memo_evidence(raw)
-    aud = ev['published_audit']
-    print(f"  published-fit audit: {aud['n_fits']} fits, "
-          f"{aud['n_nonconverged']} with a gradient failure, "
-          f"{sum(1 for r in aud['fits'] if r['reproduces_published'])} "
-          f"reproducing the published sigma^2_u0")
+    for label in ('published_audit', 'published_audit_2019'):
+        aud = ev[label]
+        print(f"  published-fit audit [{aud['window']}, "
+              f"{aud['published_json']}]: {aud['n_fits']} fits, "
+              f"{aud['n_nonconverged']} with a gradient failure, "
+              f"{sum(1 for r in aud['fits'] if r['reproduces_published'])} "
+              f"reproducing the published sigma^2_u0")
+    for w, od in sorted(ev['offset_drop'].items()):
+        print(f"  offset drops {od['n_dropped']} of {od['n_rows']} rows in "
+              f"{w}; all zero-violation: "
+              f"{od['all_dropped_are_zero_violation']} "
+              f"({od['n_dropped_zero_violation']} zero, "
+              f"{od['n_dropped_violations_positive']} positive, "
+              f"{od['n_dropped_violations_missing']} missing)")
     for cell, x in ev['zi_crosscheck'].items():
         print(f"  ZI cross-check {cell}: N={x['n_obs']}, "
               f"converged={x['converged']}, ZI intercept {x['zi_b']:+.4f} "

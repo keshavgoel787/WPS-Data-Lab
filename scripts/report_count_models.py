@@ -8,11 +8,15 @@ before Task 4 evolved the JSON across four commits and six controller
 rulings -- see task-5-report.md for the full list of places the brief's code
 would silently produce a wrong table if transcribed):
 
-  - 109 total records = 2 Gaussian round-trip validation artifacts
-    (*_gaussian, no cell/model/family_tag -- excluded) + 6 __meta records
-    (per-cell selection results, NOT fits -- excluded from selection_table,
-    read separately via load_meta) + 6 __altopt optimizer-stability
-    diagnostics (excluded from selection) + 95 genuine model fits.
+  - 121 total records = 6 Gaussian round-trip validation artifacts
+    (*_gaussian, M1/M2/M3 x 2 outcomes, no cell/model/family_tag -- excluded)
+    + 6 __meta records (per-cell selection results, NOT fits -- excluded from
+    selection_table, read separately via load_meta) + 6 __altopt
+    optimizer-stability diagnostics (excluded from selection) + 6 __zisens
+    expanded-ZI sensitivity fits (spec 5.5; excluded from selection by
+    construction -- see `_EXCLUDE_SUFFIXES`) + 97 genuine model fits.
+    These four exclusion populations are counted separately in
+    validate_count_models.py [3] so none can silently stand in for another.
   - The winner is READ from `is_winner_rs` / `is_winner_ri` on each fit, never
     recomputed by a cross-tier `groupby('cell')['aic'].idxmin()` -- that rule
     conflates random-effects structure with distribution family and returns
@@ -37,7 +41,7 @@ would silently produce a wrong table if transcribed):
     select the 30 LRT rows via `lrt_p.notna()`, never `lrt_vs != ''` -- the
     empty-string sentinel for "no LRT" becomes NaN through a to_csv/read_csv
     round-trip, and `NaN != ''` is True, so that selector would silently
-    return all 95 rows instead of 30 once read back from disk. See
+    return all 97 rows instead of 30 once read back from disk. See
     `selection_table()`'s docstring and the round-trip check in
     validate_count_models.py [4].
   - The nearest clean competitor is reported unconditionally (no delta_aic
@@ -62,10 +66,26 @@ would silently produce a wrong table if transcribed):
     3-4 decimals under BFGS).
   - Zero-inflated winners (zip/zinb/zinb_re) get their zero-inflation-part
     coefficients (`f['zi']`) in a separate, clearly labelled "ZI:" block in
-    `coefficient_table()` -- e.g. insp_2019's winner is zinb_re and its ZI
-    intercept (-9.423, SE 2.603, p=2.9e-4) is exactly the parameter behind
-    its whole 4-AIC margin over plain ZINB; presenting that model as if it
-    were an ordinary NB would hide that.
+    `coefficient_table()`; presenting such a model as if it were an ordinary
+    NB would hide the component that selected it.
+  - THE ZI RANDOM-EFFECT VARIANCE IS THE ADDED PARAMETER, NOT THE INTERCEPT
+    (2026-08-22 review, Critical). `insp_2019`'s winner is `zinb_re`, and an
+    earlier version of this docstring attributed its AIC margin over plain
+    ZINB to the ZI INTERCEPT. That is wrong: plain `zinb` has a ZI intercept
+    too, and at that rung the two intercepts are near-identical. The one
+    parameter `zinb_re` adds is `sigma2_zi_u0`, the ZI random-intercept
+    VARIANCE -- so the margin is bought by between-state variation in the
+    structural-zero probability, and the memo derives that attribution
+    (margin, both intercepts, and the variance) from the artifacts rather
+    than asserting it here.
+  - CONSEQUENCE FOR THE REPORTED PROBABILITY. `plogis(b0)` is the
+    structural-zero probability at a MEDIAN state (u = 0). With a ZI random
+    intercept it is NOT the marginal probability, and for `insp_2019`'s
+    `zinb_re` the ZI random-intercept SD is large enough on the logit scale
+    that the two differ by nearly three orders of magnitude. Both are
+    reported, labelled, by `zi_probabilities()`: the median-state value and
+    the marginal `E[plogis(b0 + u)]` by Gauss-Hermite quadrature over the
+    fitted normal. Never present one of them unlabelled.
 
 Selection protocol (spec 5.4): AIC/BIC across the six families available at
 each tier, LRTs on the nested pairs ONLY -- Poisson subset NB2 (dispersion ->
@@ -86,7 +106,9 @@ DIAGNOSTIC (from task review, belongs in the Task 7 memo): the apparent NB1
 Regressing log(within-state variance) on log(within-state mean) gives slope
 ~2.01 for 2019 violations (pure NB2 quadratic mean-variance scaling) versus
 ~1.46 for 2021 (closer to NB1's linear phi*mu scaling), with zero fractions
-2.2% vs 17.3% -- different outcome windows genuinely have different
+2.5% vs 17.4% (the memo's generated values; an earlier revision of this
+docstring quoted 2.2%/17.3%, which are the design spec's pre-panel figures)
+-- different outcome windows genuinely have different
 mean-variance scaling, not an inconsistency in the selection procedure. This
 number is attributed to the independent reviewer's calculation, not
 re-derived here.
@@ -100,6 +122,7 @@ import json
 import numpy as np
 import pandas as pd
 from scipy import stats
+from scipy.special import expit
 
 GEN = '/Users/keshavgoel/Research/data/generated/'
 DOCS = '/Users/keshavgoel/Research/docs/'
@@ -136,8 +159,130 @@ TERM_LABELS = [
 # fallback tier, and the two must never be read as one AIC-ranked list.
 TIER_ORDER = {'rs': 0, 'ri': 1}
 
+# Number of Gauss-Hermite nodes used to integrate the ZI random intercept out
+# of the structural-zero probability.
+#
+# 240, and the number is NOT arbitrary. The integrand is a logit sigmoid in
+# `u`, and with a random-intercept SD near 6 on the logit scale it is a
+# step-like transition roughly 50 units wide -- nothing like a low-order
+# polynomial. Measured on insp_2019's fit: 32 nodes gives 0.066773, 64 gives
+# 0.067462, and the value only settles at 0.0675168 by 128-256. 64 nodes
+# (this constant's first value) was wrong in the 4th significant figure, which
+# a validator cross-check against an independent quadrature caught. numpy's
+# `hermgauss` itself overflows to NaN somewhere above 256 nodes, so 240 is
+# chosen to sit inside the converged-but-stable band, and
+# `zi_marginal_prob` verifies convergence at run time by halving the node
+# count rather than trusting this constant.
+GH_NODES = 240
+# Relative agreement required between the GH_NODES rule and the GH_NODES // 2
+# rule before a marginal probability is returned.
+GH_CONVERGENCE_TOL = 1e-4
+# Threshold used only for the descriptive "how much of the state distribution
+# is non-negligible" figure that accompanies a ZI random intercept. It is a
+# reporting convention, not an inference.
+ZI_TAIL_THRESHOLD = 0.10
+
+
+def zi_marginal_prob(b0, sigma2, n_nodes=GH_NODES):
+    """E[plogis(b0 + u)] with u ~ N(0, sigma2), by Gauss-Hermite quadrature.
+
+    This is the MARGINAL structural-zero probability of a zero-inflation
+    component that carries a state random intercept. `plogis(b0)` is a
+    different quantity -- the probability at a median state, u = 0 -- and with
+    a large sigma2 the two are not close: plogis() is strictly convex in the
+    far-left tail, so averaging over u pulls the marginal above the
+    median-state value, by orders of magnitude when |b0| and sigma are both
+    large. Reporting plogis(b0) as if it were marginal is what this function
+    exists to stop.
+    """
+    sd = float(np.sqrt(sigma2))
+
+    def _rule(n):
+        x, w = np.polynomial.hermite.hermgauss(n)
+        return float(np.sum(w * expit(b0 + np.sqrt(2.0) * sd * x))
+                     / np.sqrt(np.pi))
+
+    fine, coarse = _rule(n_nodes), _rule(max(4, n_nodes // 2))
+    if abs(fine - coarse) > GH_CONVERGENCE_TOL * max(abs(fine), 1e-300):
+        raise ValueError(
+            f"Gauss-Hermite quadrature has not converged for b0={b0!r}, "
+            f"sigma2={sigma2!r}: {n_nodes} nodes give {fine!r} and "
+            f"{n_nodes // 2} give {coarse!r} (relative difference "
+            f"{abs(fine - coarse) / abs(fine):.2e} > {GH_CONVERGENCE_TOL:.0e}). "
+            f"Raising rather than returning a silently inaccurate marginal "
+            f"probability -- this is the estimand the whole ZI-RE reporting "
+            f"rests on.")
+    return fine
+
+
+def zi_probabilities(b0, sigma2_zi_u0=None, threshold=ZI_TAIL_THRESHOLD):
+    """Both structural-zero probabilities for one zero-inflation intercept,
+    with the flag that says whether they can differ.
+
+    Returns a dict with:
+      `median`     -- plogis(b0), the probability at a state with u = 0.
+      `marginal`   -- E[plogis(b0 + u)] over the fitted normal (== `median`
+                      when there is no ZI random intercept, or its variance is
+                      zero).
+      `has_re`     -- whether a genuine, non-zero ZI random-intercept variance
+                      was found in the artifact. When False the two numbers are
+                      THE SAME NUMBER and must not be presented as two results.
+      `sd`         -- SD of the ZI random intercept on the logit scale.
+      `p_above`    -- share of the fitted state distribution whose structural-
+                      zero probability exceeds `threshold`.
+      `ratio`      -- marginal / median, the size of the error a reader would
+                      have made reading the median as marginal.
+    """
+    out = {'median': np.nan, 'marginal': np.nan, 'has_re': False,
+           'sd': np.nan, 'p_above': np.nan, 'ratio': np.nan,
+           'threshold': threshold}
+    if b0 is None or not np.isfinite(b0):
+        return out
+    out['median'] = float(expit(b0))
+    s2 = sigma2_zi_u0
+    if s2 is None or not np.isfinite(s2) or s2 <= 0:
+        out['marginal'] = out['median']
+        out['sd'] = 0.0
+        out['ratio'] = 1.0
+        return out
+    out['has_re'] = True
+    out['sd'] = float(np.sqrt(s2))
+    out['marginal'] = zi_marginal_prob(b0, s2)
+    # P(plogis(b0 + u) > t) = P(u > logit(t) - b0), u ~ N(0, sigma2).
+    cut = float(np.log(threshold / (1 - threshold)) - b0)
+    out['p_above'] = float(stats.norm.sf(cut / out['sd']))
+    out['ratio'] = out['marginal'] / out['median'] if out['median'] > 0 else np.inf
+    return out
+
+
+def zi_intercept_and_variance(fit):
+    """(b0, sigma2_zi_u0) for one fit record, or (None, None). `sigma2_zi_u0`
+    is returned as None unless the fit's OWN `zi_formula` carries a state
+    random intercept -- a fit with `ziformula = ~1` has no such variance, and
+    silently pairing a stored value with the wrong formula is the error class
+    this whole item is about."""
+    zi = (fit.get('zi') or {}).get('(Intercept)')
+    b0 = zi['b'] if zi else None
+    s2 = fit.get('sigma2_zi_u0') if zi_formula_has_state_re(fit) else None
+    return b0, s2
+
+
+def zi_formula_has_state_re(fit):
+    """Whether this fit's zero-inflation formula carries `(1 | state)`. Read
+    off `zi_formula`, never off the family tag: `zinb_re` DOWNGRADES to a plain
+    `~1` ZI whenever the ZI random intercept cannot be estimated (see
+    `fit_with_fallback` in the R script), and such a fit has no ZI variance."""
+    zf = (fit.get('zi_formula') or '').replace(' ', '')
+    return '(1|state)' in zf
+
 # Key-suffix exclusions applied everywhere a "genuine fit" is required.
-_EXCLUDE_SUFFIXES = ('_gaussian', '__meta', '__altopt')
+# `__zisens` = spec 5.5's expanded-ZI sensitivity fit (one per cell, M3, rs
+# tier). It is deliberately NOT a family-selection competitor, so it is
+# excluded here rather than being filtered ad hoc at each call site -- which
+# also keeps `_base_m3()` unambiguous, since a zisens record shares its cell,
+# model, family_tag and re_tier with the intercept-only ZINB it is a
+# sensitivity to.
+_EXCLUDE_SUFFIXES = ('_gaussian', '__meta', '__altopt', '__zisens')
 
 
 def _is_genuine_fit_key(key):
@@ -145,7 +290,7 @@ def _is_genuine_fit_key(key):
 
 
 def load_results(path=GEN + 'count_model_results.json'):
-    """Raw JSON, completely unfiltered (109 records). Callers that iterate
+    """Raw JSON, completely unfiltered (121 records). Callers that iterate
     this as if every value were a fit will KeyError on the 6 __meta records
     (they carry no 'cell'/'model'/'family_tag') -- use selection_table() for
     genuine fits and load_meta() for the per-cell selection results."""
@@ -158,10 +303,14 @@ def load_meta(raw):
 
 
 def selection_table(raw):
-    """One row per genuine model fit (95 rows out of 109 total records):
-    excludes the 2 Gaussian round-trip records, the 6 __meta records (not
-    fits), and the 6 __altopt diagnostic refits. Carries the full random-
-    effects variance block (sigma2_u0/sigma2_u1/sigma_u01/sigma2_e) and the
+    """One row per genuine model fit (97 rows out of 121 total records):
+    excludes the 6 Gaussian round-trip records, the 6 __meta records (not
+    fits), the 6 __altopt diagnostic refits and the 6 __zisens expanded-ZI
+    sensitivity fits. Carries the full random-effects variance block
+    (sigma2_u0/sigma2_u1/sigma_u01, plus sigma2_zi_u0 for the zero-inflation
+    component and `dispersion`/`family_name`; `sigma2_e` is null for every
+    non-Gaussian family, because glmmTMB's sigma() is a dispersion parameter
+    there, not a residual SD) and the
     convergence-diagnostic fields (message/pd_hess/conv_code) on every row,
     and adds nested-pair boundary LRTs, computed only within
     (cell, model, re_tier) between converged, non-degenerate, non-collapsed,
@@ -173,7 +322,7 @@ def selection_table(raw):
     in-memory DataFrame `lrt_vs` is the empty string '' on the other 65 rows,
     but pandas' `to_csv`/`read_csv` round-trip turns that '' into NaN for an
     object column -- and `NaN != ''` evaluates True, so a CSV-based
-    `df[df.lrt_vs != '']` silently selects all 95 rows instead of 30.
+    `df[df.lrt_vs != '']` silently selects all 97 rows instead of 30.
     `lrt_p` is numeric and NaN both in memory and after the round-trip, so
     `.notna()` on it is the one selector that is correct in both contexts.
     """
@@ -194,7 +343,27 @@ def selection_table(raw):
             'aic': f.get('aic'), 'bic': f.get('bic'),
             'loglik': f.get('loglik'), 'df': f.get('df'),
             'sigma2_u0': f.get('sigma2_u0'), 'sigma2_u1': f.get('sigma2_u1'),
-            'sigma_u01': f.get('sigma_u01'), 'sigma2_e': f.get('sigma2_e'),
+            'sigma_u01': f.get('sigma_u01'),
+            # `sigma2_e` is null for every non-Gaussian family: glmmTMB's
+            # sigma() is a DISPERSION parameter there (theta for nbinom2, the
+            # multiplier for nbinom1, 1 for poisson), not a residual SD, and
+            # exporting its square under this name invited a reader to put
+            # dispersion^2 into a variance block. `dispersion` carries the
+            # parameter itself, with `family_name` to read its meaning by.
+            'sigma2_e': f.get('sigma2_e'),
+            'dispersion': f.get('dispersion'),
+            'family_name': f.get('family_name'),
+            # Zero-inflation random-intercept variance -- the parameter that
+            # distinguishes `zinb_re` from `zinb`, and without which every
+            # "structural-zero probability" for such a fit is a median-state
+            # value mislabelled as a marginal one. `zi_has_state_re` is read
+            # off the fit's own zi_formula, because `zinb_re` downgrades.
+            'sigma2_zi_u0': f.get('sigma2_zi_u0'),
+            'sigma_zi_u0': f.get('sigma_zi_u0'),
+            'zi_formula': f.get('zi_formula', ''),
+            'zi_has_state_re': zi_formula_has_state_re(f),
+            'zi_loglik_criterion_applied': f.get('zi_loglik_criterion_applied'),
+            'zi_counterpart_tier': f.get('zi_counterpart_tier'),
             'obs_zeros': obs, 'exp_zeros': exp, 'exp_zeros_se': f.get('exp_zeros_se'),
             'zero_ratio': (exp / obs) if (obs not in (None, 0) and exp is not None) else np.nan,
             'zero_fit_discrepancy': f.get('zero_fit_discrepancy'),
@@ -206,6 +375,24 @@ def selection_table(raw):
             'is_winner_ri': bool(f.get('is_winner_ri', False)),
         })
     tab = pd.DataFrame(rows)
+    # Both structural-zero probabilities, on every row that has a ZI intercept,
+    # so a CSV consumer never has to choose between them or recompute the
+    # quadrature. `zi_pr_median` == `zi_pr_marginal` exactly where
+    # `zi_has_state_re` is False.
+    zi_b, zi_med, zi_marg, zi_ratio, zi_above = [], [], [], [], []
+    for key in tab['key']:
+        b0, s2 = zi_intercept_and_variance(raw[key])
+        pr = zi_probabilities(b0, s2)
+        zi_b.append(b0 if b0 is not None else np.nan)
+        zi_med.append(pr['median'])
+        zi_marg.append(pr['marginal'])
+        zi_ratio.append(pr['ratio'])
+        zi_above.append(pr['p_above'])
+    tab['zi_intercept'] = zi_b
+    tab['zi_pr_median_state'] = zi_med
+    tab['zi_pr_marginal'] = zi_marg
+    tab['zi_pr_marginal_over_median'] = zi_ratio
+    tab['zi_pr_share_states_above_threshold'] = zi_above
     tab['winner'] = tab['is_winner_rs'] | tab['is_winner_ri']
     # The headline, single-row-per-cell-per-tier family: True only at M3,
     # where the manuscript's family choice actually applies (is_winner_rs/ri
@@ -306,6 +493,13 @@ def winner_summary(tab, meta):
                 'has_warning': bool(w['message']),
                 'sigma2_u0': w['sigma2_u0'], 'sigma2_u1': w['sigma2_u1'],
                 'sigma_u01': w['sigma_u01'], 'sigma2_e': w['sigma2_e'],
+                'family_name': w['family_name'], 'dispersion': w['dispersion'],
+                'sigma2_zi_u0': w['sigma2_zi_u0'],
+                'sigma_zi_u0': w['sigma_zi_u0'],
+                'zi_has_state_re': w['zi_has_state_re'],
+                'zi_intercept': w['zi_intercept'],
+                'zi_pr_median_state': w['zi_pr_median_state'],
+                'zi_pr_marginal': w['zi_pr_marginal'],
                 'obs_zeros': w['obs_zeros'], 'exp_zeros': w['exp_zeros'],
                 'exp_zeros_se': w['exp_zeros_se'], 'zero_ratio': w['zero_ratio'],
                 'zero_signed': m.get(f'winner_{tier}_zero_signed'),
@@ -426,6 +620,14 @@ def coefficient_table(raw, cell, re_tier):
             row[f'{m}_se'] = c['se']
             row[f'{m}_p'] = c['p']
             row[f'{m}_irr'] = float(np.exp(c['b']))
+            # The ZI random-intercept VARIANCE, carried alongside the intercept
+            # on the intercept row only -- without it the reader has no way to
+            # tell a median-state structural-zero probability from a marginal
+            # one, which is the defect this column exists to close. None
+            # whenever this fit's own zi_formula has no `(1 | state)`.
+            if term == '(Intercept)':
+                row[f'{m}_zi_sigma2'] = (f.get('sigma2_zi_u0')
+                                         if zi_formula_has_state_re(f) else None)
         if present:
             rows.append(row)
 
@@ -814,6 +1016,23 @@ def load_memo_evidence(path=MEMO_EVIDENCE_PATH):
     return build_memo_evidence(load_results())
 
 
+def fit_record(raw, cell, model, family, re_tier):
+    """The single genuine fit record with this identity, or None. Identity is
+    (cell, model, family_tag, re_tier) -- never a key string, because the
+    `__ri2` suffix is a storage detail and `__zisens` shares three of the four
+    fields with the ZINB it is a sensitivity to (it is excluded by
+    `_is_genuine_fit_key`). Raises if the identity is not unique, rather than
+    returning whichever came first in JSON insertion order."""
+    hits = [f for key, f in raw.items()
+            if _is_genuine_fit_key(key) and f.get('cell') == cell
+            and f.get('model') == model and f.get('family_tag') == family
+            and f.get('re_tier') == re_tier]
+    if len(hits) > 1:
+        raise ValueError(f"{cell}/{model}/{family}/{re_tier}: "
+                         f"{len(hits)} fit records share one identity")
+    return hits[0] if hits else None
+
+
 def _re_label(re_tier, in_table=True):
     """Human-readable random-effects structure. A bare '|' inside a markdown
     table cell splits the row, so the pipe is escaped whenever the label is
@@ -1099,6 +1318,39 @@ def write_memo(raw, meta, tab, ws, ev):
               "inspections, so every zero-inspection state-year drops out of the "
               "`viol_off_*` cells and stays in the `viol_cov_*` ones. Do not read "
               "the offset and covariate columns as the same sample.\n")
+    # Which rows the offset drops, and whether they are all zero-violation
+    # rows. DERIVED per window (see `_offset_drop` in
+    # build_count_model_memo_evidence.py) rather than asserted, so the 2019
+    # window is checked on the same footing and can come out either way.
+    _od = ev.get('offset_drop') or {}
+    for _w in sorted(_od):
+        o = _od[_w]
+        add(f"**And the rows it drops are not a random {o['n_dropped']}.** In the "
+            f"{_w} window the offset removes {o['n_dropped']} of "
+            f"{o['n_rows']} state-years, and "
+            + (f"**every one of them is also a zero-violation row** "
+               f"({o['n_dropped_zero_violation']} of {o['n_dropped']}; "
+               f"{o['n_dropped_violations_positive']} with positive violations, "
+               f"{o['n_dropped_violations_missing']} with violations missing)"
+               if o['all_dropped_are_zero_violation'] else
+               f"{o['n_dropped_zero_violation']} of {o['n_dropped']} are "
+               f"zero-violation rows -- so the property does **not** hold here "
+               f"({o['n_dropped_violations_positive']} have positive "
+               f"violations and {o['n_dropped_violations_missing']} have "
+               f"violations missing)")
+            + f": " + ", ".join(o['dropped_state_years'])
+            + f". That is {_f(o['pct_zero_violation_rows_dropped'], '.1f')}% of "
+            f"the window's {o['n_zero_violation_rows']} zero-violation "
+            f"state-years"
+            + (" -- and precisely the \"no enforcement activity at all\" ones a "
+               "structural-zero component exists to represent. The offset "
+               "specification therefore starts by deleting part of the very "
+               "phenomenon it is being asked to model, which is one reason the "
+               "offset and covariate cells can disagree about zero-inflation."
+               if o['all_dropped_are_zero_violation'] else
+               ", so the deletion is not systematically of zero-violation "
+               "rows in this window.")
+            + "\n")
 
     # --------------------------------------------------- headline selection
     add("## Selected family per cell\n")
@@ -1171,17 +1423,96 @@ def write_memo(raw, meta, tab, ws, ev):
     add("The most important thing in this memo. **Do not read \"NB1 won\" as "
         "\"zero-inflation was tested and rejected.\"** For the 2021 violations cells "
         "it was not rejected; it is real, large, and precisely estimated.\n")
-    add("| Cell | ZI family | RE tier | ZI intercept | SE | p | Implied structural-zero probability |")
-    add("|---|---|---|---|---|---|---|")
+    add("**Two structural-zero probabilities, not one.** A zero-inflation "
+        "intercept `b0` gives `plogis(b0)`, which is the structural-zero "
+        "probability of a **median state** (its zero-inflation random "
+        "intercept `u` = 0). Where the zero-inflation component carries a "
+        "state random intercept, that is *not* the probability for the panel: "
+        "the **marginal** probability is `E[plogis(b0 + u)]` over the fitted "
+        "normal, computed below by Gauss-Hermite quadrature. `plogis` is "
+        "convex far out in its left tail, so with a very negative `b0` and a "
+        "large random-intercept SD the marginal sits orders of magnitude above "
+        "the median-state value. Both are given, labelled; where a fit has no "
+        "zero-inflation random intercept the two columns are the same number "
+        "by construction and the variance column reads `--`.\n")
+    add("| Cell | ZI family | RE tier | ZI intercept | SE | p | ZI RE variance | "
+        "ZI RE SD (logit) | Pr(structural 0), median state | "
+        "Pr(structural 0), marginal | Share of states above 0.10 |")
+    add("|---|---|---|---|---|---|---|---|---|---|---|")
+    _zi_ev_rows = []
     for cell in ('viol_off_2021', 'viol_cov_2021', 'insp_2021', 'insp_2019'):
         for e in meta[cell]['zi_evidence']:
             if e.get('zi_degenerate') or e.get('b') is None:
                 continue
+            _rec = fit_record(raw, cell, 'M3', e['family'], e['re_tier'])
+            _s2 = (_rec.get('sigma2_zi_u0')
+                   if _rec is not None and zi_formula_has_state_re(_rec)
+                   else None)
+            pr = zi_probabilities(e['b'], _s2)
+            _zi_ev_rows.append((cell, e, pr))
             add(f"| {cell} | {FAMILY_LABEL.get(e['family'], e['family'])} | "
                 f"{e['re_tier']} | {_f(e['b'], '+.4f')} | {_f(e['se'], '.4f')} | "
                 f"{_f(e['p'], '.3g')} | "
-                f"{_f(1 / (1 + np.exp(-e['b'])), '.4f')} |")
+                f"{_f(_s2, '.4f') if pr['has_re'] else '--'} | "
+                f"{_f(pr['sd'], '.4f') if pr['has_re'] else '--'} | "
+                f"{_f(pr['median'], '.6f')} | {_f(pr['marginal'], '.6f')} | "
+                f"{(_f(100 * pr['p_above'], '.1f') + '%') if pr['has_re'] else '--'} |")
     add("")
+    # The single row where the median/marginal distinction changes the reading,
+    # derived (largest marginal/median ratio) rather than named.
+    _re_rows = [(c, e, pr) for c, e, pr in _zi_ev_rows if pr['has_re']]
+    if _re_rows:
+        _worst = max(_re_rows, key=lambda t: t[2]['ratio'])
+        _c, _e, _pr = _worst
+        add(f"The gap is not cosmetic. In `{_c}`'s "
+            f"{FAMILY_LABEL.get(_e['family'], _e['family'])} fit the "
+            f"zero-inflation random intercept has an SD of "
+            f"{_f(_pr['sd'], '.2f')} on the logit scale, so the median-state "
+            f"probability is {_f(_pr['median'], '.6f')} while the marginal is "
+            f"{_f(_pr['marginal'], '.4f')} -- a factor of "
+            f"{_f(_pr['ratio'], '.0f')} -- and "
+            f"{_f(100 * _pr['p_above'], '.1f')}% of the fitted state "
+            f"distribution sits above a structural-zero probability of "
+            f"{_f(_pr['threshold'], '.2f')}. Reading the median-state figure as "
+            f"the panel's would make this cell's zero-inflation look "
+            f"numerically negligible when it is in fact a large between-state "
+            f"variance around a very negative mean. Earlier revisions of this "
+            f"memo reported only the median-state number.\n")
+    # Where a cell SELECTS the ZI-random-intercept rung, say what buys the
+    # margin -- derived. An earlier revision of this pipeline's documentation
+    # attributed it to the ZI INTERCEPT, which plain ZINB has too; the one
+    # parameter ZINB+ZI-RE adds is the VARIANCE.
+    for _tier in ('rs', 'ri'):
+        for _c in sorted(meta):
+            if meta[_c].get(f'm3_winner_{_tier}') != 'zinb_re':
+                continue
+            _re_fit = fit_record(raw, _c, 'M3', 'zinb_re', _tier)
+            _pl_fit = fit_record(raw, _c, 'M3', 'zinb', _tier)
+            if _re_fit is None or _pl_fit is None:
+                continue
+            _b_re = (_re_fit.get('zi') or {}).get('(Intercept)') or {}
+            _b_pl = (_pl_fit.get('zi') or {}).get('(Intercept)') or {}
+            _s2 = (_re_fit.get('sigma2_zi_u0')
+                   if zi_formula_has_state_re(_re_fit) else None)
+            _pr = zi_probabilities(_b_re.get('b'), _s2)
+            add(f"**What the selected zero-inflation random intercept actually "
+                f"buys, in `{_c}` at the "
+                f"{_re_label(_tier, in_table=False)} tier.** ZINB + ZI RE beats "
+                f"plain ZINB there by "
+                f"{_f(_pl_fit['aic'] - _re_fit['aic'], '.2f')} AIC on "
+                f"{_re_fit['df'] - _pl_fit['df']} extra parameter"
+                + ("" if _re_fit['df'] - _pl_fit['df'] == 1 else "s")
+                + f". That parameter is the zero-inflation random-intercept "
+                f"**variance** ({_f(_s2, '.4f')}, SD {_f(_pr['sd'], '.4f')} on "
+                f"the logit scale), not the zero-inflation intercept: the "
+                f"intercept exists in plain ZINB too and the two are "
+                f"{_f(_b_pl.get('b'), '+.4f')} (plain) against "
+                f"{_f(_b_re.get('b'), '+.4f')} (with the random intercept). So "
+                f"the margin is bought by between-state variation in the "
+                f"structural-zero probability, which is also why this cell's "
+                f"median-state and marginal probabilities differ so widely "
+                f"({_f(_pr['median'], '.6f')} against "
+                f"{_f(_pr['marginal'], '.4f')}).\n")
     for cell in ('viol_off_2021', 'viol_cov_2021'):
         m = meta[cell]
         zinb_ri = [e for e in m['zi_evidence']
@@ -1697,19 +2028,48 @@ def write_memo(raw, meta, tab, ws, ev):
                         # The zero-inflation part has a LOGIT link, so exp(b) there
                         # is an odds ratio, NOT an incidence rate ratio. Reported as
                         # the implied structural-zero probability rather than
-                        # mislabelled as an IRR.
-                        out.append(f"{_f(b)}{stars(p)} ({_f(se)}), "
-                                   f"Pr(structural 0) "
-                                   f"{_f(float(1 / (1 + np.exp(-b))), '.4f')}")
+                        # mislabelled as an IRR -- and, where the component
+                        # carries a state random intercept, as BOTH the
+                        # median-state probability plogis(b0) and the marginal
+                        # E[plogis(b0 + u)]. Presenting one of them unlabelled
+                        # is the defect this pair of numbers replaces.
+                        pr = zi_probabilities(float(b), r.get(f'{m}_zi_sigma2'))
+                        if pr['has_re']:
+                            out.append(
+                                f"{_f(b)}{stars(p)} ({_f(se)}), "
+                                f"Pr(structural 0) median state "
+                                f"{_f(pr['median'], '.6f')}, marginal "
+                                f"{_f(pr['marginal'], '.4f')} "
+                                f"(ZI RE SD {_f(pr['sd'], '.3f')})")
+                        else:
+                            out.append(f"{_f(b)}{stars(p)} ({_f(se)}), "
+                                       f"Pr(structural 0) "
+                                       f"{_f(pr['median'], '.4f')}")
                     else:
                         out.append(f"{_f(b)}{stars(p)} ({_f(se)}), IRR {_f(irr)}")
                 add(f"| {r['term']} | " + " | ".join(out) + " |")
             add("")
             if has_zi:
+                _zi_re_here = any(
+                    pd.notna(r.get(f'{m}_zi_sigma2'))
+                    for _, r in ct[ct['section'] == 'zi'].iterrows()
+                    for m in cols if f'{m}_zi_sigma2' in ct.columns)
                 add("The `ZI:` row is the zero-inflation part, which has a **logit** "
                     "link rather than a log link -- so exp(b) there is an odds ratio, "
                     "not an IRR. It is reported as the implied structural-zero "
-                    "probability instead.\n")
+                    "probability instead."
+                    + (" This model's zero-inflation component carries a **state "
+                       "random intercept**, so two probabilities are given and "
+                       "they are different quantities: `median state` is "
+                       "`plogis(b0)` at a state with zero random effect, and "
+                       "`marginal` is `E[plogis(b0 + u)]` integrated over the "
+                       "fitted normal. The marginal is the one to quote for the "
+                       "panel."
+                       if _zi_re_here else
+                       " This model's zero-inflation component has no state "
+                       "random intercept, so the median-state and marginal "
+                       "probabilities coincide and only one number is given.")
+                    + "\n")
 
     # ---------------------------------------------------- variance components
     add("## Between-state variance under the selected family\n")
@@ -1738,9 +2098,46 @@ def write_memo(raw, meta, tab, ws, ev):
             for c, t in _family_changes(tab, meta)) + "."
            if _family_changes(tab, meta) else ".")
         + "\n")
+    # What `dispersion` means depends on the family, so the mapping is
+    # generated from the families that actually appear in this table rather
+    # than described in a sentence that could go stale.
+    _DISP_SEMANTICS = {
+        'nbinom2': 'theta, the NB2 size parameter (Var = mu + mu^2/theta)',
+        'nbinom1': 'the NB1 dispersion multiplier (Var = phi\\*mu)',
+        'poisson': 'fixed at 1 by construction -- a Poisson has no dispersion '
+                   'parameter',
+        'gaussian': 'the residual SD (this is the only family where its SQUARE '
+                    'is a variance component)',
+    }
+    add("**A note on the columns, because one of them used to be mislabelled.** "
+        "`sigma^2_u0`, `sigma^2_u1` and `sigma_u01` are the conditional model's "
+        "random-intercept variance, random-slope variance and their covariance. "
+        "`sigma^2_zi_u0` is a **different** variance: the zero-inflation "
+        "component's own random intercept, on the **logit** scale, present only "
+        "where the selected family carries one. `Dispersion` is glmmTMB's "
+        "`sigma()`, which is **not a residual SD for a count family** -- it is "
+        "the family's dispersion parameter, and its square is not a variance "
+        "component. `sigma2_e` is therefore null for every count fit in "
+        "`count_model_comparison.csv`; a previous revision exported "
+        "dispersion-squared under that name, which invited exactly the wrong "
+        "reading. Per family, `Dispersion` is:\n")
+    _fams_here = []
+    for cell in sorted(meta):
+        for tier in ('rs', 'ri'):
+            for m in ('M1', 'M2', 'M3'):
+                sub = tab[(tab['cell'] == cell) & (tab['model'] == m) &
+                          (tab['re_tier'] == tier) & tab['converged']]
+                pick = (sub[sub['winner']] if (tier == 'rs' and m in ('M1', 'M3'))
+                        else sub[~sub['zi_degenerate']] if tier == 'rs'
+                        else sub[sub['is_winner_ri']])
+                if not pick.empty and pd.notna(pick.iloc[0]['family_name']):
+                    _fams_here.append(pick.iloc[0]['family_name'])
+    for _fn in sorted(set(_fams_here)):
+        add(f"- `{_fn}`: {_DISP_SEMANTICS.get(_fn, 'see the glmmTMB documentation')}")
+    add("")
     add("| Cell | Model | Family | RE structure | sigma^2_u0 | sigma^2_u1 | "
-        "sigma_u01 | N obs | States |")
-    add("|---|---|---|---|---|---|---|---|---|")
+        "sigma_u01 | sigma^2_zi_u0 | Dispersion | N obs | States |")
+    add("|---|---|---|---|---|---|---|---|---|---|---|")
     for cell in sorted(meta):
         for tier in ('rs', 'ri'):
             struct = _re_label(tier)
@@ -1757,6 +2154,8 @@ def write_memo(raw, meta, tab, ws, ev):
                 add(f"| {cell} | {m} | {FAMILY_LABEL.get(r['family'], r['family'])} | "
                     f"{struct} | {_f(r['sigma2_u0'], '.4f')} | "
                     f"{_f(r['sigma2_u1'], '.5f')} | {_f(r['sigma_u01'], '.5f')} | "
+                    f"{_f(r['sigma2_zi_u0'], '.4f') if r['zi_has_state_re'] else '--'} | "
+                    f"{_f(r['dispersion'], '.4f')} | "
                     f"{r['n_obs']} | {r['n_states']} |")
     add("")
 
@@ -1872,6 +2271,20 @@ def write_memo(raw, meta, tab, ws, ev):
             f"{_f(c['se'], '.4f')} | {_f(c['p'], '.3g')}{stars(c['p'])} | "
             f"{_f(np.exp(c['b']), '.4f')} | {reading} |")
     add("")
+    # Which 2021 cells carry a COVID variant and which do not, with the reason,
+    # read off __meta -- so a reader cannot be shown two rows and left to
+    # assume the third 2021 cell simply had nothing to report.
+    _cov_skipped = [(c, meta[c].get('covid_not_fit_reason'))
+                    for c in sorted(meta)
+                    if str(tab[tab['cell'] == c]['window'].iloc[0]) == '2021'
+                    and not meta[c].get('covid_variant_fit')]
+    if _cov_skipped:
+        add("The table above has "
+            + f"{len(covid_rows)} row"
+            + ("" if len(covid_rows) == 1 else "s")
+            + ", not one per 2021 cell. "
+            + "; ".join(f"`{c}`: {why}" for c, why in _cov_skipped)
+            + "\n")
     add("What moves when the indicator is added:\n")
     add("| Cell | Term | b without COVID | p without | b with COVID | p with |")
     add("|---|---|---|---|---|---|")
@@ -1983,6 +2396,34 @@ def write_memo(raw, meta, tab, ws, ev):
         f"coefficient-level problem in "
         f"{aud['n_nonconverged']} column{'' if aud['n_nonconverged'] == 1 else 's'}, "
         f"not a variance-block problem.\n")
+    # The 2019 arm of the same audit. It exists as a PARITY guard on the
+    # specification this pipeline re-declares (item 5 of the 2026-08-22
+    # review: the guard previously covered only the 2021 window), and what it
+    # measured is reported whichever way it came out.
+    aud19 = ev.get('published_audit_2019')
+    if aud19:
+        add(f"**The same audit, run against the 2011-2019 tables as a parity "
+            f"guard.** The specification re-declared in "
+            f"`scripts/build_count_model_memo_evidence.py` is now also refit "
+            f"against `{aud19['published_json']}`, so a drift from "
+            f"`paper_table_models_corrected.py` would fail as loudly as a drift "
+            f"from the 2021 script. All {aud19['n_reproduces_published']} of "
+            f"{aud19['n_fits']} refits reproduce their published sigma^2_u0. "
+            + (f"That arm also finds {aud19['n_nonconverged']} of "
+               f"{aud19['n_fits']} 2011-2019 fits carrying a gradient failure "
+               f"under the published `lbfgs` -- "
+               + _oxford([f"{r['outcome']} {r['model']} ({r['re_basis']})"
+                          for r in aud19['fits'] if r['grad_warning']])
+               + f". All {aud19['n_random_intercept']} of its "
+                 f"random-intercept-only refits converge "
+                 f"({aud19['n_random_intercept_nonconverged']} gradient "
+                 f"failures), so as in the 2021 window the variance-explained "
+                 f"block is not implicated. This is a fact about the earlier "
+                 f"tables, not about the ones Joe is reacting to, and nothing "
+                 f"was changed in response to it."
+               if aud19['n_nonconverged'] else
+               f"No 2011-2019 fit raised a gradient failure.")
+            + "\n")
     add("Nothing was fixed or regenerated. No manuscript `.docx`, no "
         "`paper_table_*` script, no `paper_table_*` JSON was touched by this work. "
         "Whether to reissue Table 3 Model 1 is your call.\n")
@@ -2137,6 +2578,88 @@ def write_memo(raw, meta, tab, ws, ev):
         "random-effects structures, reported side by side and not ranked against "
         "each other.\n")
 
+    # ---- spec 5.5: the expanded zero-inflation component ----
+    _zs = [(k, f) for k, f in sorted(raw.items()) if k.endswith('__zisens')]
+    if _zs:
+        _zs_ok = [(k, f) for k, f in _zs if f.get('converged')]
+        _zs_bad = [(k, f) for k, f in _zs if not f.get('converged')]
+        _zi_terms = sorted({t for _, f in _zs
+                            for t in (f.get('zi') or {}) if t != '(Intercept)'})
+        add(f"**The expanded zero-inflation component (design spec 5.5) was "
+            f"attempted, and it is unstable.** Every rung in the ladder above "
+            f"uses an intercept-only zero-inflation formula. The spec also asks "
+            f"for a sensitivity fit putting "
+            + _oxford([f"`{t}`" for t in _zi_terms])
+            + f" in the zero-inflation part -- the variables that would "
+            f"plausibly generate a *structural* \"this state does not "
+            f"enforce\" zero -- \"reported only if it converges cleanly\". "
+            f"One such fit per cell was run at Model 3 at the mandated "
+            f"`(1 + time | state)` structure, on the ZINB family, and it was "
+            f"never allowed into family selection. It converges in "
+            f"{len(_zs_ok)} of the {len(_zs)} cells and fails in "
+            f"{len(_zs_bad)}"
+            + (": " + "; ".join(
+                f"`{f['cell']}` " + ("converged" if f.get('converged')
+                                     else "did NOT converge")
+                for _, f in _zs) + ".") + "\n")
+        if _zs_bad:
+            add("The failures are not marginal -- "
+                + _oxford([f"`{f['cell']}`" for _, f in _zs_bad])
+                + " return a non-positive-definite Hessian and false "
+                  "convergence, which with 49 states and this many zeros is "
+                  "the expected outcome of asking three state-level covariates "
+                  "to identify a logit component alongside a random slope. "
+                  "**Their estimates are not reported anywhere in this memo, "
+                  "and the non-convergence is the result.**\n")
+        if _zs_ok:
+            add("| Cell | N | Expanded-ZI AIC | Intercept-only ZINB AIC | "
+                "dAIC (expanded - intercept-only) | Same sample and tier |")
+            add("|---|---|---|---|---|---|")
+            for _, f in _zs_ok:
+                _ref = f.get('zisens_reference_aic')
+                add(f"| {f['cell']} | {f['n_obs']} | {_f(f.get('aic'), '.2f')} | "
+                    f"{_f(_ref, '.2f')} | "
+                    f"{_f((f.get('aic') - _ref) if (f.get('aic') is not None and _ref is not None) else None, '+.2f')} | "
+                    f"{'yes' if f.get('zisens_comparable') else 'no'} |")
+            add("")
+            _cmp = [(f['cell'], f['aic'] - f['zisens_reference_aic'])
+                    for _, f in _zs_ok if f.get('zisens_comparable')]
+            _wins = [c for c, d in _cmp if d < 0]
+            add(f"Where it does converge it buys little: the expanded "
+                f"zero-inflation component improves on the intercept-only ZINB "
+                f"in {len(_wins)} of the {len(_cmp)} comparable cells"
+                + ((" (" + _oxford([f"`{c}`, by {_f(-d, '.2f')} AIC"
+                                    for c, d in _cmp if d < 0]) + ")")
+                   if _wins else "")
+                + ". Taken together with the three non-convergences, the "
+                  "intercept-only zero-inflation formula stands as the primary "
+                  "specification, which is what the spec anticipated.\n")
+
+    # ---- item 6: there is no zero-inflated NB1 rung ----
+    _mv21 = p21['violations']['mv_slope']
+    _nb1_cells = sorted({c for c in meta
+                         if meta[c].get('m3_winner_rs') == 'nbinom1'})
+    if _nb1_cells:
+        add(f"**There is no zero-inflated NB1 rung in the ladder, and that is a "
+            f"real gap in the candidate set for exactly the cells where the "
+            f"family choice is live.** Design spec 5.2 fixed the six families, "
+            f"and all three zero-inflated rungs in it are built on NB2 "
+            f"(`zip` on a Poisson, `zinb` and `zinb_re` on NB2). Plain NB1 is "
+            f"the Model-3 random-slope selection in "
+            + _oxford([f"`{c}`" for c in _nb1_cells])
+            + f", and this memo's own mean-variance diagnostic puts that series "
+            f"at an exponent of {_f(_mv21, '.2f')} -- NB1-like, not NB2-like. "
+            f"So in the two cells where the choice between families is the "
+            f"question, the natural competitor -- a zero-inflated NB1 -- was "
+            f"never fit, and plain NB1 may be winning against an incomplete "
+            f"candidate set. Adding the family would reopen selection across "
+            f"the whole ladder and was deliberately not done here. What is "
+            f"**not** affected is the inflation comparison itself: ZINB against "
+            f"plain **NB2** holds the parameterisation fixed and varies only "
+            f"the inflation component, and the zero-inflated model wins that "
+            f"{len(mc2_wins)} of {len(mc2)} times -- that comparison, not the "
+            f"NB1-vs-ZINB one, is what isolates the effect of inflation.\n")
+
     # ------------------------------------------------------- honest reading
     add("## Honest expectations\n")
     add("A better-specified model can confirm weak associations as readily as it can "
@@ -2181,8 +2704,9 @@ def main():
     tab = selection_table(raw)
     tab.to_csv(GEN + 'count_model_comparison.csv', index=False)
     print(f"Wrote {GEN}count_model_comparison.csv "
-          f"({len(tab)} genuine fits; excludes 2 Gaussian round-trip + "
-          f"6 __meta + 6 __altopt records from the 109 total)")
+          f"({len(tab)} genuine fits; excludes 6 Gaussian round-trip + "
+          f"6 __meta + 6 __altopt + 6 __zisens records from the "
+          f"{len(raw)} total)")
 
     ws = winner_summary(tab, meta)
     ws.to_csv(GEN + 'count_model_winner_summary.csv', index=False)

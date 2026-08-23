@@ -66,6 +66,8 @@
   }
  },
  "published_audit": {
+  "window": 2021,
+  "published_json": "paper_table_params_2021.json",
   "n_fits": 12,
   "n_nonconverged": 1,
   "n_reproduces_published": 12,
@@ -328,6 +330,284 @@
    "published_delta_pct_ri": 0.0
   }
  },
+ "published_audit_2019": {
+  "window": 2019,
+  "published_json": "paper_table_params_corrected.json",
+  "n_fits": 12,
+  "n_nonconverged": 2,
+  "n_reproduces_published": 12,
+  "n_random_intercept": 6,
+  "n_random_intercept_nonconverged": 0,
+  "fits": [
+   {
+    "method": "lbfgs",
+    "n_obs": 450,
+    "n_states": 50,
+    "llf": -419.37249797117283,
+    "sigma2_u0": 1.0939138524266416,
+    "b_log_inspections": null,
+    "grad_warning": true,
+    "grad_norm": 69.2304,
+    "convergence_warnings": [
+     "Maximum Likelihood optimization failed to converge. Check mle_retvals",
+     "MixedLM optimization failed, trying a different optimizer may help.",
+     "Gradient optimization failed, |grad| = 69.230400",
+     "The Hessian matrix at the estimated parameter values is not positive definite."
+    ],
+    "outcome": "inspections",
+    "model": "M1",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 1.0939138524266416,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 450,
+    "n_states": 50,
+    "llf": -422.053021362643,
+    "sigma2_u0": 0.8795807779071338,
+    "b_log_inspections": null,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "inspections",
+    "model": "M1",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.8795807779071338,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 423,
+    "n_states": 47,
+    "llf": -370.035801352476,
+    "sigma2_u0": 0.6119395318549575,
+    "b_log_inspections": null,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "inspections",
+    "model": "M2",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.6119395318549575,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 423,
+    "n_states": 47,
+    "llf": -391.4880748774535,
+    "sigma2_u0": 0.5250954243758857,
+    "b_log_inspections": null,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "inspections",
+    "model": "M2",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.5250954243758857,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 423,
+    "n_states": 47,
+    "llf": -374.08051160751756,
+    "sigma2_u0": 0.6297102558083454,
+    "b_log_inspections": null,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "inspections",
+    "model": "M3",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.6297102558083454,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 423,
+    "n_states": 47,
+    "llf": -395.7956493511208,
+    "sigma2_u0": 0.5497913903059296,
+    "b_log_inspections": null,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "inspections",
+    "model": "M3",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.5497913903059296,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 394,
+    "n_states": 50,
+    "llf": -408.450284272785,
+    "sigma2_u0": 0.6316619153913764,
+    "b_log_inspections": 0.2224914222154846,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "violations",
+    "model": "M1",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.6316619153913764,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 394,
+    "n_states": 50,
+    "llf": -415.7988879357549,
+    "sigma2_u0": 0.532025963096809,
+    "b_log_inspections": 0.19272999958540415,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "violations",
+    "model": "M1",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.532025963096809,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -393.61608745054764,
+    "sigma2_u0": 0.7152307720355304,
+    "b_log_inspections": 0.17199380162340572,
+    "grad_warning": true,
+    "grad_norm": 21.905019,
+    "convergence_warnings": [
+     "Maximum Likelihood optimization failed to converge. Check mle_retvals",
+     "MixedLM optimization failed, trying a different optimizer may help.",
+     "Gradient optimization failed, |grad| = 21.905019",
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "violations",
+    "model": "M2",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.7152307720355304,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -398.3910131034054,
+    "sigma2_u0": 0.43397010558767485,
+    "b_log_inspections": 0.15410858648639794,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "violations",
+    "model": "M2",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.43397010558767485,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -391.47125754254876,
+    "sigma2_u0": 0.4018524649408664,
+    "b_log_inspections": 0.18893855637998108,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "violations",
+    "model": "M3",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.4018524649408664,
+    "reproduces_published": true
+   },
+   {
+    "method": "lbfgs",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -396.60752346881463,
+    "sigma2_u0": 0.33083142242290015,
+    "b_log_inspections": 0.15996014171101774,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [],
+    "outcome": "violations",
+    "model": "M3",
+    "re_basis": "random intercept",
+    "published_sigma2_u0": 0.33083142242290015,
+    "reproduces_published": true
+   }
+  ],
+  "affected": {
+   "outcome": "violations",
+   "model": "M2",
+   "re_basis": "random slope",
+   "n_obs": 378,
+   "n_states": 47,
+   "lbfgs": {
+    "method": "lbfgs",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -393.61608745054764,
+    "sigma2_u0": 0.7152307720355304,
+    "b_log_inspections": 0.17199380162340572,
+    "grad_warning": true,
+    "grad_norm": 21.905019,
+    "convergence_warnings": [
+     "Maximum Likelihood optimization failed to converge. Check mle_retvals",
+     "MixedLM optimization failed, trying a different optimizer may help.",
+     "Gradient optimization failed, |grad| = 21.905019",
+     "The MLE may be on the boundary of the parameter space."
+    ],
+    "outcome": "violations",
+    "model": "M2",
+    "re_basis": "random slope",
+    "published_sigma2_u0": 0.7152307720355304,
+    "reproduces_published": true
+   },
+   "cg": {
+    "method": "cg",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -392.625787357164,
+    "sigma2_u0": 0.5219163078459138,
+    "b_log_inspections": 0.17751426362199726,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ]
+   },
+   "powell": {
+    "method": "powell",
+    "n_obs": 378,
+    "n_states": 47,
+    "llf": -392.6257881392014,
+    "sigma2_u0": 0.5219044915868458,
+    "b_log_inspections": 0.17752372039408792,
+    "grad_warning": false,
+    "grad_norm": null,
+    "convergence_warnings": [
+     "The MLE may be on the boundary of the parameter space."
+    ]
+   },
+   "published_b_log_inspections": 0.17199380162340572,
+   "published_sigma2_u0": 0.7152307720355304,
+   "published_delta_pct_ri": 18.430652695663962
+  }
+ },
  "zi_crosscheck": {
   "insp_2021": {
    "dv": "inspections",
@@ -401,6 +681,54 @@
    "n_states_with_a_zero": 31,
    "max_zero_years_in_a_state": 7,
    "n_states_all_zero": 0
+  }
+ },
+ "offset_drop": {
+  "2019": {
+   "n_rows": 450,
+   "n_dropped": 15,
+   "n_dropped_zero_violation": 1,
+   "n_dropped_violations_missing": 8,
+   "n_dropped_violations_positive": 6,
+   "all_dropped_are_zero_violation": false,
+   "dropped_state_years": [
+    "Alaska-2011",
+    "Alaska-2012",
+    "Alaska-2013",
+    "Alaska-2014",
+    "Alaska-2015",
+    "Alaska-2017",
+    "Alaska-2018",
+    "Alaska-2019",
+    "Minnesota-2019",
+    "Montana-2011",
+    "Montana-2015",
+    "Utah-2013",
+    "Vermont-2011",
+    "Vermont-2013",
+    "Vermont-2014"
+   ],
+   "n_zero_violation_rows": 10,
+   "pct_zero_violation_rows_dropped": 10.0
+  },
+  "2021": {
+   "n_rows": 539,
+   "n_dropped": 7,
+   "n_dropped_zero_violation": 7,
+   "n_dropped_violations_missing": 0,
+   "n_dropped_violations_positive": 0,
+   "all_dropped_are_zero_violation": true,
+   "dropped_state_years": [
+    "Connecticut-2018",
+    "Kansas-2018",
+    "Massachusetts-2018",
+    "Oregon-2020",
+    "Oregon-2021",
+    "Utah-2017",
+    "West Virginia-2012"
+   ],
+   "n_zero_violation_rows": 93,
+   "pct_zero_violation_rows_dropped": 7.526881720430108
   }
  }
 }

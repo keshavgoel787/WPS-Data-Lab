@@ -4,9 +4,19 @@
 # Usage:
 #   Rscript scripts/count_models_zinb.R <panel_csv> <out_json> [--gaussian-only]
 #
+# <panel_csv> DRIVES ONLY THE GAUSSIAN ROUND-TRIP. The count-model ladder does
+# not read it: build_cells() opens BOTH
+# data/generated/count_model_panel_{2019,2021}.csv by absolute path, because the
+# dual-window design (spec 4) is not optional -- it is what separates the
+# model-class effect from the data-source effect. Passing the 2019 panel here
+# therefore runs the Gaussian gate on the 2019 window and still fits the full
+# two-window ladder.
+#
 # --gaussian-only fits ONLY the Gaussian round-trip models, whose coefficients
 # must reproduce statsmodels.MixedLM. That is the validation gate; without it
-# no count estimate from this script should be believed.
+# no count estimate from this script should be believed. It runs M1/M2/M3 for
+# both outcomes (spec 6.1), so the level-2 covariates -- absent from M1 -- are
+# themselves checked for parity across the R/Python bridge.
 
 suppressPackageStartupMessages({
   library(glmmTMB)
@@ -18,6 +28,16 @@ if (length(args) < 2) stop("usage: count_models_zinb.R <panel_csv> <out_json> [-
 panel_csv <- args[1]
 out_json <- args[2]
 gaussian_only <- "--gaussian-only" %in% args
+
+# Warnings print IMMEDIATELY, with the call that raised them, instead of being
+# deferred into an anonymous "There were N warnings" line at the end of the run.
+# Every warning glmmTMB raises during a fit is already captured into that fit's
+# `message` (or `sim_message`) field and muffled, so anything that reaches
+# stderr here is a leak from code OUTSIDE those handlers -- which is exactly
+# what an anonymous deferred count makes impossible to locate.
+options(warn = 1)
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
 
 SEED <- 20260820L
 # Ruling R17 (2026-08-20 coordinator review): raised from 200 to 2000 so the
@@ -91,10 +111,21 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, offset_col = NULL,
   s2_u0 <- if (is.null(vc)) NA_real_ else vc[1, 1]
   s2_u1 <- if (is.null(vc) || nrow(vc) < 2) NA_real_ else vc[2, 2]
   s_u01 <- if (is.null(vc) || nrow(vc) < 2) NA_real_ else vc[1, 2]
-  # For Gaussian, sigma() is the residual SD; for count families it is the
-  # dispersion parameter. Squared here so the Gaussian case is comparable to
-  # MixedLM's `scale`.
-  s2_e <- tryCatch(sigma(fit)^2, error = function(e) NA_real_)
+
+  # CRITICAL (2026-08-22 whole-branch review). The ZERO-INFLATION component's
+  # own random-intercept variance. Before this it was never read: only
+  # VarCorr(fit)$cond$state was, so no artifact carried it, and every
+  # "structural-zero probability" reported downstream was plogis(b0) -- the
+  # probability at a MEDIAN state (u = 0) -- presented as if it were the
+  # marginal one. For insp_2019__M3__zinb_re, the cell whose headline is
+  # "inspections selects a zero-inflated family", the ZI random-intercept SD is
+  # ~6 on the logit scale: plogis(b0) = 0.0001 against a marginal near 0.07,
+  # a ~800x difference that reverses the qualitative reading. It is also the
+  # parameter that buys zinb_re its AIC margin over plain zinb -- the ZI
+  # INTERCEPT exists in plain zinb too; the VARIANCE is the added parameter.
+  vc_zi <- tryCatch(VarCorr(fit)$zi$state, error = function(e) NULL)
+  s2_zi_u0 <- if (is.null(vc_zi)) NA_real_ else vc_zi[1, 1]
+  s_zi_u0 <- if (is.na(s2_zi_u0)) NA_real_ else sqrt(s2_zi_u0)
 
   # Family-name resolution robust to call style: `family` may arrive as a bare
   # function (gaussian), a called family object (gaussian(), nbinom2(link=
@@ -106,16 +137,42 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, offset_col = NULL,
   fam_name <- if (is.character(fam_obj)) fam_obj else fam_obj$family
   is_gaussian <- identical(fam_name, "gaussian")
 
+  # Item 3 (2026-08-22 review): sigma() is a RESIDUAL SD only for the Gaussian
+  # family. For nbinom2 it is theta, for nbinom1 the dispersion multiplier, for
+  # poisson it is 1 by convention. Squaring it and exporting the square as
+  # `sigma2_e` (as this script did) put dispersion^2 into both CSVs under a
+  # name that reads as residual variance -- 43.87 for insp_2021, which is
+  # theta^2, not a variance component. `dispersion` now carries sigma() as-is
+  # with `family_name` alongside it so the semantics are readable, and
+  # `sigma2_e` is populated ONLY for Gaussian, where the SQUARE is what the
+  # round-trip gate needs to match statsmodels' MixedLM.scale.
+  disp <- tryCatch(sigma(fit), error = function(e) NA_real_)
+  s2_e <- if (is_gaussian && is.finite(disp)) disp^2 else NA_real_
+
   # Observed vs expected zeros -- the direct evidence for zero-inflation.
   # Skipped for Gaussian, where "zero" is not a meaningful outcome. Ruling R17:
   # also computes the Monte Carlo SE of exp_zeros (sd/sqrt(N_SIM)) so a later
   # comparison of two fits' zero counts can be judged against simulation
   # noise instead of as if it were noise-free.
+  #
+  # simulate() sits OUTSIDE the withCallingHandlers above, so any warning it
+  # raises used to escape to stderr as an anonymous deferred "There were N
+  # warnings" line -- which is the same invisibility problem as muffling it.
+  # Captured here into its OWN field: `sim_message`, deliberately NOT `message`,
+  # because `message` is what the reports read as "this FIT carries an optimizer
+  # warning" and a simulation warning is not that.
   obs_zeros <- exp_zeros <- exp_zeros_se <- NA_real_
+  sim_warn <- character(0)
   if (!is_gaussian) {
     obs_zeros <- sum(dd[[dv]] == 0, na.rm = TRUE)
-    sims <- tryCatch(as.data.frame(simulate(fit, nsim = N_SIM, seed = SEED)),
-                     error = function(e) NULL)
+    sims <- tryCatch(
+      withCallingHandlers(
+        as.data.frame(simulate(fit, nsim = N_SIM, seed = SEED)),
+        warning = function(w) {
+          sim_warn <<- c(sim_warn, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }),
+      error = function(e) { sim_warn <<- c(sim_warn, conditionMessage(e)); NULL })
     if (!is.null(sims)) {
       zero_counts <- colSums(sims == 0)
       exp_zeros <- mean(zero_counts)
@@ -130,11 +187,16 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, offset_col = NULL,
                loglik = as.numeric(logLik(fit)), df = attr(logLik(fit), "df"),
                cond = cond, zi = zi_co,
                sigma2_u0 = s2_u0, sigma2_u1 = s2_u1, sigma_u01 = s_u01,
-               sigma2_e = s2_e,
-               obs_zeros = obs_zeros, exp_zeros = exp_zeros, exp_zeros_se = exp_zeros_se))
+               sigma2_zi_u0 = s2_zi_u0, sigma_zi_u0 = s_zi_u0,
+               family_name = fam_name, dispersion = disp, sigma2_e = s2_e,
+               obs_zeros = obs_zeros, exp_zeros = exp_zeros, exp_zeros_se = exp_zeros_se,
+               sim_message = if (length(sim_warn))
+                 paste(unique(sim_warn), collapse = " | ") else ""))
 }
 
 CUBIC <- c("time", "time2", "time3")
+M2_ADD <- c("SPEND_APP_z", "SPEND_WORK_z", "lii_2017_z")
+M3_ADD <- c(M2_ADD, "h2a_per_farmworker_z", "dol_demand_met_pct_z", "pct_flc_z")
 
 results <- list()
 
@@ -142,10 +204,28 @@ results <- list()
 # Gaussian round-trip gate. Must reproduce paper_table_models_2021.py.
 # REML = TRUE because statsmodels MixedLM uses REML and glmmTMB defaults to ML.
 # ------------------------------------------------------------
-results$insp_M1_gaussian <- fit_spec(
-  panel, "log_inspections", CUBIC, family = gaussian, REML = TRUE)
-results$viol_M1_gaussian <- fit_spec(
-  panel, "log_violations", c("log_inspections", CUBIC), family = gaussian, REML = TRUE)
+# Item 5 (2026-08-22 review): spec 6.1 asks for M1/M2/M3, and this fitted M1
+# only -- which contains NO level-2 covariates, so nothing in the gate checked
+# COVARIATE parity across the R/Python bridge. All three build-up steps are now
+# fit for both outcomes; the validator compares M2/M3 against a live
+# statsmodels.MixedLM fit of the identical specification on the identical panel.
+GAUSSIAN_SPECS <- list(
+  list(tag = "insp", dv = "log_inspections", base = CUBIC),
+  list(tag = "viol", dv = "log_violations", base = c("log_inspections", CUBIC)))
+for (gs in GAUSSIAN_SPECS) {
+  for (gmodel in c("M1", "M2", "M3")) {
+    grhs <- switch(gmodel, M1 = gs$base, M2 = c(gs$base, M2_ADD),
+                   M3 = c(gs$base, M3_ADD))
+    gkey <- sprintf("%s_%s_gaussian", gs$tag, gmodel)
+    cat("fitting", gkey, "(Gaussian round-trip gate)\n")
+    gres <- fit_spec(panel, gs$dv, grhs, family = gaussian, REML = TRUE)
+    gres$gaussian_outcome <- gs$tag
+    gres$gaussian_model <- gmodel
+    gres$gaussian_rhs <- grhs
+    gres$gaussian_panel_csv <- panel_csv
+    results[[gkey]] <- gres
+  }
+}
 
 if (gaussian_only) {
   write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
@@ -230,6 +310,17 @@ mark_collapse <- function(res_zinb_re, res_zinb) {
 # SELECTION-ELIGIBILITY flag, not deletion: the record stays in the JSON with
 # its `zi_degenerate` / `zi_degenerate_reason` fields so a later task can still
 # see exactly what glmmTMB reported.
+#
+# Minor (2026-08-22 review): this function's comment claimed the counterpart was
+# at the same tier, but TIER WAS NEVER ASSERTED. Comparing a rs-tier ZI fit's
+# loglik against a ri-tier non-ZI counterpart is not a boundary-degeneracy test
+# at all (different random-effects structure, different likelihood), so the
+# criterion was silently INERT wherever the two tiers disagreed. No fit was
+# mis-flagged, because every cross-tier pair here differs in loglik by far more
+# than 1e-4 -- but "no harm today" is not a guard. The tier equality is now
+# required, and whether the criterion was applicable at all is RECORDED
+# (`zi_loglik_criterion_applied` / `zi_counterpart_tier`) so the validator can
+# assert the inert cases are exactly the cross-tier ones rather than assuming it.
 mark_zi_degenerate <- function(res, counterpart) {
   reasons <- character(0)
   zi_int <- res$zi[["(Intercept)"]]
@@ -237,11 +328,15 @@ mark_zi_degenerate <- function(res, counterpart) {
     if (is.finite(zi_int$b) && abs(zi_int$b) > 15) reasons <- c(reasons, "|zi_intercept| > 15")
     if (is.finite(zi_int$se) && zi_int$se > 100) reasons <- c(reasons, "se(zi_intercept) > 100")
   }
-  if (!is.null(counterpart) && isTRUE(res$converged) && isTRUE(counterpart$converged) &&
-      is.finite(res$loglik) && is.finite(counterpart$loglik) &&
-      abs(res$loglik - counterpart$loglik) < 1e-4) {
-    reasons <- c(reasons, "loglik matches non-ZI counterpart within 1e-4")
+  loglik_applicable <- !is.null(counterpart) && isTRUE(res$converged) &&
+    isTRUE(counterpart$converged) && identical(res$re_tier, counterpart$re_tier) &&
+    is.finite(res$loglik) && is.finite(counterpart$loglik)
+  if (loglik_applicable && abs(res$loglik - counterpart$loglik) < 1e-4) {
+    reasons <- c(reasons, "loglik matches non-ZI counterpart at the same tier within 1e-4")
   }
+  res$zi_loglik_criterion_applied <- loglik_applicable
+  res$zi_counterpart_tier <- if (is.null(counterpart)) NA_character_
+    else if (is.null(counterpart$re_tier)) NA_character_ else counterpart$re_tier
   res$zi_degenerate <- length(reasons) > 0
   res$zi_degenerate_reason <- paste(reasons, collapse = "; ")
   res
@@ -251,11 +346,21 @@ mark_zi_degenerate <- function(res, counterpart) {
 # collapsed duplicate (R14) or ZI-boundary-degenerate fit (R17). Falls back to
 # "nbinom2" on total non-convergence or an empty candidate set -- same rule as
 # the original Task 4 tie-break.
+# Minor (2026-08-22 review): the empty-candidate-set branch returned "nbinom2"
+# with no trace, so a cell where NOTHING was eligible would report a winner
+# indistinguishable from one chosen on AIC. The fallback is retained (erroring
+# here would abort the whole ladder over one cell) but is now RECORDED, and
+# `__meta.winner_defaulted_*` carries it into the artifacts.
 pick_winner <- function(fit_list) {
   eligible <- Filter(function(r) isTRUE(r$converged) && is.finite(r$aic) &&
                         is.null(r$collapsed_to) && !isTRUE(r$zi_degenerate), fit_list)
-  if (length(eligible) == 0) return(list(tag = "nbinom2"))
-  list(tag = eligible[[which.min(vapply(eligible, function(r) r$aic, numeric(1)))]]$family_tag)
+  if (length(eligible) == 0) {
+    warning("pick_winner: no eligible fit in this candidate set; defaulting to nbinom2",
+            call. = FALSE, immediate. = TRUE)
+    return(list(tag = "nbinom2", defaulted = TRUE, n_eligible = 0L))
+  }
+  list(tag = eligible[[which.min(vapply(eligible, function(r) r$aic, numeric(1)))]]$family_tag,
+       defaulted = FALSE, n_eligible = length(eligible))
 }
 
 # Lowest zero-fit-discrepancy family among a set of candidate fits (R13),
@@ -412,9 +517,72 @@ zi_evidence_for_cell <- function(cell_name) {
        zi_significant_any_tier = significant_any_tier)
 }
 
-M2_ADD <- c("SPEND_APP_z", "SPEND_WORK_z", "lii_2017_z")
-M3_ADD <- c(M2_ADD, "h2a_per_farmworker_z", "dol_demand_met_pct_z", "pct_flc_z")
 FAMILY_TAGS_R <- vapply(LADDER, `[[`, "", "tag")
+
+# ------------------------------------------------------------
+# Manufactured-zero derivation (Minor, 2026-08-22 review). Only a DV whose
+# components are `fillna(0)`-summed before use can turn a missing value into a
+# zero, and in this pipeline that is exactly ONE column: the establishments-view
+# inspections total (2019 window), built in build_count_model_panel.py as
+# `inspections-epa-<yr>.fillna(0) + inspections-state-<yr>.fillna(0)`.
+# Violations carries its NaNs, and the WPS view (2021 window) is read straight
+# through. That provenance is asserted structurally below (outcome/window),
+# but WHICH rows are affected, HOW MANY, and which zero rows are lost to
+# listwise deletion before Model 3 are all read off the data.
+# ------------------------------------------------------------
+ESTAB_CSV <- "/Users/keshavgoel/Research/data/raw/establishments_data.csv"
+
+estab_manufactured_state_years <- function() {
+  e <- read.csv(ESTAB_CSV, check.names = FALSE, stringsAsFactors = FALSE)
+  st <- trimws(e[[1]])
+  out <- character(0)
+  for (yr in 2011:2019) {
+    ce <- sprintf("inspections-epa-%d", yr)
+    cs <- sprintf("inspections-state-%d", yr)
+    if (!(ce %in% names(e)) || !(cs %in% names(e))) next
+    ve <- suppressWarnings(as.numeric(e[[ce]]))
+    vs <- suppressWarnings(as.numeric(e[[cs]]))
+    miss <- is.na(ve) | is.na(vs)
+    out <- c(out, sprintf("%s-%d", st[miss], yr))
+  }
+  unique(out)
+}
+
+analytic_sample <- function(cl, rhs) {
+  need <- unique(c(cl$dv, rhs, "state", "time", cl$offset_col))
+  need <- need[need %in% names(cl$d)]
+  dd <- cl$d[stats::complete.cases(cl$d[, need, drop = FALSE]), , drop = FALSE]
+  if (!is.null(cl$offset_col)) dd <- dd[dd[[cl$offset_col]] > 0, , drop = FALSE]
+  dd
+}
+
+manufactured_zero_info <- function(cell_name, cl, specs) {
+  none <- list(flag = FALSE, note = "", n_zero_m3 = NA_integer_,
+               n_manufactured_m3 = NA_integer_, rows = character(0))
+  if (!(identical(cl$outcome, "inspections") && cl$window == 2019L)) return(none)
+  man <- estab_manufactured_state_years()
+  d3 <- analytic_sample(cl, specs$M3)
+  d1 <- analytic_sample(cl, specs$M1)
+  key <- function(d) sprintf("%s-%d", d$state, d$year)
+  z3 <- key(d3[d3[[cl$dv]] == 0, , drop = FALSE])
+  z1 <- key(d1[d1[[cl$dv]] == 0, , drop = FALSE])
+  hit <- sort(z3[z3 %in% man])
+  dropped <- sort(setdiff(z1, z3))
+  if (length(hit) == 0) return(none)
+  dv_sing <- sub("s$", "", cl$dv)
+  drop_states <- sub("-[0-9]{4}$", "", dropped)
+  tb <- table(drop_states)
+  drop_txt <- if (length(dropped) == 0) "" else
+    paste0(" ", paste(sprintf("%s's %d", names(tb), as.integer(tb)), collapse = " and "),
+           sprintf(" zero-%s row%s drop via listwise deletion of the Model-3 covariates before M3, not because they stopped being zero.",
+                   dv_sing, if (length(dropped) == 1) "" else "s"))
+  note <- paste0(
+    sprintf("%d of %d surviving M3 zero-%s rows (%s) are fillna(0)-manufactured missingness, not measured non-%s (see build_count_model_panel.py).",
+            length(hit), length(z3), dv_sing, paste(hit, collapse = ", "), dv_sing),
+    drop_txt)
+  list(flag = TRUE, note = note, n_zero_m3 = length(z3),
+       n_manufactured_m3 = length(hit), rows = hit)
+}
 
 # One cell = one outcome x window x exposure variant.
 build_cells <- function() {
@@ -550,18 +718,20 @@ for (cell_name in names(cells)) {
                    results[sprintf("%s__M3__%s", cell_name, FAMILY_TAGS_R)])
   m1_rs <- Filter(function(r) r$re_tier == "rs",
                    results[sprintf("%s__M1__%s", cell_name, FAMILY_TAGS_R)])
-  w_rs_m3 <- pick_winner(m3_rs)$tag
-  w_rs_m1 <- pick_winner(m1_rs)$tag
+  pw_rs_m3 <- pick_winner(m3_rs); w_rs_m3 <- pw_rs_m3$tag
+  pw_rs_m1 <- pick_winner(m1_rs); w_rs_m1 <- pw_rs_m1$tag
 
   w_ri_m3 <- NA_character_; w_ri_m1 <- NA_character_
+  defaulted_ri_m3 <- NA; defaulted_ri_m1 <- NA
   stable_ri <- NA
   eligible_ri_m1 <- character(0); eligible_ri_m3 <- character(0)
   m3_ri <- list()
   if (needs_tier2) {
     m3_ri <- Filter(Negate(is.null), lapply(FAMILY_TAGS_R, function(t) tier_fit(cell_name, "M3", t, "ri")))
     m1_ri <- Filter(Negate(is.null), lapply(FAMILY_TAGS_R, function(t) tier_fit(cell_name, "M1", t, "ri")))
-    w_ri_m3 <- pick_winner(m3_ri)$tag
-    w_ri_m1 <- pick_winner(m1_ri)$tag
+    pw_ri_m3 <- pick_winner(m3_ri); w_ri_m3 <- pw_ri_m3$tag
+    pw_ri_m1 <- pick_winner(m1_ri); w_ri_m1 <- pw_ri_m1$tag
+    defaulted_ri_m3 <- isTRUE(pw_ri_m3$defaulted); defaulted_ri_m1 <- isTRUE(pw_ri_m1$defaulted)
     stable_ri <- identical(w_ri_m1, w_ri_m3)
     eligible_ri_m1 <- eligible_tags(m1_ri)
     eligible_ri_m3 <- eligible_tags(m3_ri)
@@ -607,20 +777,15 @@ for (cell_name in names(cells)) {
 
   # I-2: machine-readable flag that this cell's DV zeros are (at least partly)
   # `fillna(0)`-manufactured missingness, not measured non-occurrence -- see
-  # the panel-invariant checks in [1]. Verified directly against the M3
-  # analytic sample (423 rows): its 4 surviving zero-inspection state-years
-  # are Minnesota-2019, Montana-2011, Montana-2015, and Utah-2013, all of
-  # which have >=1 raw inspections-epa/inspections-state component missing in
-  # the source CSV. Alaska's 8 zero-inspection state-years and Vermont's 3
-  # drop from M1 (450 rows) to M3 (423 rows) via BLS-applicator listwise
-  # deletion, not because they stopped being zero.
-  zeros_partly_manufactured <- identical(cell_name, "insp_2019")
-  zeros_partly_manufactured_note <- if (zeros_partly_manufactured)
-    paste("4 of 4 surviving M3 zero-inspection rows (Minnesota-2019, Montana-2011,",
-          "Montana-2015, Utah-2013) are fillna(0)-manufactured missingness, not",
-          "measured non-inspection (see build_count_model_panel.py). Alaska's 8 and",
-          "Vermont's 3 zero-inspection rows drop via BLS-applicator listwise",
-          "deletion before M3, not because they stopped being zero.") else ""
+  # the panel-invariant checks in [1].
+  #
+  # Minor (2026-08-22 review): the flag was `identical(cell_name, "insp_2019")`
+  # and the note typed four state-years into prose. Both are DERIVED now, by
+  # `manufactured_zero_info()`, from the raw establishments CSV the fillna(0)
+  # is applied to plus this cell's own M1 and M3 analytic samples.
+  mz <- manufactured_zero_info(cell_name, cl, specs)
+  zeros_partly_manufactured <- mz$flag
+  zeros_partly_manufactured_note <- mz$note
 
   zi_info <- zi_evidence_for_cell(cell_name)
 
@@ -635,6 +800,14 @@ for (cell_name in names(cells)) {
     m1_winner_rs = w_rs_m1, m3_winner_rs = w_rs_m3, stable_rs = identical(w_rs_m1, w_rs_m3),
     m1_winner_ri = w_ri_m1, m3_winner_ri = w_ri_m3, stable_ri = stable_ri,
     m2_family = w_rs_m3,
+    # Minor (2026-08-22): whether each winner came from an AIC comparison or
+    # from pick_winner()'s empty-candidate-set fallback, and over how many
+    # eligible candidates. A defaulted winner is not a selection result.
+    winner_defaulted_rs_m3 = isTRUE(pw_rs_m3$defaulted),
+    winner_defaulted_rs_m1 = isTRUE(pw_rs_m1$defaulted),
+    winner_defaulted_ri_m3 = defaulted_ri_m3,
+    winner_defaulted_ri_m1 = defaulted_ri_m1,
+    n_eligible_rs_m3 = pw_rs_m3$n_eligible, n_eligible_rs_m1 = pw_rs_m1$n_eligible,
     # Documents the CANDIDATE SET per tier/model (R16 follow-up), so an
     # M1-vs-M3 winner change is interpretable as a preference reversal vs. a
     # change in which families could even reach that tier (see viol_off_2021).
@@ -767,7 +940,34 @@ for (cell_name in ALT_OPTIM_CELLS) {
 # re_used/re_tier still record the ONE tier actually attempted), not masked
 # by a silent retry at a simpler structure.
 # ------------------------------------------------------------
+#
+# Minor (2026-08-22 review): COVID_CELLS excluded `viol_off_2021` with no stated
+# reason, and the memo showed two COVID rows without noting a third 2021 cell
+# existed. The reason is recorded here AND written into every 2021 cell's
+# `__meta` (`covid_variant_fit` / `covid_not_fit_reason`) so the memo derives
+# the sentence instead of the omission being invisible.
 COVID_CELLS <- c("insp_2021", "viol_cov_2021")
+COVID_SKIP_REASON <- paste(
+  "Not fit. Spec 5.7 exists to put the log-LMM's COVID check and the count",
+  "model on the same question, and that log-LMM check exists only for the two",
+  "columns paper_table_models_2021.py publishes -- inspections, and violations",
+  "with log(inspections) as a right-hand-side covariate. The offset",
+  "specification has no published log-LMM counterpart to be compared with, and",
+  "it drops every zero-inspection state-year, so a COVID indicator fit there",
+  "would not be answering the same question.")
+for (cell_name in names(cells)) {
+  meta_key <- sprintf("%s__meta", cell_name)
+  if (is.null(results[[meta_key]])) next
+  if (!identical(cells[[cell_name]]$window, 2021L)) {
+    results[[meta_key]]$covid_variant_fit <- FALSE
+    results[[meta_key]]$covid_not_fit_reason <-
+      "Not fit. The COVID indicator is a 2020-21 dummy and this cell's window ends in 2019."
+  } else {
+    results[[meta_key]]$covid_variant_fit <- cell_name %in% COVID_CELLS
+    results[[meta_key]]$covid_not_fit_reason <-
+      if (cell_name %in% COVID_CELLS) "" else COVID_SKIP_REASON
+  }
+}
 for (cell_name in COVID_CELLS) {
   cl <- cells[[cell_name]]
   meta <- results[[sprintf("%s__meta", cell_name)]]
@@ -798,6 +998,53 @@ for (cell_name in COVID_CELLS) {
     cat(sprintf("WARNING [%s]: COVID variant did NOT converge at the mandated rs tier (attempted %s); re_used=%s; message=%s\n",
                 key, RS_RE, res$re_used, res$message))
   }
+}
+
+# ------------------------------------------------------------
+# Item 2 (2026-08-22 review): spec 5.5's EXPANDED zero-inflation component was
+# never implemented -- the ladder's only ziformulas are ~0, ~1 and
+# ~1 + (1|state). The spec asks for SPEND_APP_z + SPEND_WORK_z + lii_2017_z in
+# the ZI part as a sensitivity fit, "reported only if it converges cleanly".
+# Attempted here: one extra rung per cell, Model 3 only, at the mandated
+# `(1 + time | state)` tier only, and NEVER a family-selection competitor
+# (`eligible_for_selection = FALSE`; the `__zisens` key suffix is excluded from
+# the reporting selection table). Whether it converges is itself the reportable
+# result -- with 49 states and ~93 zeros, non-convergence is the expected
+# outcome and belongs in the memo's caveats either way. `fit_spec` is called
+# directly rather than `fit_with_fallback`, because the fallback ladder would
+# downgrade the expanded ZI formula to `~1` and quietly report a DIFFERENT
+# model as the sensitivity result.
+# ------------------------------------------------------------
+ZI_EXPANDED <- ~ 1 + SPEND_APP_z + SPEND_WORK_z + lii_2017_z
+for (cell_name in names(cells)) {
+  cl <- cells[[cell_name]]
+  key <- sprintf("%s__M3__zinb__zisens", cell_name)
+  cat("fitting", key, "(spec 5.5 expanded-ZI sensitivity, rs tier only)\n")
+  res <- fit_spec(cl$d, cl$dv, c(cl$base, M3_ADD), nbinom2, zi = ZI_EXPANDED,
+                  offset_col = cl$offset_col, re = RS_RE)
+  res$cell <- cell_name; res$model <- "M3"; res$family_tag <- "zinb"
+  res$window <- cl$window; res$outcome <- cl$outcome; res$exposure <- cl$exposure
+  res$re_used <- RS_RE; res$re_tier <- "rs"
+  res$zi_spec <- "expanded (spec 5.5 sensitivity)"
+  res$zi_degenerate <- FALSE; res$zi_degenerate_reason <- ""
+  res <- mark_zi_degenerate(res, NULL)
+  res$is_winner_rs <- FALSE; res$is_winner_ri <- FALSE
+  res$eligible_for_selection <- FALSE
+  res <- add_zero_fit_discrepancy(res)
+  # The comparison the sensitivity is AGAINST: the intercept-only ZINB at the
+  # same cell/model/tier. Carried on the record so no downstream reader has to
+  # reconstruct which fit this is a sensitivity to.
+  ref <- results[[sprintf("%s__M3__zinb", cell_name)]]
+  res$zisens_reference_key <- sprintf("%s__M3__zinb", cell_name)
+  res$zisens_reference_re_tier <- if (is.null(ref)) NA_character_ else ref$re_tier
+  res$zisens_reference_aic <- if (is.null(ref)) NA_real_ else ref$aic
+  res$zisens_comparable <- !is.null(ref) && identical(ref$re_tier, "rs") &&
+    isTRUE(ref$converged) && isTRUE(res$converged) &&
+    !is.null(ref$n_obs) && identical(as.integer(ref$n_obs), as.integer(res$n_obs))
+  results[[key]] <- res
+  cat(sprintf("  spec-5.5 expanded ZI [%s]: converged=%s%s\n", cell_name,
+              isTRUE(res$converged),
+              if (nzchar(res$message %||% "")) paste0(" message=", res$message) else ""))
 }
 
 write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")

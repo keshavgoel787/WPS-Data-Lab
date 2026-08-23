@@ -201,15 +201,32 @@ zero-inflated negative binomial — after the 2011–2021 tables weakened the st
 `docs/superpowers/specs/2026-08-20-multilevel-zinb-design.md`. Deliverable memo:
 `docs/count_models_zinb.md` (**generated**, never hand-edited). Run in this order:
 
+`build_count_model_panel.py` consumes the **2021-extension** pipeline's outputs as well as
+the 2019 ones, so on a fresh checkout those must exist first or it raises `FileNotFoundError`.
+The full prerequisite set is: `wps_dv_panel_2011_2021.csv`, `spend_bls_variables_multiyear.csv`
+and `spend_bls_variables_multiyear_2021.csv`, `h2a_ratio_panel.csv` and
+`h2a_ratio_panel_2011_2021.csv`, plus `data/raw/establishments_data.csv`. Run:
+
 ```bash
+# --- prerequisites (from the 2026-08 extension block above) ---
+python3 scripts/build_wps_dv_panel.py           # → wps_dv_panel_2011_2021.csv
+python3 scripts/rebuild_spend_bls_multiyear.py  # → spend_bls_variables_multiyear.csv      (2019 arm)
+python3 scripts/rebuild_spend_bls_multiyear_2021.py  # → spend_bls_variables_multiyear_2021.csv
+python3 scripts/build_h2a_ratio_panel.py        # → h2a_ratio_panel.csv                    (2019 arm)
+python3 scripts/build_h2a_ratio_panel.py 2021   # → h2a_ratio_panel_2011_2021.csv
+
+# --- the count-model pipeline itself ---
 Rscript scripts/r_env_check.R                   # gate: glmmTMB installed and able to fit a ZINB
 python3 scripts/build_count_model_panel.py      # → count_model_panel_{2019,2021}.csv (RAW counts)
 Rscript scripts/count_models_zinb.R \
         data/generated/count_model_panel_2021.csv \
         data/generated/count_model_results.json # 6 families x 6 cells + COVID + diagnostics
-python3 scripts/build_count_model_memo_evidence.py  # ~15 s: 12 MixedLM refits of the
-                                                #   published 2021 spec + 2 statsmodels
-                                                #   FE-ZINB fits
+                                                # NOTE: the <panel_csv> argument drives ONLY
+                                                # the Gaussian round-trip gate; build_cells()
+                                                # opens BOTH panels by absolute path.
+python3 scripts/build_count_model_memo_evidence.py  # ~30 s: 24 MixedLM refits (the published
+                                                #   2021 AND 2019 specs) + 2 statsmodels
+                                                #   FE-ZINB fits + the offset-drop derivation
                                                 # → count_model_memo_evidence.json
 python3 scripts/report_count_models.py          # pure artifact reader (<1 s)
                                                 # → count_model_comparison.csv,
@@ -234,7 +251,13 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
 - **Gaussian round-trip gate.** `validate_count_models.py [2a]/[2b]` refits the manuscript's
   own Model 1 as a Gaussian `glmmTMB` (REML) and requires it to match `statsmodels.MixedLM`
   (coefficients 1e-3 rel., variance components 2e-2 rel.). Nothing downstream is trustworthy
-  if that fails. `[5]` independently cross-checks the ZI component against
+  if that fails. `[2c]` extends it to **M1/M2/M3 for both windows** (spec 6.1) — M1 has no
+  level-2 covariates, so before that arm existed nothing checked **covariate** parity across
+  the R/Python bridge. `[2c]` is live-vs-live: statsmodels is fit under several optimizers,
+  any fit raising a gradient failure is discarded, and glmmTMB must match the
+  highest-log-likelihood survivor. (`lbfgs` genuinely fails for 2021 violations M1, 2019
+  inspections M1 and 2019 violations M2; `cg` fails for 2019 inspections M3. glmmTMB reaches
+  the good optimum in all of them.) `[5]` independently cross-checks the ZI component against
   `statsmodels.ZeroInflatedNegativeBinomialP` with state dummies.
 - **σ²_u0 here is on the log LINK scale**, not the `log(count+1)` outcome scale of the
   published tables — magnitudes are **not** comparable to Tables 2/3 even though a percentage
@@ -258,8 +281,9 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   run against plain **NB2** also give 17 of 17, by 24.1–83.2 AIC, so the claim covers both
   negative-binomial parameterisations, not just NB1.
 - **But it is the ZI-NB specifically, not zero-inflation generally, and do NOT write that a
-  zero-inflated model never lost on merit anywhere.** The evidence is a three-tier
-  **hierarchy**, and every tally is generated in `docs/count_models_zinb.md`:
+  zero-inflated model never lost on merit anywhere.** The evidence is a **four-tier**
+  hierarchy — numbered (0) through (3) below, so "three-tier" is wrong — and every tally is
+  generated in `docs/count_models_zinb.md`:
   (0) against a plain Poisson the two ZI-NB rungs are **8–0** (ZINB) and **9–0** (ZINB+ZI-RE),
   by 390.2–3519.6 AIC; (1) **inflation helps** — ZIP beats plain Poisson **12–1** (margins
   −1.9 to +625.7 AIC); (2) **NB overdispersion helps more** — a plain NB beats that same ZIP
@@ -272,8 +296,11 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   the mandated `rs` tier** — by 1.9–2967.5 AIC. At **12** of the 13 every family beating it is
   a negative binomial; at the **13th** (`viol_off_2019` M1 `rs`) a **plain Poisson beats it
   too, by 1.94 AIC**, and that rung IS the 1.9 lower bound and the single loss in tier 1. Do
-  NOT write "always by a negative binomial, never by a plain Poisson" — that was a round-4
-  defect. Also do NOT write that inflation on a Poisson "is beaten wherever it is tested"
+  NOT write "always **to** a negative binomial, never **to** a plain Poisson" — that was a
+  round-4 defect. Quote the preposition exactly as written here: the enforced guards in
+  `validate_count_models.py` (`MEMO_FORBIDDEN_PATTERNS`) match `always to a negative binomial`
+  and `never to a plain Poisson`, and an earlier revision of this file wrote "by" instead,
+  so a writer copying CLAUDE.md's own phrasing back into the memo would have evaded both. Also do NOT write that inflation on a Poisson "is beaten wherever it is tested"
   without the "against a negative binomial" qualifier; unqualified it is false. No `zinb` or
   `zinb_re` ever lost a matched comparison (**0** losses); always name the *negative binomial*
   as the subject of that claim. Also note that **8 of the 17**
@@ -329,7 +356,84 @@ python3 scripts/validate_count_models.py        # sections [1]–[7]; ALL must p
   modified or regenerated by the count-model pipeline.
 - **No script in this pipeline may use `warnings.filterwarnings('ignore')`** — that idiom is
   what hid the finding above. Warnings are captured with `catch_warnings(record=True)` and
-  reported.
+  reported. `count_models_zinb.R` sets `options(warn = 1)` so anything that escapes its own
+  per-fit handlers prints with its call instead of as an anonymous "There were N warnings"
+  line (today: 11 × `sqrt(diag(vcovs)): NaNs produced`, all from fit attempts that were then
+  discarded by the fallback ladder).
+
+**2026-08-22 whole-branch review, fix wave (one pass, no second wave).** Applied on top of the
+above. Headline tallies were re-verified unchanged after the ladder re-run: ZI-NB over NB1
+17–0 (34.67–194.95), over NB2 17–0 (24.08–83.20), ZIP over Poisson 12–1, NB over ZIP 13–0/13–0,
+15/15 distinct, 11 degenerate split 6/5, 30 LRTs, same six selected families.
+
+- **CRITICAL, fixed: the zero-inflation random-effect variance was never extracted, so every
+  reported "structural-zero probability" for a ZI-RE model was the wrong estimand.**
+  `count_models_zinb.R` read only `VarCorr(fit)$cond$state`; `VarCorr(fit)$zi$state` was
+  never read and no artifact carried it, so the reported figure was `plogis(b0)` — the
+  probability at a **median state** (u = 0) — presented as marginal. For
+  `insp_2019__M3__zinb_re` (the cell the memo headlines) the ZI random-intercept SD is
+  **6.04** on the logit scale: median-state 0.000081 against a **marginal of 0.0675**, a factor
+  of ~835, with **11.6%** of the fitted state distribution above a structural-zero probability
+  of 0.10. A PI reading "0.0001" would conclude the inspections zero-inflation was negligible.
+  Now: `sigma2_zi_u0`/`sigma_zi_u0` are in the JSON and both CSVs, both probabilities are
+  reported side by side and labelled everywhere (ZI-evidence table, every coefficient block,
+  the variance block), and the marginal is `E[plogis(b0 + u)]` by **Gauss-Hermite quadrature**
+  (`GH_NODES = 240`; 64 nodes — the first value — was wrong in the 4th significant figure, and
+  `zi_marginal_prob` now raises if halving the node count moves the answer by >1e-4 rel).
+  `viol_cov_2021`'s selected `ri`-tier ZINB+ZI-RE: median-state 0.0547, marginal **0.0965**.
+- **Also corrected: what buys `zinb_re` its margin.** The margin over plain ZINB is bought by
+  the ZI random-intercept **variance**, not the ZI intercept — plain `zinb` has an intercept
+  too. Never attribute it to the intercept.
+- **`sigma2_e` is now null for every count fit.** `sigma(fit)^2` is θ² for `nbinom2` and the
+  squared dispersion multiplier for `nbinom1`, and it was being exported in both CSVs under a
+  name that reads as residual variance (43.87 for `insp_2021`). `dispersion` (with
+  `family_name`) carries the parameter itself; the memo's variance section documents the
+  per-family semantics. The Gaussian gate still uses the square, so `sigma2_e` survives on
+  the `*_gaussian` records only.
+- **Spec §5.5's expanded-ZI sensitivity is now implemented, and it is unstable.** One extra
+  rung per cell (`{cell}__M3__zinb__zisens`, ZI formula
+  `~1 + SPEND_APP_z + SPEND_WORK_z + lii_2017_z`, M3 and the `rs` tier only, never a selection
+  competitor). It converges in **3 of 6** cells (`insp_2019`, `insp_2021`, `viol_off_2019`)
+  and fails with a non-positive-definite Hessian in the other 3. Intercept-only ZI stands as
+  the primary specification. Non-converged estimates are not reported anywhere.
+- **The offset removes the structural zeros, and in the 2021 window it removes ONLY them.**
+  All **7** rows the `log(inspections)` offset drops in 2021 — CT-2018, KS-2018, MA-2018,
+  OR-2020, OR-2021, UT-2017, WV-2012 — are also zero-violation rows (7.5% of that window's 93).
+  In 2019 the property does **not** hold (15 dropped; 1 zero, 6 positive, 8 missing). Derived
+  per window in `build_count_model_memo_evidence.py::_offset_drop`, never asserted.
+- **There is no zero-inflated NB1 rung**, while NB1 is the selected family for both 2021
+  violations cells and their mean-variance exponent is **1.46** (NB1-like). Spec §5.2 fixed
+  the six families; the family was deliberately NOT added (that would reopen selection across
+  the whole ladder). The memo carries the caveat. The comparison that *does* isolate
+  inflation is ZINB vs plain **NB2** (17–0), which holds the parameterisation fixed.
+- **The published-fit audit now has a 2019 arm** against `paper_table_params_corrected.json`
+  (item 5): all 12 refits reproduce their published σ²_u0, and that arm independently finds
+  **2 of 12** 2011–2019 fits carrying a gradient failure under the published `lbfgs`
+  (inspections M1 and violations M2, both random-slope). All 6 of its random-intercept-only
+  refits converge, so as in 2021 the variance-explained block is not implicated. Recorded,
+  not fixed.
+- **`mark_zi_degenerate`'s loglik criterion now requires tier equality.** It never asserted
+  it, so the criterion was silently inert for the **7** cross-tier comparisons (all healthy —
+  nothing was mis-flagged). `zi_loglik_criterion_applied` / `zi_counterpart_tier` record
+  applicability and the validator asserts the inert cases are exactly the cross-tier ones.
+- **`zeros_partly_manufactured` and its note are derived**, from the raw establishments CSV
+  plus the cell's own M1/M3 analytic samples, rather than `identical(cell_name, "insp_2019")`
+  and four typed state-years. The derivation reproduces them exactly (4 of 4: Minnesota-2019,
+  Montana-2011, Montana-2015, Utah-2013; Alaska's 8 and Vermont's 3 lost to listwise deletion).
+- **`COVID_CELLS` excludes `viol_off_2021` for a stated reason**, recorded per cell as
+  `__meta.covid_variant_fit` / `covid_not_fit_reason` and surfaced in the memo: the log-LMM
+  check spec §5.7 compares against exists only for the two published columns, and the offset
+  spec drops every zero-inspection state-year.
+- **`pick_winner`'s empty-candidate-set fallback is recorded** (`__meta.winner_defaulted_*`,
+  `n_eligible_rs_*`) instead of silently returning `nbinom2`. No cell defaults today.
+- **Do not quote a single headline check count from `validate_count_models.py`.** It prints a
+  **per-section breakdown** and an explicit `SKIP` line for every bypassed gated block.
+  Section `[3]` alone is ~1,450 assertions — a per-record loop over the ladder, not
+  independent findings. Total today: 2,277 pass / 0 fail / 0 skip, of which [3] is 1,452.
+- Record population in `count_model_results.json` is now **121** = 78 tier-1 + 17 tier-2 +
+  6 `__altopt` + 6 `__meta` + **6 Gaussian** (M1/M2/M3 × 2 outcomes, was 2) + 2 COVID +
+  **6 `__zisens`**. `selection_table()` still returns **97** genuine fits: `__zisens` is
+  excluded by key suffix, so no headline tally moved.
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 

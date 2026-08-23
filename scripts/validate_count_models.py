@@ -6,6 +6,16 @@ proves a step of the pipeline reproduces something already known, or proves an
 invariant the spec depends on. Run it after any change to the pipeline.
 
 Run: python3 scripts/validate_count_models.py      (exits 1 on any failure)
+
+ON READING THE OUTPUT (item 7 of the 2026-08-22 review). Do NOT quote a single
+headline check count anywhere. The total is dominated by per-record loops --
+section [3] alone walks ~105 fit records at ~9 assertions each, which is about
+two thirds of every check in the file. Those are real assertions but they are
+not independent findings, and a reader shown one big number over-weights them.
+`main()` therefore prints a PER-SECTION breakdown, and every gated block that
+is bypassed prints an explicit `SKIP` line and is counted -- so a run in which
+a block silently vanished (the CSV round-trips under `os.path.exists`, the
+several `if a and b:` guards) is visibly different from one in which it ran.
 """
 import sys
 
@@ -15,14 +25,56 @@ import pandas as pd
 GEN = '/Users/keshavgoel/Research/data/generated/'
 
 FAILURES = []
+# Per-section tallies, in run order: {'name', 'pass', 'fail', 'skip'}. Written
+# by section()/check()/skip(), read by main().
+SECTIONS = []
+_CUR = None
+
+
+def section(tag, title):
+    """Open a numbered section. Every check() and skip() after this call is
+    attributed to it, so the report can break the total down instead of
+    quoting one aggregate."""
+    global _CUR
+    _CUR = {'name': f'[{tag}] {title}', 'pass': 0, 'fail': 0, 'skip': 0}
+    SECTIONS.append(_CUR)
+    print(f"\n[{tag}] {title}")
 
 
 def check(label, condition, detail=''):
     if condition:
         print(f"  PASS  {label}")
+        if _CUR is not None:
+            _CUR['pass'] += 1
     else:
         print(f"  FAIL  {label}" + (f" -- {detail}" if detail else ''))
         FAILURES.append(label)
+        if _CUR is not None:
+            _CUR['fail'] += 1
+
+
+def skip(label, reason):
+    """A gated block that did NOT run. Printed and counted, because the failure
+    mode this guards against is a whole block of assertions disappearing
+    without trace when its precondition stops holding."""
+    print(f"  SKIP  {label} -- {reason}")
+    if _CUR is not None:
+        _CUR['skip'] += 1
+
+
+def _re_label_local(re_tier):
+    """The prose form of a random-effects structure, matching
+    report_count_models._re_label(..., in_table=False). Duplicated here only so
+    section [7] can build an expected sentence to search for."""
+    return '(1 + time | state)' if re_tier == 'rs' else '(1 | state)'
+
+
+def re_findall_state_years(text):
+    """Every `<State Name>-<year>` token in a note. Used to check a generated
+    note against an independently derived set of state-years, instead of
+    trusting the note's prose."""
+    import re as _re
+    return _re.findall(r'([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)*-\d{4})', text)
 
 
 def check_close(label, got, want, tol, kind='abs'):
@@ -37,7 +89,7 @@ def check_close(label, got, want, tol, kind='abs'):
 # [1] PANEL INVARIANTS
 # ============================================================
 def validate_panels():
-    print("\n[1] Analytic panels")
+    section('1', 'Analytic panels')
     from build_count_model_panel import build_panel
 
     p21 = build_panel(2021)
@@ -233,7 +285,7 @@ def validate_reference_convergence():
 
     from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-    print("\n[2a] Reference-fit convergence guard (statsmodels, live refit)")
+    section('2a', 'Reference-fit convergence guard (statsmodels, live refit)')
     for cell, (dv, rhs, method) in REFERENCE_SPEC.items():
         ref = GAUSSIAN_REFERENCE[cell]
         res, d, warns = _fit_statsmodels_reference(dv, rhs, method)
@@ -292,7 +344,7 @@ def validate_gaussian_roundtrip():
     import tempfile
     import os
 
-    print("\n[2b] Gaussian round-trip (glmmTMB REML vs statsmodels MixedLM)")
+    section('2b', 'Gaussian round-trip (glmmTMB REML vs statsmodels MixedLM)')
     with tempfile.TemporaryDirectory() as tmpdir:
         out = os.path.join(tmpdir, 'gaussian_roundtrip.json')
         proc = subprocess.run(
@@ -355,18 +407,206 @@ def validate_gaussian_roundtrip():
 
 
 # ============================================================
+# [2c] GAUSSIAN ROUND-TRIP AT M2 AND M3, BOTH WINDOWS
+# ============================================================
+# Item 5 of the 2026-08-22 review. Spec 6.1 asks for M1/M2/M3; the gate above
+# fits M1 only, and M1 contains NO level-2 covariates -- so nothing in it
+# checked COVARIATE parity across the R/Python bridge, and nothing checked the
+# 2019 panel at all. This arm compares glmmTMB against a LIVE
+# statsmodels.MixedLM fit of the identical specification on the identical
+# panel, for both outcomes, all three build-up steps, and both windows.
+#
+# It is live-vs-live rather than live-vs-hardcoded on purpose. The property at
+# risk here is that the two toolchains see the same design matrix; pinning 48
+# more reference numbers into this file would guard a different thing (drift in
+# the numbers themselves), which [2a] already does for M1.
+#
+# One complication, and it is the project's own recurring one: statsmodels'
+# `lbfgs` does NOT converge for several of these specifications (2021
+# violations M1, 2019 inspections M1, 2019 violations M2), and `cg` does not
+# converge for 2019 inspections M3. A non-converged reference is not a
+# reference. So each specification is fit under several optimizers, any fit
+# raising a gradient-failure ConvergenceWarning is DISCARDED, and glmmTMB is
+# required to match the highest-log-likelihood surviving fit. If no optimizer
+# converges cleanly the check FAILS -- it does not quietly fall back to a
+# non-converged comparison.
+GAUSSIAN_BUILDUP_ADD = {
+    'M1': [],
+    'M2': ['SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z'],
+    'M3': ['SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z',
+           'h2a_per_farmworker_z', 'dol_demand_met_pct_z', 'pct_flc_z'],
+}
+GAUSSIAN_OUTCOMES = {
+    'insp': ('log_inspections', ['time', 'time2', 'time3']),
+    'viol': ('log_violations', ['log_inspections', 'time', 'time2', 'time3']),
+}
+GAUSSIAN_OPTIMIZERS = ('lbfgs', 'cg', 'powell')
+
+
+def _clean_mixedlm(df, dv, rhs):
+    """Fit `dv ~ rhs` with a (1 + time | state) random structure under each
+    optimizer in turn, and return the clean fits -- those that raise no
+    gradient-failure ConvergenceWarning -- as a list of dicts, best
+    log-likelihood first. `powell` is only attempted when neither `lbfgs` nor
+    `cg` came back clean, to keep the gate cheap."""
+    import re as _re
+    import warnings as _warnings
+
+    from statsmodels.regression.mixed_linear_model import MixedLM
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
+    d = df.dropna(subset=[dv] + rhs).copy()
+    d['state'] = pd.Categorical(d['state'])
+    formula = f"{dv} ~ " + " + ".join(rhs)
+    clean, tried = [], []
+    for method in GAUSSIAN_OPTIMIZERS:
+        if method == 'powell' and clean:
+            break
+        with _warnings.catch_warnings(record=True) as wrec:
+            _warnings.simplefilter('always')
+            try:
+                res = MixedLM.from_formula(formula, data=d, groups=d['state'],
+                                           re_formula='~time').fit(method=method)
+            except Exception as exc:          # noqa: BLE001 -- recorded, not hidden
+                tried.append((method, f'raised {type(exc).__name__}'))
+                continue
+        grad = any(_re.search(r'\|grad\|', str(w.message))
+                   for w in wrec if issubclass(w.category, ConvergenceWarning))
+        tried.append((method, 'gradient failure' if grad else 'clean'))
+        if grad:
+            continue
+        clean.append({
+            'method': method, 'llf': float(res.llf), 'n_obs': int(res.nobs),
+            'n_states': int(d['state'].nunique()),
+            'b': {t: float(res.fe_params[t]) for t in rhs},
+            'sigma2_u0': float(res.cov_re.iloc[0, 0]),
+            'sigma2_u1': float(res.cov_re.iloc[1, 1]),
+            'sigma_u01': float(res.cov_re.iloc[0, 1]),
+            'sigma2_e': float(res.scale),
+        })
+    clean.sort(key=lambda r: -r['llf'])
+    return clean, tried
+
+
+def validate_gaussian_buildup():
+    import json
+    import os
+    import subprocess
+    import tempfile
+
+    from build_count_model_panel import build_panel
+
+    section('2c', 'Gaussian round-trip at M1/M2/M3, both windows '
+                  '(covariate parity)')
+    n_compared = 0
+    for window in (2021, 2019):
+        panel_csv = GEN + f'count_model_panel_{window}.csv'
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = os.path.join(tmpdir, f'gauss_{window}.json')
+            proc = subprocess.run(
+                ['Rscript',
+                 '/Users/keshavgoel/Research/scripts/count_models_zinb.R',
+                 panel_csv, out, '--gaussian-only'],
+                capture_output=True, text=True)
+            if proc.returncode != 0:
+                check(f"R --gaussian-only ran on the {window} panel", False,
+                      proc.stderr.strip()[-400:])
+                continue
+            check(f"R --gaussian-only ran on the {window} panel", True)
+            fits = json.load(open(out))
+        check(f"{window}: the gate emits all "
+              f"{len(GAUSSIAN_OUTCOMES) * len(GAUSSIAN_BUILDUP_ADD)} "
+              f"Gaussian build-up fits (spec 6.1 asks for M1/M2/M3, not M1)",
+              len(fits) == len(GAUSSIAN_OUTCOMES) * len(GAUSSIAN_BUILDUP_ADD),
+              f"got {sorted(fits)}")
+        df = build_panel(window)
+        for tag, (dv, base) in sorted(GAUSSIAN_OUTCOMES.items()):
+            for model, extra in sorted(GAUSSIAN_BUILDUP_ADD.items()):
+                rhs = base + extra
+                key = f'{tag}_{model}_gaussian'
+                g = fits.get(key)
+                if g is None:
+                    check(f"{window} {key} present in the R output", False,
+                          f"keys: {sorted(fits)}")
+                    continue
+                check(f"{window} {key} converged in glmmTMB",
+                      g['converged'] is True, g.get('message', ''))
+                # Covariate parity is the whole point of extending past M1:
+                # every level-2 covariate must actually be ESTIMATED on the R
+                # side, not silently dropped by a name mismatch or a merge.
+                missing = [t for t in rhs if t not in (g.get('cond') or {})]
+                check(f"{window} {key} estimates all {len(rhs)} fixed effects "
+                      f"(covariate parity, not just the time polynomial)",
+                      not missing, f"missing: {missing!r}")
+                clean, tried = _clean_mixedlm(df, dv, rhs)
+                check(f"{window} {key}: at least one statsmodels optimizer "
+                      f"converges cleanly, so there IS a valid reference "
+                      f"(tried {tried!r})", bool(clean), f"tried {tried!r}")
+                if not clean:
+                    skip(f"{window} {key} coefficient/variance comparison",
+                         "no clean statsmodels reference to compare against")
+                    continue
+                ref = clean[0]
+                check(f"{window} {key} n_obs == {ref['n_obs']}",
+                      g['n_obs'] == ref['n_obs'], f"got {g['n_obs']}")
+                check(f"{window} {key} n_states == {ref['n_states']}",
+                      g['n_states'] == ref['n_states'], f"got {g['n_states']}")
+                for term, want in ref['b'].items():
+                    got = (g['cond'].get(term) or {}).get('b')
+                    if got is None:
+                        continue
+                    check_close(f"{window} {key} b[{term}] vs statsmodels "
+                                f"({ref['method']})", got, want, 1e-3, kind='rel')
+                for comp in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e'):
+                    check_close(f"{window} {key} {comp} vs statsmodels "
+                                f"({ref['method']})", g[comp], ref[comp],
+                                2e-2, kind='rel')
+                n_compared += 1
+    want_n = 2 * len(GAUSSIAN_OUTCOMES) * len(GAUSSIAN_BUILDUP_ADD)
+    check(f"every one of the {want_n} (window x outcome x model) build-up "
+          f"round-trips was actually compared -- a vacuous pass here would "
+          f"mean the arm silently did nothing", n_compared == want_n,
+          f"got {n_compared}")
+
+
+# ============================================================
 # [3] LADDER STRUCTURE AND CONVERGENCE
 # ============================================================
 CELLS = ['insp_2021', 'insp_2019', 'viol_off_2021', 'viol_off_2019',
          'viol_cov_2021', 'viol_cov_2019']
 FAMILY_TAGS = ['poisson', 'nbinom1', 'nbinom2', 'zip', 'zinb', 'zinb_re']
 
+# Display labels, duplicated here ONLY so section [7] can invert the mapping
+# when parsing a table back out of the memo. Asserted equal to
+# report_count_models.FAMILY_LABEL in [4], so the copy cannot drift.
+FAMILY_LABEL_LOCAL = {'poisson': 'Poisson', 'nbinom1': 'NB1', 'nbinom2': 'NB2',
+                      'zip': 'ZIP', 'zinb': 'ZINB', 'zinb_re': 'ZINB + ZI RE'}
+
+# Record classes in count_model_results.json. Matched on the KEY SUFFIX, never
+# on membership of GAUSSIAN_REFERENCE -- that dict holds 2 keys while the
+# Gaussian gate now writes 6 (M1/M2/M3 x 2 outcomes, spec 6.1), and using it as
+# a filter would have let 4 Gaussian records fall through into the ladder
+# checks and KeyError on `cell`.
+def _is_gaussian_key(k):
+    return k.endswith('_gaussian')
+
+
+def _is_ladder_fit(k):
+    """A ladder fit: excludes the Gaussian gate records, the per-cell __meta
+    records, and the spec-5.5 __zisens sensitivity fits. __zisens is excluded
+    because (a) it is ALLOWED not to converge -- its non-convergence is the
+    reportable result -- and (b) it deliberately shares
+    (cell, model, family_tag, re_tier) with the intercept-only ZINB it is a
+    sensitivity to, so it must not enter the duplicate-identity or
+    degeneracy-count checks. It gets its own block instead."""
+    return not k.endswith(('_gaussian', '__meta', '__zisens'))
+
 
 def validate_ladder():
     import json
     import os
 
-    print("\n[3] Count-model ladder")
+    section('3', 'Count-model ladder')
     path = GEN + 'count_model_results.json'
     if not os.path.exists(path):
         check("count_model_results.json exists", False,
@@ -399,11 +639,14 @@ def validate_ladder():
     # can silently stand in for another.
     tier1_keys = [k for k in fits if any(k.startswith(c + '__') for c in CELLS)
                   and not k.endswith('__ri2') and not k.endswith('__meta')
-                  and not k.endswith('__altopt') and '__M3covid__' not in k]
+                  and not k.endswith('__altopt') and not k.endswith('__zisens')
+                  and '__M3covid__' not in k]
     tier2_keys = [k for k in fits if k.endswith('__ri2')]
     altopt_keys = [k for k in fits if k.endswith('__altopt')]
     meta_keys = [k for k in fits if k.endswith('__meta')]
     covid_keys = [k for k in fits if '__M3covid__' in k]
+    gaussian_keys = [k for k in fits if _is_gaussian_key(k)]
+    zisens_keys = [k for k in fits if k.endswith('__zisens')]
     check("78 tier-1 ladder fits (6 cells x 13: M1 full ladder + M3 full ladder + M2 winner)",
           len(tier1_keys) == 78, f"got {len(tier1_keys)}")
     check("17 tier-2 (1 | state) ladder fits (24 possible - 7 de-duplicated per R16)",
@@ -414,10 +657,18 @@ def validate_ladder():
           len(meta_keys) == 6, f"got {len(meta_keys)}")
     check("2 Task-6 COVID robustness (__M3covid__) fits (insp_2021, viol_cov_2021 only)",
           len(covid_keys) == 2, f"got {len(covid_keys)}")
-    check("111 total entries in count_model_results.json "
-          "(78 tier-1 + 17 tier-2 + 6 altopt + 6 meta + 2 Gaussian round-trip "
-          "+ 2 Task-6 COVID)",
-          len(fits) == 111, f"got {len(fits)}")
+    # 2026-08-22 review, item 5: the Gaussian gate is M1/M2/M3 x 2 outcomes.
+    check("6 Gaussian round-trip records (2 outcomes x M1/M2/M3, spec 6.1)",
+          len(gaussian_keys) == 6, f"got {sorted(gaussian_keys)}")
+    # 2026-08-22 review, item 2: spec 5.5's expanded-ZI sensitivity, one per
+    # cell, Model 3, rs tier.
+    check("6 spec-5.5 expanded-ZI sensitivity fits (__zisens), one per cell",
+          len(zisens_keys) == 6, f"got {sorted(zisens_keys)}")
+    check("121 total entries in count_model_results.json "
+          "(78 tier-1 + 17 tier-2 + 6 altopt + 6 meta + 6 Gaussian round-trip "
+          "+ 2 Task-6 COVID + 6 spec-5.5 expanded-ZI)",
+          len(fits) == 78 + 17 + 6 + 6 + 6 + 2 + 6 and len(fits) == 121,
+          f"got {len(fits)}")
 
     # R16: tier membership must be readable from `re_tier` alone -- mirrors
     # `tier_fit()` in the R script. Looks up the plain key first (valid if its
@@ -443,7 +694,7 @@ def validate_ladder():
         # (cell, model, family_tag='nbinom1', re_tier='rs') with the default-
         # optimizer fit by design -- that is the point of the diagnostic (same
         # spec, different optimizer), not an accidental duplicate.
-        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE or k.endswith('__altopt'):
+        if not _is_ladder_fit(k) or k.endswith('__altopt'):
             continue
         groups[(f.get('cell'), f.get('model'), f.get('family_tag'), f.get('re_tier'))].append(k)
     dup_groups = {ident: keys for ident, keys in groups.items() if len(keys) > 1}
@@ -504,6 +755,10 @@ def validate_ladder():
         check("2021 offset spec drops the 7 zero-inspection state-years",
               cov21['n_obs'] - off21['n_obs'] == 7,
               f"covariate n={cov21['n_obs']}, offset n={off21['n_obs']}")
+    else:
+        skip("2021 offset/covariate N gap",
+             "one of viol_off_2021__M1__nbinom2 / viol_cov_2021__M1__nbinom2 "
+             "is absent from the JSON")
     off19 = fits.get('viol_off_2019__M1__nbinom2')
     cov19 = fits.get('viol_cov_2019__M1__nbinom2')
     if off19 and cov19:
@@ -511,6 +766,10 @@ def validate_ladder():
               "(of 15 total; the other 8 already had missing violations)",
               cov19['n_obs'] - off19['n_obs'] == 7,
               f"covariate n={cov19['n_obs']}, offset n={off19['n_obs']}")
+    else:
+        skip("2019 offset/covariate N gap",
+             "one of viol_off_2019__M1__nbinom2 / viol_cov_2019__M1__nbinom2 "
+             "is absent from the JSON")
 
     # I-3: an UNGATED check that every ladder/tier-2/altopt fit converged --
     # the exp_zeros check just below is explicitly gated on `if converged`, so
@@ -519,7 +778,7 @@ def validate_ladder():
     # failure mode recurring in a new place. Excludes meta (not a fit) and the
     # Gaussian round-trip (already checked in [2b]).
     for k, f in fits.items():
-        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+        if not _is_ladder_fit(k):
             continue
         check(f"{k}: converged", f.get('converged') is True,
               f"message: {f.get('message')!r}")
@@ -543,6 +802,9 @@ def validate_ladder():
         if p and nb2 and p.get('converged') and nb2.get('converged'):
             check(f"{cell} M3: NB2 beats Poisson on AIC",
                   nb2['aic'] < p['aic'], f"poisson {p['aic']:.1f}, nb2 {nb2['aic']:.1f}")
+        else:
+            skip(f"{cell} M3: NB2-beats-Poisson AIC comparison",
+                 "one of the two M3 fits is absent or did not converge")
 
     # Ruling 2: the brief's original last check compared exp_zeros to itself,
     # which can never fail. Replaced with a real assertion: for every converged
@@ -550,7 +812,7 @@ def validate_ladder():
     # i.e. the zero-inflation simulation in fit_spec() ran and produced a
     # sensible count, not NaN/Inf/negative from a degenerate simulate() call.
     for k, f in fits.items():
-        if k in GAUSSIAN_REFERENCE or k.endswith('__meta'):
+        if _is_gaussian_key(k) or k.endswith('__meta'):
             continue
         if f.get('converged'):
             ez = f.get('exp_zeros')
@@ -569,7 +831,7 @@ def validate_ladder():
     # filters on `eligible_for_selection` and `re_tier == 'rs'`, or simply
     # reads `is_winner_rs` directly.
     for k, f in fits.items():
-        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+        if _is_gaussian_key(k) or k.endswith('__meta'):
             continue
         for field in ('is_winner_rs', 'is_winner_ri', 'eligible_for_selection'):
             check(f"{k}: {field} present and boolean", isinstance(f.get(field), bool))
@@ -770,6 +1032,268 @@ def validate_ladder():
             check(f"{cell}: clean_rs_competitor_within_10_aic is a family tag or None",
                   comp is None or comp in FAMILY_TAGS, f"got {comp!r}")
 
+    # ------------------------------------------------------------
+    # CRITICAL (2026-08-22 review): the ZERO-INFLATION random-effect variance.
+    # Before this it was never extracted, so every structural-zero probability
+    # reported for a ZI-RE fit was plogis(b0) -- the MEDIAN-state value -- given
+    # as if it were marginal. Two things are asserted: the variance is PRESENT
+    # wherever the fit's own zi_formula carries `(1 | state)`, and it is ABSENT
+    # wherever it does not (so a stale value can never be paired with a
+    # formula that has no such term). Both directions are checked because the
+    # `zinb_re` rung DOWNGRADES to a plain `~1` ZI when the random intercept
+    # cannot be estimated, and a downgraded fit has no variance to report.
+    # ------------------------------------------------------------
+    zi_re_fits = {k: f for k, f in fits.items()
+                  if _is_ladder_fit(k)
+                  and '(1|state)' in (f.get('zi_formula') or '').replace(' ', '')}
+    check("there ARE fits whose zi_formula carries a state random intercept, "
+          "so the checks below are not vacuous", len(zi_re_fits) >= 1,
+          f"got {len(zi_re_fits)}")
+    for k, f in sorted(zi_re_fits.items()):
+        v = f.get('sigma2_zi_u0')
+        check(f"{k}: zi_formula has (1 | state), so sigma2_zi_u0 is present, "
+              f"finite and > 0", v is not None and np.isfinite(v) and v > 0,
+              f"got {v!r} (zi_formula={f.get('zi_formula')!r})")
+        sd = f.get('sigma_zi_u0')
+        check(f"{k}: sigma_zi_u0 is the square root of sigma2_zi_u0",
+              sd is not None and np.isfinite(sd)
+              and abs(sd - np.sqrt(v)) <= 1e-9 * max(1.0, abs(sd)),
+              f"sd={sd!r}, sqrt(var)={np.sqrt(v) if v else None!r}")
+    for k, f in sorted(fits.items()):
+        if not _is_ladder_fit(k):
+            continue
+        if '(1|state)' in (f.get('zi_formula') or '').replace(' ', ''):
+            continue
+        check(f"{k}: no state random intercept in the ZI formula, so "
+              f"sigma2_zi_u0 is null", f.get('sigma2_zi_u0') is None,
+              f"got {f.get('sigma2_zi_u0')!r} for "
+              f"zi_formula={f.get('zi_formula')!r}")
+    # The consequence, asserted rather than described: for at least one fit the
+    # marginal and median-state probabilities must differ by a LOT, or the whole
+    # Critical item would have been cosmetic.
+    from scipy.special import expit as _expit
+    worst = None
+    for k, f in sorted(zi_re_fits.items()):
+        zi = (f.get('zi') or {}).get('(Intercept)')
+        v = f.get('sigma2_zi_u0')
+        if not zi or v is None or not np.isfinite(v) or v <= 0:
+            continue
+        x, w = np.polynomial.hermite.hermgauss(64)
+        marg = float(np.sum(w * _expit(zi['b'] + np.sqrt(2 * v) * x))
+                     / np.sqrt(np.pi))
+        med = float(_expit(zi['b']))
+        ratio = marg / med if med > 0 else np.inf
+        if worst is None or ratio > worst[1]:
+            worst = (k, ratio, med, marg)
+    check("at least one ZI-RE fit has a marginal structural-zero probability "
+          "more than 10x its median-state value -- i.e. the distinction the "
+          "Critical fix introduced is materially large, not decorative",
+          worst is not None and worst[1] > 10,
+          f"worst: {worst!r}")
+
+    # ------------------------------------------------------------
+    # Minor (2026-08-22 review): mark_zi_degenerate()'s loglik criterion is only
+    # a boundary-degeneracy test when the counterpart is at the SAME re_tier.
+    # It now requires that, and records whether it was applicable. Assert the
+    # inapplicable cases are EXACTLY the cross-tier ones -- otherwise the
+    # criterion could be silently inert somewhere else.
+    # ------------------------------------------------------------
+    cross_tier, same_tier = [], []
+    for k, f in sorted(fits.items()):
+        if not _is_ladder_fit(k) or 'zi_loglik_criterion_applied' not in f:
+            continue
+        ct = f.get('zi_counterpart_tier')
+        if ct is None:
+            check(f"{k}: no non-ZI counterpart, so the loglik criterion is "
+                  f"recorded as not applied",
+                  f.get('zi_loglik_criterion_applied') is False,
+                  f"got {f.get('zi_loglik_criterion_applied')!r}")
+        elif ct != f.get('re_tier'):
+            cross_tier.append(k)
+            check(f"{k}: counterpart is at tier {ct!r} but this fit is at "
+                  f"{f.get('re_tier')!r}, so the loglik criterion is NOT applied",
+                  f.get('zi_loglik_criterion_applied') is False,
+                  f"got {f.get('zi_loglik_criterion_applied')!r}")
+        else:
+            same_tier.append(k)
+            check(f"{k}: counterpart is at the same tier, so the loglik "
+                  f"criterion IS applied",
+                  f.get('zi_loglik_criterion_applied') is True,
+                  f"got {f.get('zi_loglik_criterion_applied')!r}")
+    check("the loglik-degeneracy criterion is inert for exactly the cross-tier "
+          "comparisons, and there ARE some (so the tier guard is not vacuous)",
+          len(cross_tier) >= 1 and len(same_tier) >= 1,
+          f"cross-tier {len(cross_tier)}, same-tier {len(same_tier)}")
+    check("no fit was flagged degenerate BY the loglik criterion while that "
+          "criterion was inapplicable",
+          not [k for k, f in fits.items()
+               if _is_ladder_fit(k)
+               and 'loglik matches' in (f.get('zi_degenerate_reason') or '')
+               and f.get('zi_loglik_criterion_applied') is not True],
+          "a 'loglik matches' reason exists on a fit where the criterion was "
+          "recorded as not applied")
+
+    # ------------------------------------------------------------
+    # Minor: pick_winner()'s empty-candidate-set fallback must be RECORDED, not
+    # silent. No cell should be defaulting today; the field exists so that if
+    # one ever does, it is visible instead of looking like an AIC result.
+    # ------------------------------------------------------------
+    for cell in CELLS:
+        meta = fits.get(f'{cell}__meta') or {}
+        for fld in ('winner_defaulted_rs_m1', 'winner_defaulted_rs_m3'):
+            check(f"{cell}: {fld} present and boolean",
+                  isinstance(meta.get(fld), bool), f"got {meta.get(fld)!r}")
+            check(f"{cell}: {fld} is False (the winner came from an AIC "
+                  f"comparison, not pick_winner's fallback)",
+                  meta.get(fld) is False, f"got {meta.get(fld)!r}")
+        for fld in ('n_eligible_rs_m1', 'n_eligible_rs_m3'):
+            n = meta.get(fld)
+            check(f"{cell}: {fld} records how many candidates the winner beat, "
+                  f"and it is >= 1", isinstance(n, int) and n >= 1,
+                  f"got {n!r}")
+
+    # ------------------------------------------------------------
+    # Minor: the manufactured-zero note is DERIVED, not typed. Re-derive the
+    # affected state-years here, independently of the R script, and require the
+    # note to name exactly them.
+    # ------------------------------------------------------------
+    _estab = pd.read_csv('/Users/keshavgoel/Research/data/raw/'
+                         'establishments_data.csv', index_col=0)
+    _estab.index = _estab.index.str.strip()
+    _man = set()
+    for _yr in range(2011, 2020):
+        _e = pd.to_numeric(_estab[f'inspections-epa-{_yr}'], errors='coerce')
+        _st = pd.to_numeric(_estab[f'inspections-state-{_yr}'], errors='coerce')
+        for _s in _estab.index[_e.isna() | _st.isna()]:
+            _man.add(f'{_s}-{_yr}')
+    check("the raw establishments CSV really does have missing inspection "
+          "components (otherwise the manufactured-zero derivation is vacuous)",
+          len(_man) >= 1, f"got {len(_man)}")
+    for cell in CELLS:
+        meta = fits.get(f'{cell}__meta') or {}
+        flag = meta.get('zeros_partly_manufactured')
+        note = meta.get('zeros_partly_manufactured_note') or ''
+        check(f"{cell}: zeros_partly_manufactured present and boolean",
+              isinstance(flag, bool))
+        check(f"{cell}: the note is non-empty exactly when the flag is set",
+              bool(note) == bool(flag), f"flag={flag!r}, note={note!r}")
+        if not flag:
+            continue
+        named = set(re_findall_state_years(note))
+        check(f"{cell}: every state-year the manufactured-zero note names is "
+              f"independently confirmed missing a raw inspection component",
+              named and named <= _man,
+              f"named {sorted(named)!r}; not confirmed: "
+              f"{sorted(named - _man)!r}")
+    check("zeros_partly_manufactured is True for exactly the cells whose DV is "
+          "the fillna(0)-summed establishments-view inspections column",
+          {c for c in CELLS
+           if fits.get(f'{c}__meta', {}).get('zeros_partly_manufactured')}
+          == {'insp_2019'},
+          f"got {[c for c in CELLS if fits.get(f'{c}__meta', {}).get('zeros_partly_manufactured')]!r}")
+
+    # ------------------------------------------------------------
+    # Item 2 (2026-08-22 review): spec 5.5's expanded-ZI sensitivity fits. They
+    # are ALLOWED to fail -- the point is that the outcome is recorded either
+    # way -- so what is asserted is that all six exist, carry the expanded ZI
+    # formula, sit at the mandated tier, and are never selection-eligible.
+    # ------------------------------------------------------------
+    ZI_EXPANDED_TERMS = ('SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z')
+    for cell in CELLS:
+        k = f'{cell}__M3__zinb__zisens'
+        f = fits.get(k)
+        check(f"{k} exists (spec 5.5 was attempted for this cell)",
+              f is not None)
+        if f is None:
+            continue
+        zf = (f.get('zi_formula') or '').replace(' ', '')
+        check(f"{k}: the ZI formula carries all three expanded terms",
+              all(t in zf for t in ZI_EXPANDED_TERMS), f"got {zf!r}")
+        check(f"{k}: no state random intercept in the expanded ZI formula "
+              f"(the sensitivity varies the ZI PREDICTORS, not its RE)",
+              '(1|state)' not in zf, f"got {zf!r}")
+        check(f"{k}: fit at the mandated (1 + time | state) tier only",
+              f.get('re_tier') == 'rs' and f.get('re_used') == '(1 + time | state)',
+              f"re_tier={f.get('re_tier')!r}, re_used={f.get('re_used')!r}")
+        check(f"{k}: never a family-selection competitor",
+              f.get('eligible_for_selection') is False
+              and f.get('is_winner_rs') is False
+              and f.get('is_winner_ri') is False)
+        check(f"{k}: converged is recorded as a boolean (its VALUE is the "
+              f"reportable result, either way)",
+              isinstance(f.get('converged'), bool), f"got {f.get('converged')!r}")
+    n_zs_conv = sum(1 for cell in CELLS
+                    if (fits.get(f'{cell}__M3__zinb__zisens') or {})
+                    .get('converged') is True)
+    check(f"the expanded-ZI sensitivity has a mixed outcome across cells "
+          f"({n_zs_conv} of {len(CELLS)} converged), so the memo must report "
+          f"both sides rather than one blanket verdict",
+          0 <= n_zs_conv <= len(CELLS), f"got {n_zs_conv}")
+
+    # ------------------------------------------------------------
+    # Item 3 (2026-08-22 review): `sigma2_e` must be null for every
+    # non-Gaussian fit -- glmmTMB's sigma() is a dispersion parameter there,
+    # not a residual SD, and its square was being exported under a name that
+    # reads as residual variance. `dispersion` and `family_name` carry it
+    # instead. The Gaussian gate still needs the SQUARE, so it keeps sigma2_e.
+    # ------------------------------------------------------------
+    for k, f in sorted(fits.items()):
+        if _is_gaussian_key(k):
+            check(f"{k}: Gaussian fit keeps sigma2_e (the round-trip gate "
+                  f"compares it to MixedLM.scale)",
+                  f.get('sigma2_e') is not None
+                  and np.isfinite(f['sigma2_e']) and f['sigma2_e'] > 0,
+                  f"got {f.get('sigma2_e')!r}")
+            check(f"{k}: sigma2_e is the square of dispersion (the residual SD)",
+                  f.get('dispersion') is not None
+                  and abs(f['sigma2_e'] - f['dispersion'] ** 2)
+                  <= 1e-9 * max(1.0, f['sigma2_e']),
+                  f"sigma2_e={f.get('sigma2_e')!r}, "
+                  f"dispersion={f.get('dispersion')!r}")
+            check(f"{k}: family_name == 'gaussian'",
+                  f.get('family_name') == 'gaussian', f"got {f.get('family_name')!r}")
+            continue
+        if k.endswith('__meta') or not f.get('converged'):
+            continue
+        check(f"{k}: sigma2_e is null for a non-Gaussian family",
+              f.get('sigma2_e') is None, f"got {f.get('sigma2_e')!r}")
+        check(f"{k}: dispersion and family_name are both present",
+              f.get('dispersion') is not None and f.get('family_name'),
+              f"dispersion={f.get('dispersion')!r}, "
+              f"family_name={f.get('family_name')!r}")
+    check("no ladder fit reports a non-null sigma2_e (a count family has no "
+          "residual variance, and dispersion-squared is not one)",
+          not [k for k, f in fits.items()
+               if _is_ladder_fit(k) and f.get('sigma2_e') is not None],
+          "found a non-null sigma2_e on a count fit")
+
+    # ------------------------------------------------------------
+    # Minor: COVID_CELLS excluded viol_off_2021 with no stated reason. Every
+    # 2021 cell must now carry the flag AND, where it is False, a reason.
+    # ------------------------------------------------------------
+    for cell in CELLS:
+        meta = fits.get(f'{cell}__meta') or {}
+        check(f"{cell}: covid_variant_fit present and boolean",
+              isinstance(meta.get('covid_variant_fit'), bool),
+              f"got {meta.get('covid_variant_fit')!r}")
+        if meta.get('covid_variant_fit'):
+            check(f"{cell}: a COVID variant fit really exists in the JSON",
+                  any(k.startswith(f'{cell}__M3covid__') for k in fits))
+            check(f"{cell}: no skip reason is recorded for a cell that WAS fit",
+                  not (meta.get('covid_not_fit_reason') or ''))
+        else:
+            check(f"{cell}: a reason is recorded for NOT fitting a COVID variant",
+                  len(meta.get('covid_not_fit_reason') or '') > 40,
+                  f"got {meta.get('covid_not_fit_reason')!r}")
+            check(f"{cell}: and no COVID variant fit exists",
+                  not any(k.startswith(f'{cell}__M3covid__') for k in fits))
+    _cov21_skipped = [c for c in CELLS
+                      if c.endswith('_2021')
+                      and not (fits.get(f'{c}__meta') or {}).get('covid_variant_fit')]
+    check("exactly one 2021 cell has no COVID variant, and it is viol_off_2021 "
+          "(so the memo's derived sentence has something to report)",
+          _cov21_skipped == ['viol_off_2021'], f"got {_cov21_skipped!r}")
+
     # Known, verified fact about this run: exactly the two 2021-window
     # violations cells needed a tier-2 refit -- their zinb/zinb_re rungs fell
     # back to (1 | state) while poisson/nbinom1/nbinom2/zip converged at
@@ -806,7 +1330,7 @@ def validate_ladder():
     # this run finds 11 by the exact specified thresholds -- reported as a
     # verified discrepancy, not silently reconciled to match.
     for k, f in fits.items():
-        if k.endswith('__meta') or k in GAUSSIAN_REFERENCE:
+        if _is_gaussian_key(k) or k.endswith('__meta'):
             continue
         if f.get('family_tag') in ('zip', 'zinb', 'zinb_re'):
             check(f"{k}: zi_degenerate present and boolean",
@@ -816,11 +1340,13 @@ def validate_ladder():
         else:
             check(f"{k}: zi_degenerate is False for a non-ZI family",
                   f.get('zi_degenerate') is False)
+    # Counted over LADDER fits only: 2 of the 6 spec-5.5 __zisens sensitivity
+    # fits are also ZI-degenerate, and folding them in here would silently
+    # change a number the memo reports from the ladder alone.
     n_degenerate = sum(1 for k, f in fits.items()
-                       if not k.endswith('__meta') and k not in GAUSSIAN_REFERENCE
-                       and f.get('zi_degenerate') is True)
-    check("exactly 11 fits are marked zi_degenerate under the specified thresholds",
-          n_degenerate == 11, f"got {n_degenerate}")
+                       if _is_ladder_fit(k) and f.get('zi_degenerate') is True)
+    check("exactly 11 LADDER fits are marked zi_degenerate under the specified "
+          "thresholds", n_degenerate == 11, f"got {n_degenerate}")
 
     # Ruling R19: the optimizer-stability diagnostic must have run for both
     # affected cells and its sigma2_u1 comparison fields must be present.
@@ -874,10 +1400,10 @@ def validate_selection():
     import json
     import os
 
-    print("\n[4] Selection table and reporting")
+    section('4', 'Selection table and reporting')
     try:
-        from report_count_models import (BOUNDARY_KIND, TIER_ORDER,
-                                          coefficient_table,
+        from report_count_models import (BOUNDARY_KIND, FAMILY_LABEL,
+                                          TIER_ORDER, coefficient_table,
                                           nearest_clean_competitor,
                                           selection_table, winner_summary)
     except ImportError as e:
@@ -1159,9 +1685,70 @@ def validate_selection():
     # against a hardcoded value inside this validator. Recompute the
     # headline NB1-vs-NB2 sigma2_u1 disagreement FROM THE TABLE (not from
     # raw JSON) to prove it is actually derivable from the artifact.
-    for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e'):
-        check(f"selection_table carries {col} on every row",
-              col in tab.columns and tab[col].notna().any())
+    # Item 3 (2026-08-22 review): `dispersion` (with `family_name`) replaces
+    # `sigma2_e` as the readable per-fit scale parameter, and `sigma2_e` must
+    # now be entirely null on this table -- every row in it is a count fit.
+    # Two populations, and the distinction matters: an earlier version tested
+    # `.notna().any()` under a label that said "on every row", so nulling a
+    # single row's `dispersion` produced 0 FAILs. Columns that must be
+    # populated EVERYWHERE are now tested with `.all()`; the ones that are
+    # legitimately partial (sigma2_u1/sigma_u01 are absent at the (1 | state)
+    # tier; the ZI columns only exist for ZI families) are tested with
+    # `.any()` plus an explicit expected count.
+    for col in ('sigma2_u0', 'dispersion', 'family_name', 'zi_formula',
+                'zi_has_state_re'):
+        check(f"selection_table carries {col} on EVERY row",
+              col in tab.columns and bool(tab[col].notna().all()),
+              f"missing on {int(tab[col].isna().sum()) if col in tab.columns else 'n/a'} rows")
+    for col, why in (('sigma2_u1', 'absent at the (1 | state) tier'),
+                     ('sigma_u01', 'absent at the (1 | state) tier'),
+                     ('sigma2_zi_u0', 'only for a ZI formula with (1 | state)'),
+                     ('sigma_zi_u0', 'only for a ZI formula with (1 | state)'),
+                     ('zi_intercept', 'only for a zero-inflated family'),
+                     ('zi_pr_median_state', 'only for a zero-inflated family'),
+                     ('zi_pr_marginal', 'only for a zero-inflated family')):
+        check(f"selection_table carries {col} on the rows that have one ({why})",
+              col in tab.columns and bool(tab[col].notna().any()))
+    # And the partial columns' populations must be exactly the rows that
+    # structurally have them, not merely "some rows".
+    check("sigma2_u1/sigma_u01 are populated exactly on the rs-tier rows",
+          bool((tab['sigma2_u1'].notna() == (tab['re_tier'] == 'rs')).all())
+          and bool((tab['sigma_u01'].notna() == (tab['re_tier'] == 'rs')).all()),
+          f"sigma2_u1 non-null {int(tab['sigma2_u1'].notna().sum())}, "
+          f"rs rows {int((tab['re_tier'] == 'rs').sum())}")
+    check("sigma2_zi_u0 is populated exactly on the rows whose zi_formula "
+          "carries a state random intercept",
+          bool((tab['sigma2_zi_u0'].notna() == tab['zi_has_state_re']).all()),
+          f"variance non-null {int(tab['sigma2_zi_u0'].notna().sum())}, "
+          f"zi_has_state_re {int(tab['zi_has_state_re'].sum())}")
+    check("the ZI probability columns are populated exactly on the rows that "
+          "have a ZI intercept",
+          bool((tab['zi_pr_median_state'].notna()
+                == tab['zi_intercept'].notna()).all())
+          and bool((tab['zi_pr_marginal'].notna()
+                    == tab['zi_intercept'].notna()).all()))
+    check("selection_table still carries a sigma2_e column, and it is entirely "
+          "null -- no count fit has a residual variance, and dispersion^2 is "
+          "not one",
+          'sigma2_e' in tab.columns and bool(tab['sigma2_e'].isna().all()),
+          f"non-null sigma2_e rows: {int(tab['sigma2_e'].notna().sum())}")
+    # And the two structural-zero probabilities must be EQUAL exactly where
+    # there is no ZI random intercept, and differ where there is one.
+    _no_re = tab[tab['zi_intercept'].notna() & ~tab['zi_has_state_re']]
+    check("median-state and marginal structural-zero probabilities coincide "
+          "for every ZI fit with no ZI random intercept",
+          not _no_re.empty and bool(np.allclose(_no_re['zi_pr_median_state'],
+                                                _no_re['zi_pr_marginal'],
+                                                rtol=1e-12)),
+          f"n={len(_no_re)}")
+    _with_re = tab[tab['zi_has_state_re']]
+    check("and they DIFFER for every ZI fit that has one (otherwise the "
+          "marginal column would be a copy of the median-state column)",
+          not _with_re.empty
+          and bool((_with_re['zi_pr_marginal']
+                    > _with_re['zi_pr_median_state'] * 1.05).all()),
+          f"n={len(_with_re)}; ratios="
+          f"{(_with_re['zi_pr_marginal'] / _with_re['zi_pr_median_state']).tolist()!r}")
     win = tab[(tab['cell'] == 'viol_cov_2021') & (tab['model'] == 'M3') &
               (tab['re_tier'] == 'rs') & (tab['family'] == 'nbinom1')]
     comp = tab[(tab['cell'] == 'viol_cov_2021') & (tab['model'] == 'M3') &
@@ -1171,6 +1758,9 @@ def validate_selection():
         check_close("viol_cov_2021: nbinom2/nbinom1 sigma2_u1 ratio ~= 3.2x, "
                     "DERIVED FROM selection_table() (not the raw JSON)",
                     ratio, 3.2140498391688106, 1e-6, kind='rel')
+    else:
+        skip("viol_cov_2021 nbinom2/nbinom1 sigma2_u1 ratio",
+             f"winner row empty={win.empty}, competitor row empty={comp.empty}")
 
     # -- Requirement 2: exp_zeros never travels without its Monte-Carlo SE.
     with_exp = tab[tab['exp_zeros'].notna()]
@@ -1253,6 +1843,15 @@ def validate_selection():
         written_ws = pd.read_csv(ws_path)
         check("count_model_winner_summary.csv has one row per winner (8)",
               len(written_ws) == len(ws), f"got {len(written_ws)}")
+        for col in ('sigma2_zi_u0', 'dispersion', 'family_name',
+                    'zi_pr_median_state', 'zi_pr_marginal'):
+            check(f"count_model_winner_summary.csv carries column {col!r} "
+                  f"(the ZI variance and the dispersion semantics must reach "
+                  f"the CSV, not only the memo)", col in written_ws.columns)
+    else:
+        skip("count_model_winner_summary.csv round-trip",
+             f"{ws_path} does not exist yet -- run "
+             f"scripts/report_count_models.py")
 
     # -- ZI block in coefficient_table(): a zero-inflated winner's
     # zero-inflation-part coefficients must reach the table, clearly
@@ -1332,6 +1931,11 @@ def validate_selection():
     # if it were comparable to (or better-ranked than) the primary
     # (1+time|state) tier above it.
     check("TIER_ORDER sorts 'rs' strictly before 'ri'", TIER_ORDER['rs'] < TIER_ORDER['ri'])
+    check("this validator's local copy of FAMILY_LABEL matches the reporter's "
+          "(it is used to parse display labels back out of the memo, so a "
+          "drift would silently break that parse rather than fail it)",
+          FAMILY_LABEL_LOCAL == FAMILY_LABEL,
+          f"local {FAMILY_LABEL_LOCAL!r} vs reporter {FAMILY_LABEL!r}")
 
     # -- Overdispersion sanity, read from the winner (rs) tier only: NB2
     # should predict zero counts closer to a 1:1 ratio than Poisson.
@@ -1343,6 +1947,9 @@ def validate_selection():
         check("NB2 predicts zeros closer to 1:1 than Poisson (2021 violations, rs tier)",
               abs(float(n.iloc[0]) - 1) < abs(float(p.iloc[0]) - 1),
               f"poisson ratio {float(p.iloc[0]):.2f}, nb2 ratio {float(n.iloc[0]):.2f}")
+    else:
+        skip("NB2-vs-Poisson zero-ratio comparison (2021 violations, rs tier)",
+             f"poisson rows={len(p)}, nbinom2 rows={len(n)}")
 
     # -- If the CSVs have already been written (i.e. report_count_models.py
     # has run), they must carry exactly the same rows as their in-memory
@@ -1356,8 +1963,16 @@ def validate_selection():
               "post-Task-6)",
               len(written) == len(tab), f"got {len(written)}")
         for col in ('sigma2_u0', 'sigma2_u1', 'sigma_u01', 'sigma2_e', 'exp_zeros_se',
-                    'lrt_boundary', 'lrt_boundary_kind', 'is_m3_winner'):
+                    'lrt_boundary', 'lrt_boundary_kind', 'is_m3_winner',
+                    'sigma2_zi_u0', 'sigma_zi_u0', 'zi_has_state_re',
+                    'zi_pr_median_state', 'zi_pr_marginal', 'dispersion',
+                    'family_name'):
             check(f"count_model_comparison.csv carries column {col!r}", col in written.columns)
+        check("count_model_comparison.csv (read from disk): sigma2_e is null on "
+              "every row, so nobody can lift dispersion^2 out of it as a "
+              "variance component",
+              bool(written['sigma2_e'].isna().all()),
+              f"non-null: {int(written['sigma2_e'].notna().sum())}")
 
         # -- ROUND-TRIP assertion (not an in-memory one): `lrt_vs` is '' in
         # memory but becomes NaN through to_csv/read_csv, and `NaN != ''` is
@@ -1377,6 +1992,13 @@ def validate_selection():
                   "(selects all rows, not 30) -- proves why lrt_p.notna() "
                   "must be used instead, not merely asserts it once",
                   n_naive_from_file == len(written), f"got {n_naive_from_file}")
+        else:
+            skip("count_model_comparison.csv naive-selector round-trip",
+                 "the CSV has no lrt_vs column")
+    else:
+        skip("count_model_comparison.csv round-trip block",
+             f"{out_path} does not exist yet -- run "
+             f"scripts/report_count_models.py")
 
 
 # ============================================================
@@ -1438,7 +2060,7 @@ def validate_zi_crosscheck():
     from statsmodels.discrete.count_model import ZeroInflatedNegativeBinomialP
     from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-    print("\n[5] Independent ZI cross-check (statsmodels, state fixed effects)")
+    section('5', 'Independent ZI cross-check (statsmodels, state fixed effects)')
     print("        NOTE: this cross-check drops the 6 M3_ADD covariates and "
           "retains AK/RI/VT (N=539/533), unlike glmmTMB M3's N=506/501 -- "
           "see this function's docstring for why the N's legitimately differ.")
@@ -1651,7 +2273,7 @@ def validate_covid():
     """
     import json
 
-    print("\n[6] COVID robustness (2021 window)")
+    section('6', 'COVID robustness (2021 window)')
     fits = json.load(open(GEN + 'count_model_results.json'))
     covid = {k: v for k, v in fits.items() if '__M3covid__' in k}
     check("COVID variants fit for both 2021 cells (insp_2021, viol_cov_2021)",
@@ -1769,6 +2391,17 @@ MEMO_REQUIRED_PHRASES = (
     # QUALIFIED form is required by a regex further down instead.
     'The same result against NB2, not just NB1',
     'fallback tier',
+    # 2026-08-22 review, Critical: the median/marginal distinction must be
+    # stated, and the quadrature named, not just the numbers printed.
+    'Gauss-Hermite',
+    'median state',
+    'marginal',
+    # Item 3: the dispersion/residual-variance semantics.
+    'dispersion parameter',
+    # Item 2: spec 5.5's expanded-ZI sensitivity, reported either way.
+    'expanded zero-inflation component',
+    # Item 6: the missing zero-inflated NB1 rung.
+    'no zero-inflated NB1 rung',
 )
 
 # Framings that were WRONG in earlier drafts and must never reappear. Each is a
@@ -1810,6 +2443,12 @@ MEMO_FORBIDDEN_PATTERNS = (
     # ZIP beats plain Poisson 12-1. It is beaten wherever tested AGAINST A
     # NEGATIVE BINOMIAL, and the qualifier is the whole point.
     r'beaten wherever it is tested(?!\s+against)',
+    # 2026-08-22 review, Critical: plogis(b0) is the MEDIAN-state structural-
+    # zero probability. Any phrasing that presents it as the panel's, or as
+    # "the" probability for a model carrying a ZI random intercept, is the
+    # defect this round fixed.
+    r'[Ii]mplied structural-zero probability \|',
+    r'structural-zero probability is (?:negligible|effectively zero)',
     # NOTE on the "about as economically" explanation: it is NOT listed here,
     # because the memo legitimately QUOTES it in order to refute it. A blanket
     # forbidden pattern would fire on the refutation. The property that actually
@@ -1888,7 +2527,7 @@ def validate_memo():
     import os
     import re
 
-    print("\n[7] Memo")
+    section('7', 'Memo')
     if not os.path.exists(MEMO_PATH):
         check("docs/count_models_zinb.md exists", False,
               "run: python3 scripts/report_count_models.py")
@@ -2907,6 +3546,367 @@ def validate_memo():
           f"random-intercept refit count ({aud['n_random_intercept']}) that the "
           f"artifact records", f"All {aud['n_random_intercept']} " in text)
 
+    # ---- (l) CRITICAL 2026-08-22: median vs marginal structural-zero ----
+    # The memo must report BOTH probabilities for any fit with a genuine ZI
+    # random intercept, and the MARGINAL one must be recomputable from the
+    # stored variance. Both are asserted: the labelled pair in situ, and the
+    # quadrature recomputed here independently of report_count_models'.
+    from report_count_models import (coefficient_table as _coefficient_table,
+                                     fit_record, stars as _stars,
+                                     zi_formula_has_state_re, zi_probabilities)
+
+    def _independent_marginal(b0, s2, n=200001):
+        """Marginal E[plogis(b0 + u)] by a DIFFERENT rule from the reporter's
+        64-node Gauss-Hermite: a fine trapezoid over +/- 12 SD of the fitted
+        normal, renormalised by the same grid's density integral. Agreement
+        between two unrelated quadratures is the check; reusing the reporter's
+        own function would only prove it is self-consistent. The grid has to be
+        fine -- with a logit-scale SD near 6 the integrand is a step-like
+        sigmoid ~50 units wide, and a coarse grid disagrees with the exact
+        value at the 1e-3 level (which is how this check was first tuned)."""
+        sd = np.sqrt(s2)
+        u = np.linspace(-12 * sd, 12 * sd, n)
+        dens = np.exp(-0.5 * (u / sd) ** 2) / (sd * np.sqrt(2 * np.pi))
+        f = 1.0 / (1.0 + np.exp(-(b0 + u)))
+        return float(np.trapz(f * dens, u) / np.trapz(dens, u))
+
+    n_zi_re_reported = 0
+    for cell in CELLS:
+        m = fits[f'{cell}__meta']
+        for tier, mkey in (('rs', 'm3_winner_rs'), ('ri', 'm3_winner_ri')):
+            fam = m.get(mkey)
+            if not fam:
+                continue
+            rec = fit_record(fits, cell, 'M3', fam, tier)
+            if rec is None or not zi_formula_has_state_re(rec):
+                continue
+            b0 = (rec.get('zi') or {}).get('(Intercept)', {}).get('b')
+            s2 = rec.get('sigma2_zi_u0')
+            check(f"{cell} ({tier}): the selected ZI-RE fit carries both a ZI "
+                  f"intercept and a ZI random-effect variance",
+                  b0 is not None and s2 is not None and s2 > 0,
+                  f"b0={b0!r}, sigma2_zi_u0={s2!r}")
+            if b0 is None or not s2:
+                continue
+            pr = zi_probabilities(b0, s2)
+            indep = _independent_marginal(b0, s2)
+            check_close(f"{cell} ({tier}): the reporter's Gauss-Hermite marginal "
+                        f"structural-zero probability matches an independent "
+                        f"trapezoid quadrature", pr['marginal'], indep,
+                        1e-5, kind='rel')
+            # A factor of 1.2 is the threshold at which the two numbers stop
+            # rounding to the same reported value at 4 decimals for these
+            # magnitudes; the much larger insp_2019 gap is asserted separately
+            # in [3] ("more than 10x"), so this check is about EVERY ZI-RE fit
+            # rather than only the dramatic one.
+            check(f"{cell} ({tier}): the marginal and median-state "
+                  f"probabilities are materially different "
+                  f"({pr['median']:.6f} vs {pr['marginal']:.6f}), so reporting "
+                  f"only one of them would misstate the estimand",
+                  pr['marginal'] > 1.2 * pr['median'],
+                  f"ratio {pr['ratio']:.2f}")
+            # POSITIONAL, whole-row, and independent of the reporter's own
+            # formatting code. A "does this pair of numbers appear anywhere"
+            # check is NOT enough here: Model 2 and Model 3 of insp_2019 round
+            # to the SAME displayed median/marginal strings, so perturbing the
+            # Model-3 column alone left the substring satisfied by the Model-2
+            # column (measured -- it gave 0 FAILs). The whole `ZI: Intercept`
+            # row is reconstructed for every model column that block carries
+            # and required verbatim, so any single column can be perturbed.
+            ct = _coefficient_table(fits, cell, tier)
+            zi_row = ct[ct['term'] == 'ZI: Intercept'] if not ct.empty else ct
+            check(f"{cell} ({tier}): the memo's coefficient block has a "
+                  f"'ZI: Intercept' row to check", len(zi_row) == 1,
+                  f"got {len(zi_row)} rows")
+            if len(zi_row) == 1:
+                r0 = zi_row.iloc[0]
+                cols = [mm for mm in ('M1', 'M2', 'M3')
+                        if f'{mm}_b' in ct.columns and pd.notna(r0.get(f'{mm}_b'))]
+                parts = []
+                for mm in cols:
+                    prm = zi_probabilities(float(r0[f'{mm}_b']),
+                                           r0.get(f'{mm}_zi_sigma2'))
+                    st = _stars(r0.get(f'{mm}_p'))
+                    if prm['has_re']:
+                        parts.append(
+                            f"{r0[f'{mm}_b']:.3f}{st} ({r0[f'{mm}_se']:.3f}), "
+                            f"Pr(structural 0) median state "
+                            f"{prm['median']:.6f}, marginal "
+                            f"{prm['marginal']:.4f} "
+                            f"(ZI RE SD {prm['sd']:.3f})")
+                    else:
+                        parts.append(
+                            f"{r0[f'{mm}_b']:.3f}{st} ({r0[f'{mm}_se']:.3f}), "
+                            f"Pr(structural 0) {prm['median']:.4f}")
+                want_row = "| ZI: Intercept | " + " | ".join(parts) + " |"
+                check(f"{cell} ({tier}): the memo's whole ZI-intercept row -- "
+                      f"every column's b, SE, stars, median-state AND marginal "
+                      f"probability, and ZI RE SD -- is reproduced from the "
+                      f"artifacts verbatim",
+                      want_row in text, f"expected line:\n{want_row}")
+            n_zi_re_reported += 1
+    check("at least one selected model carries a ZI random intercept, so the "
+          "median/marginal checks above are not vacuous",
+          n_zi_re_reported >= 1, f"got {n_zi_re_reported}")
+
+    # The ZI-evidence table itself, parsed positionally, with the marginal
+    # column recomputed from the variance the same table prints.
+    ZI_EV_HEADER = ('Cell', 'ZI family', 'RE tier', 'ZI intercept', 'SE', 'p',
+                    'ZI RE variance', 'ZI RE SD (logit)',
+                    'Pr(structural 0), median state',
+                    'Pr(structural 0), marginal',
+                    'Share of states above 0.10')
+    zi_ev_rows = []
+    for blk_hdr, blk_rows in _memo_tables(text):
+        if tuple(blk_hdr) == ZI_EV_HEADER:
+            zi_ev_rows.extend(blk_rows)
+    check(f"memo's zero-inflation evidence table carries the median AND "
+          f"marginal probability columns and has rows to check",
+          len(zi_ev_rows) >= 6, f"got {len(zi_ev_rows)} rows")
+    n_zi_ev_checked = 0
+    for row in zi_ev_rows:
+        b0 = _first_number(row[3])
+        med, marg = _first_number(row[8]), _first_number(row[9])
+        if row[6] == '--':
+            check(f"ZI-evidence row {row[0]}/{row[1]}/{row[2]}: with no ZI "
+                  f"random-effect variance the two probabilities are printed "
+                  f"as the same number",
+                  med is not None and marg is not None
+                  and abs(med - marg) <= 1e-9 * max(1.0, abs(med)),
+                  f"median {med!r}, marginal {marg!r}")
+        else:
+            s2 = _first_number(row[6])
+            want = _independent_marginal(b0, s2)
+            check_close(f"ZI-evidence row {row[0]}/{row[1]}/{row[2]}: the "
+                        f"printed marginal probability is recomputable from "
+                        f"the ZI variance printed beside it", marg, want,
+                        2e-3, kind='rel')
+            check_close(f"ZI-evidence row {row[0]}/{row[1]}/{row[2]}: the "
+                        f"printed SD is sqrt of the printed variance",
+                        _first_number(row[7]), float(np.sqrt(s2)), 2e-3,
+                        kind='rel')
+        n_zi_ev_checked += 1
+    check("every row of the memo's zero-inflation evidence table was actually "
+          "re-derived", n_zi_ev_checked == len(zi_ev_rows) and n_zi_ev_checked > 0,
+          f"got {n_zi_ev_checked}")
+    # The attribution paragraph, PER CELL AND TIER, with its own derived
+    # numbers. A "does the memo say 'variance' somewhere" check is too weak:
+    # there are three such paragraphs and perturbing one left the others
+    # satisfying the pattern (measured -- 0 FAILs).
+    n_attrib = 0
+    for cell in CELLS:
+        m = fits[f'{cell}__meta']
+        for tier, mkey in (('rs', 'm3_winner_rs'), ('ri', 'm3_winner_ri')):
+            if m.get(mkey) != 'zinb_re':
+                continue
+            re_fit = fit_record(fits, cell, 'M3', 'zinb_re', tier)
+            pl_fit = fit_record(fits, cell, 'M3', 'zinb', tier)
+            check(f"{cell} ({tier}): both the ZINB+ZI-RE winner and its plain "
+                  f"ZINB counterpart exist at this tier, so the margin is "
+                  f"attributable", re_fit is not None and pl_fit is not None)
+            if re_fit is None or pl_fit is None:
+                continue
+            margin = pl_fit['aic'] - re_fit['aic']
+            ddf = re_fit['df'] - pl_fit['df']
+            s2 = re_fit['sigma2_zi_u0']
+            b_re = re_fit['zi']['(Intercept)']['b']
+            b_pl = pl_fit['zi']['(Intercept)']['b']
+            check(f"{cell} ({tier}): the ZI random intercept really is the only "
+                  f"extra parameter ZINB+ZI-RE spends over plain ZINB",
+                  ddf == 1, f"df delta {ddf}")
+            check(f"{cell} ({tier}): memo attributes the {margin:.2f} AIC margin "
+                  f"to the ZI random-intercept VARIANCE ({s2:.4f}), naming both "
+                  f"ZI intercepts ({b_pl:+.4f} plain vs {b_re:+.4f}), all in "
+                  f"situ",
+                  re.search(
+                      rf"in `{cell}` at the "
+                      rf"{re.escape(_re_label_local(tier))} tier\.\*\* "
+                      rf"ZINB \+ ZI RE beats plain ZINB there by "
+                      rf"{margin:.2f} AIC on {ddf} extra parameter\. That "
+                      rf"parameter is the zero-inflation random-intercept "
+                      rf"\*\*variance\*\* \({s2:.4f}, SD "
+                      rf"{np.sqrt(s2):.4f} on the logit scale\), not the "
+                      rf"zero-inflation intercept: the intercept exists in "
+                      rf"plain ZINB too and the two are {b_pl:+.4f} \(plain\) "
+                      rf"against {b_re:+.4f}", text) is not None,
+                  f"margin={margin:.2f}, ddf={ddf}, s2={s2:.4f}, "
+                  f"b_pl={b_pl:+.4f}, b_re={b_re:+.4f}")
+            n_attrib += 1
+    check("at least one ZINB+ZI-RE selection exists, so the attribution checks "
+          "above are not vacuous", n_attrib >= 1, f"got {n_attrib}")
+
+    # ---- (m) item 2: the expanded-ZI sensitivity, reported either way ----
+    zs = {c: fits.get(f'{c}__M3__zinb__zisens') for c in CELLS}
+    n_conv = sum(1 for f in zs.values() if f and f.get('converged'))
+    n_bad = sum(1 for f in zs.values() if f and not f.get('converged'))
+    check(f"memo reports the expanded-ZI sensitivity outcome for every cell "
+          f"({n_conv} converged, {n_bad} did not)",
+          re.search(rf"It converges in\s+{n_conv} of the {len(CELLS)} cells "
+                    rf"and fails in\s+{n_bad}", text) is not None,
+          f"n_conv={n_conv}, n_bad={n_bad}")
+    for c, f in sorted(zs.items()):
+        if f is None:
+            continue
+        want = 'converged' if f.get('converged') else 'did NOT converge'
+        check(f"memo states `{c}`'s expanded-ZI outcome as {want!r}",
+              f"`{c}` {want}" in text, f"expected '`{c}` {want}' in the memo")
+    check("the expanded-ZI sensitivity has a mixed outcome, so the memo cannot "
+          "be satisfied by one blanket verdict (this makes the per-cell checks "
+          "above non-vacuous)", n_conv >= 1 and n_bad >= 1,
+          f"{n_conv} converged, {n_bad} failed")
+    check("memo says plainly that the non-converged expanded-ZI estimates are "
+          "not reported",
+          'Their estimates are not reported anywhere in this memo' in text)
+
+    # ---- (n) item 4: the offset drops only zero-violation rows ----
+    od = ev.get('offset_drop') or {}
+    check("the memo-evidence artifact carries the offset-drop derivation for "
+          "both windows", set(od) == {'2019', '2021'}, f"got {sorted(od)}")
+    for w, o in sorted(od.items()):
+        check(f"{w}: the offset-drop derivation is self-consistent (the three "
+              f"violation categories partition the dropped rows)",
+              o['n_dropped_zero_violation'] + o['n_dropped_violations_positive']
+              + o['n_dropped_violations_missing'] == o['n_dropped'],
+              f"{o!r}")
+        check(f"memo names every state-year the {w} offset drops",
+              all(sy in text for sy in o['dropped_state_years']),
+              f"missing: {[sy for sy in o['dropped_state_years'] if sy not in text]!r}")
+        if o['all_dropped_are_zero_violation']:
+            check(f"memo states, for {w}, that EVERY dropped row is also a "
+                  f"zero-violation row ({o['n_dropped_zero_violation']} of "
+                  f"{o['n_dropped']})",
+                  re.search(rf"\*\*every one of them is also a zero-violation "
+                            rf"row\*\*\s+\({o['n_dropped_zero_violation']} of "
+                            rf"{o['n_dropped']}", text) is not None,
+                  f"{o['n_dropped_zero_violation']}/{o['n_dropped']}")
+        else:
+            check(f"memo states, for {w}, that the all-zero property does NOT "
+                  f"hold ({o['n_dropped_zero_violation']} of {o['n_dropped']})",
+                  re.search(rf"{o['n_dropped_zero_violation']} of "
+                            rf"{o['n_dropped']} are\s+zero-violation rows -- so "
+                            rf"the property does \*\*not\*\* hold here",
+                            text) is not None,
+                  f"{o['n_dropped_zero_violation']}/{o['n_dropped']}")
+    check("the 2021 offset drop really is all-zero-violation (this is the "
+          "substantive finding item 4 asked for, and it must be measured, not "
+          "assumed)", od['2021']['all_dropped_are_zero_violation'],
+          f"{od['2021']!r}")
+
+    # ---- (o) item 6: the missing zero-inflated NB1 rung ----
+    nb1_cells = sorted({c for c in CELLS
+                        if fits[f'{c}__meta'].get('m3_winner_rs') == 'nbinom1'})
+    mv21 = ev['panel']['2021']['violations']['mv_slope']
+    check("NB1 really is the Model-3 rs selection somewhere, so the missing "
+          "ZI-NB1 rung is a live gap rather than a hypothetical",
+          len(nb1_cells) >= 1, f"got {nb1_cells!r}")
+    check(f"memo names the missing zero-inflated NB1 rung as a gap in the "
+          f"candidate set, with the {mv21:.2f} mean-variance exponent in situ",
+          re.search(rf"at an exponent of {mv21:.2f} -- NB1-like, not "
+                    rf"NB2-like", text) is not None,
+          f"mv_slope={mv21:.4f}")
+    check("memo names every cell whose Model-3 rs selection is NB1 in that "
+          "caveat", all(f"`{c}`" in text for c in nb1_cells),
+          f"nb1_cells={nb1_cells!r}")
+    check("and it cites the ZINB-vs-NB2 comparison as what does isolate the "
+          "inflation effect",
+          'is what isolates the effect of inflation' in text)
+    check("no zero-inflated NB1 rung exists in the ladder, which is what makes "
+          "that caveat true",
+          not [k for k, f in fits.items()
+               if _is_ladder_fit(k) and f.get('family_name') == 'nbinom1'
+               and (f.get('zi_formula') or '~0').strip() not in ('~0',)],
+          "found a zero-inflated NB1 fit")
+
+    # ---- (p) minor: the 2021 cell with no COVID variant, named with a reason
+    cov_skipped = [c for c in CELLS
+                   if c.endswith('_2021')
+                   and not fits[f'{c}__meta'].get('covid_variant_fit')]
+    check("there IS a 2021 cell without a COVID variant, so the memo's "
+          "disclosure is necessary", len(cov_skipped) >= 1,
+          f"got {cov_skipped!r}")
+    for c in cov_skipped:
+        reason = fits[f'{c}__meta'].get('covid_not_fit_reason') or ''
+        check(f"memo discloses that `{c}` has no COVID variant, quoting the "
+              f"recorded reason", f"`{c}`: {reason}" in text,
+              f"reason={reason[:60]!r}")
+
+    # ---- (q) item 5: the 2019 parity arm of the published audit ----
+    aud19 = ev.get('published_audit_2019')
+    check("the memo-evidence artifact carries a 2019 arm of the published-fit "
+          "audit (item 5: the guard covered only 2021)", aud19 is not None)
+    if aud19 is None:
+        skip("2019 published-audit parity assertions", "no 2019 arm in the "
+             "evidence artifact")
+    else:
+        check("the 2019 arm checks itself against "
+              "paper_table_params_corrected.json",
+              aud19['published_json'] == 'paper_table_params_corrected.json',
+              f"got {aud19['published_json']!r}")
+        bad19 = [f"{r['outcome']}/{r['model']}/{r['re_basis']}"
+                 for r in aud19['fits'] if not r['reproduces_published']]
+        check("all 2019 published-spec refits reproduce "
+              "paper_table_params_corrected.json's sigma^2_u0 -- the parity "
+              "guard item 5 asked for", not bad19, f"drifted: {bad19!r}")
+        check(f"memo reports the 2019 parity result "
+              f"({aud19['n_reproduces_published']} of {aud19['n_fits']})",
+              re.search(rf"All {aud19['n_reproduces_published']} of\s+"
+                        rf"{aud19['n_fits']} refits reproduce their published "
+                        rf"sigma\^2_u0", text) is not None,
+              f"{aud19['n_reproduces_published']}/{aud19['n_fits']}")
+        check("all 2019 random-intercept-only refits converge, so the earlier "
+              "window's variance block is not implicated either",
+              aud19['n_random_intercept_nonconverged'] == 0,
+              f"got {aud19['n_random_intercept_nonconverged']}")
+        if aud19['n_nonconverged']:
+            check(f"memo reports the 2019 arm's own gradient failures "
+                  f"({aud19['n_nonconverged']} of {aud19['n_fits']})",
+                  re.search(rf"That arm also finds {aud19['n_nonconverged']} of"
+                            rf"\s+{aud19['n_fits']} 2011-2019 fits carrying a "
+                            rf"gradient failure", text) is not None,
+                  f"n_nonconverged={aud19['n_nonconverged']}")
+        else:
+            check("memo records that no 2019 fit raised a gradient failure",
+                  'No 2011-2019 fit raised a gradient failure' in text)
+
+    # ---- (r) item 3: dispersion semantics reach the memo ----
+    check("memo's variance section states that glmmTMB's sigma() is a "
+          "dispersion parameter for a count family and NOT a residual SD",
+          re.search(r'\*\*not a residual SD for a count family\*\*', text)
+          is not None
+          and 'its square is not a variance component' in text)
+    # The bullets must cover the families the VARIANCE TABLE actually prints,
+    # which is the selected models only -- not every family in the ladder. The
+    # set is parsed back out of that table and mapped to glmmTMB family names,
+    # so a family appearing there without a semantics bullet fails.
+    VAR_HEADER = ('Cell', 'Model', 'Family', 'RE structure', 'sigma^2_u0',
+                  'sigma^2_u1', 'sigma_u01', 'sigma^2_zi_u0', 'Dispersion',
+                  'N obs', 'States')
+    _label_to_tag = {v: k for k, v in FAMILY_LABEL_LOCAL.items()}
+    _tag_to_family = {'poisson': 'poisson', 'zip': 'poisson',
+                      'nbinom1': 'nbinom1', 'nbinom2': 'nbinom2',
+                      'zinb': 'nbinom2', 'zinb_re': 'nbinom2'}
+    var_rows = []
+    for blk_hdr, blk_rows in _memo_tables(text):
+        if tuple(blk_hdr) == VAR_HEADER:
+            var_rows.extend(blk_rows)
+    check("memo's variance table carries the sigma^2_zi_u0 and Dispersion "
+          "columns and has rows", len(var_rows) >= 6,
+          f"got {len(var_rows)} rows")
+    fam_names = sorted({_tag_to_family[_label_to_tag[r[2]]] for r in var_rows
+                        if r[2] in _label_to_tag})
+    check(f"memo spells out the per-family meaning of `Dispersion` for every "
+          f"family its own variance table prints ({fam_names!r})",
+          fam_names and all(f"- `{fn}`:" in text for fn in fam_names),
+          f"missing bullets for "
+          f"{[fn for fn in fam_names if f'- `{fn}`:' not in text]!r}")
+    # And the ZI-variance column must be filled exactly where the printed
+    # family carries a ZI random intercept, '--' otherwise.
+    n_var_zi = sum(1 for r in var_rows if r[7] != '--')
+    check("the variance table's sigma^2_zi_u0 column is populated for some "
+          "rows and '--' for others (a column that were all '--' would mean the "
+          "ZI variance never reached the memo)",
+          0 < n_var_zi < len(var_rows), f"populated {n_var_zi} of {len(var_rows)}")
+
     # ---- (k) I4: the reporting script must not fit models any more ----
     rep_src = open('/Users/keshavgoel/Research/scripts/report_count_models.py').read()
     # Test the property that matters -- the reporting script must not IMPORT an
@@ -2961,11 +3961,35 @@ def main():
     validate_panels()
     validate_reference_convergence()
     validate_gaussian_roundtrip()
+    validate_gaussian_buildup()
     validate_ladder()
     validate_selection()
     validate_zi_crosscheck()
     validate_covid()
     validate_memo()
+
+    # Item 7 of the 2026-08-22 review: a per-section breakdown, not a single
+    # headline count. Section [3] is ~105 fit records x ~9 assertions and would
+    # otherwise dominate any aggregate a reader quotes, and a SKIP column makes
+    # a bypassed block visible instead of silently shrinking the total.
+    print()
+    print("=" * 78)
+    print("CHECK BREAKDOWN BY SECTION (do not quote the total on its own: "
+          "section [3] is")
+    print("a per-record loop over the whole ladder and is not a set of "
+          "independent findings)")
+    print("=" * 78)
+    print(f"{'section':62}{'PASS':>6}{'FAIL':>6}{'SKIP':>6}")
+    for sec in SECTIONS:
+        print(f"{sec['name'][:62]:62}{sec['pass']:>6}{sec['fail']:>6}"
+              f"{sec['skip']:>6}")
+    tp = sum(x['pass'] for x in SECTIONS)
+    tf = sum(x['fail'] for x in SECTIONS)
+    tsk = sum(x['skip'] for x in SECTIONS)
+    print(f"{'TOTAL (see the caveat above)':62}{tp:>6}{tf:>6}{tsk:>6}")
+    if tsk:
+        print(f"\n{tsk} gated block(s) were SKIPPED -- each is printed above "
+              f"with its reason.")
     print()
     if FAILURES:
         print(f"{len(FAILURES)} CHECK(S) FAILED:")
