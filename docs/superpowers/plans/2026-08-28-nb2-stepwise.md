@@ -1259,7 +1259,10 @@ MEMO_FORBIDDEN_PATTERNS = [
     'nbinom2 was selected', 'NB2 was selected', 'NB2 is selected',
     'NB2 won', 'NB2 wins', 'nbinom2 wins',
     'best-fitting family', 'the preferred family',
-    # A count family has no residual variance.
+    # A count family has no residual variance. NOTE: this also forbids the memo
+    # from DENYING one in those exact words, which is why the memo writes the
+    # denial hyphenated ('no residual-variance column'). That is deliberate --
+    # do not "fix" the memo by removing the hyphen.
     'residual variance', 'sigma2_e', 'sigma^2_e',
     # The Delta comes from the RI series, never from the random-slope fits.
     'reduction in the random-slope',
@@ -1282,14 +1285,15 @@ def validate_memo():
     required = [
         ('AIC penalty is stated', 'editorial'),
         ('link-scale caveat present', 'link scale'),
-        ('sample-change caveat present', 'AK'),
+        ('sample-change caveat present', 'AK, RI and VT'),
         ('ICC formula printed', 'Nakagawa'),
         ('COVID section present', 'COVID'),
         ('cross-check section present', 'state fixed effects'),
     ]
+    # Case-SENSITIVE and exact-phrase. A case-folded 'AK' matched 'make',
+    # 'take' and 'breaks', so that row passed no matter what the memo said.
     for label, needle in required:
-        check(f'memo: {label}', needle.lower() in memo.lower(),
-              f'{needle!r} not found')
+        check(f'memo: {label}', needle in memo, f'{needle!r} not found')
     # The ZI-NB tallies belong to the other memo; restating them here would
     # invite a reader to think this arm re-tested zero-inflation. It did not.
     check('memo does not restate the ZI-NB tallies',
@@ -1465,7 +1469,7 @@ def write_memo(res, cc, vt, ct):
       'hypothetical -- it produced a -12.5% figure in the log-LMM violations '
       'table.')
     A('')
-    A('All of these are on the log **link** scale. Their magnitudes are not '
+    A('All of these are on the log link scale. Their magnitudes are not '
       'comparable to the sigma^2_u0 values in published Tables 2 and 3, though '
       'a percentage reduction is.')
     A('')
