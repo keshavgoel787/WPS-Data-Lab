@@ -155,6 +155,52 @@ for (cell_name in names(CELLS)) {
   }
 }
 
+# ------------------------------------------------------------
+# Random-intercept-only series, for the Delta sigma^2_u0 block ONLY.
+#
+# Coefficients are never read off these fits. They exist because in the
+# random-slope spec sigma^2_u0 is the between-state variance AT THE 2017
+# CENTERING YEAR and trades off against sigma^2_u1 / sigma_u01, so its
+# reduction is not bounded to [0, 1] and can go negative -- which is exactly
+# what produced the -12.5% artifact in the log-LMM violations table. The
+# published tables read Delta from random-intercept-only refits (the
+# `delta_pct_ri` convention) and so does this arm.
+# ------------------------------------------------------------
+for (cell_name in names(CELLS)) {
+  cl <- CELLS[[cell_name]]
+  for (model in c("M1", "M2", "M3")) {
+    key <- sprintf("%s__%s__nbinom2__ri", cell_name, model)
+    cat("fitting", key, "(variance-reduction series)\n")
+    res <- fit_nb2(panel, cl$dv, rhs_for(cl, model), RI_RE)
+    res$cell <- cell_name; res$model <- model
+    res$outcome <- cl$outcome; res$re_tier <- "ri"
+    if (!isTRUE(res$converged)) {
+      cat(sprintf("WARNING [%s]: did NOT converge; message=%s\n", key,
+                  res$message %||% ""))
+    }
+    results[[key]] <- res
+  }
+
+  # The matched baseline: Model 1's FORMULA on Model 3's ROWS. M1 keeps all 49
+  # states; M2/M3 lose AK/RI/VT, which have no BLS pesticide-applicator series.
+  # Without this fit, a Model-1-baseline reduction would silently mix "the
+  # covariates explained variance" with "three high-variance states left the
+  # sample". Both percentages are reported precisely because neither alone
+  # tells the truth.
+  key <- sprintf("%s__M1matched__nbinom2__ri", cell_name)
+  cat("fitting", key, "(Model-1 baseline on the Model-3 sample)\n")
+  res <- fit_nb2(panel, cl$dv, rhs_for(cl, "M1"), RI_RE,
+                 sample_rhs = rhs_for(cl, "M3"))
+  res$cell <- cell_name; res$model <- "M1matched"
+  res$outcome <- cl$outcome; res$re_tier <- "ri"
+  res$sample_model <- "M3"
+  if (!isTRUE(res$converged)) {
+    cat(sprintf("WARNING [%s]: did NOT converge; message=%s\n", key,
+                res$message %||% ""))
+  }
+  results[[key]] <- res
+}
+
 write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
 cat("\nWrote", length(results), "entries to", out_json, "\n")
 n_bad <- sum(vapply(results, function(r) !isTRUE(r$converged), logical(1)))

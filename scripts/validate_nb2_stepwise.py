@@ -221,12 +221,74 @@ def validate_overlap():
                             co['b'], 1e-4, 'abs')
 
 
+# ============================================================
+# [4] RANDOM-INTERCEPT SERIES for the Delta sigma^2_u0 block
+# ============================================================
+def validate_ri_series():
+    section('4', 'Random-intercept-only series and the matched Model-1 baseline')
+    res = load_results()
+    for cell in CELLS:
+        for model in MODELS:
+            key = f'{cell}__{model}__nbinom2__ri'
+            r = res.get(key)
+            if r is None:
+                check(f'{key} present', False, 'missing from results JSON')
+                continue
+            check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+            check(f'{key} re_tier == ri', r['re_tier'] == 'ri', f"got {r['re_tier']}")
+            check(f'{key} re_used == (1 | state)', r['re_used'] == '(1 | state)',
+                  f"got {r['re_used']}")
+            check(f'{key} has NO random slope', r['sigma2_u1'] is None,
+                  f"got sigma2_u1 = {r['sigma2_u1']!r}")
+            check(f'{key} has no intercept-slope covariance',
+                  r['sigma_u01'] is None, f"got {r['sigma_u01']!r}")
+            check(f'{key} sigma2_u0 finite and > 0',
+                  r['sigma2_u0'] is not None and r['sigma2_u0'] > 0)
+            # The RI refit must sit on EXACTLY the rows of its random-slope
+            # twin. If it did not, the reduction would confound a variance
+            # change with a sample change.
+            rs = res.get(f'{cell}__{model}__nbinom2__rs', {})
+            check(f'{key} shares its random-slope twin\'s sample',
+                  r['n_obs'] == rs.get('n_obs') and r['n_states'] == rs.get('n_states'),
+                  f"ri {r['n_obs']}/{r['n_states']} vs rs "
+                  f"{rs.get('n_obs')}/{rs.get('n_states')}")
+            # Same fixed effects as the twin -- only the RE structure differs.
+            check(f'{key} fixed effects identical to its random-slope twin',
+                  set(r['cond']) == set(rs.get('cond', {})),
+                  f"ri {sorted(r['cond'])} vs rs {sorted(rs.get('cond', {}))}")
+    # The matched baseline: Model 1's formula on Model 3's rows.
+    for cell in CELLS:
+        key = f'{cell}__M1matched__nbinom2__ri'
+        r = res.get(key)
+        if r is None:
+            check(f'{key} present', False, 'missing from results JSON')
+            continue
+        m1 = res.get(f'{cell}__M1__nbinom2__ri', {})
+        m3 = res.get(f'{cell}__M3__nbinom2__ri', {})
+        check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+        check(f'{key} re_tier == ri', r['re_tier'] == 'ri')
+        check(f'{key} records the sample it was matched to',
+              r.get('sample_model') == 'M3', f"got {r.get('sample_model')!r}")
+        check(f'{key} carries Model 1 fixed effects, not Model 3',
+              set(r['cond']) == set(m1.get('cond', {})),
+              f"got {sorted(r['cond'])}")
+        check(f'{key} sits on the Model-3 sample',
+              r['n_obs'] == m3.get('n_obs') and r['n_states'] == m3.get('n_states'),
+              f"matched {r['n_obs']}/{r['n_states']} vs M3 "
+              f"{m3.get('n_obs')}/{m3.get('n_states')}")
+        check(f'{key} is a genuinely different sample from the M1 RI fit',
+              r['n_obs'] != m1.get('n_obs'),
+              'matched baseline equals the unmatched one -- the two Delta '
+              'percentages would then be identical and one of them is wrong')
+
+
 def main():
     skip_pre = '--skip-precondition' in sys.argv
     validate_precondition(skip_pre)
     validate_panel()
     validate_fits()
     validate_overlap()
+    validate_ri_series()
 
     print()
     print("=" * 78)
