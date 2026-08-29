@@ -1356,12 +1356,25 @@ def stars(p):
     return '***' if p < .001 else '**' if p < .01 else '*' if p < .05 else ''
 
 
+# The frozen ladder's COVID variants, for the family comparison in the memo.
+# They sit under DIFFERENT families -- that is the whole point of re-deriving
+# them under NB2 -- so the key carries the family it was fit under.
+COVID_LADDER_REF = {
+    'insp_2021': ('insp_2021__M3covid__zinb', 'ZINB'),
+    'viol_cov_2021': ('viol_cov_2021__M3covid__nbinom1', 'NB1'),
+}
+
+
 def load():
     with open(GEN + 'nb2_stepwise_results.json') as fh:
         res = json.load(fh)
     with open(GEN + 'nb2_stepwise_crosscheck.json') as fh:
         cc = json.load(fh)
-    return res, cc
+    # READ-ONLY. The ladder artifact is frozen; it is opened here only to quote
+    # its COVID variants' coefficients beside ours.
+    with open(GEN + 'count_model_results.json') as fh:
+        ladder = json.load(fh)
+    return res, cc, ladder
 
 
 def icc_nb2(s2_u0, theta, mu):
@@ -1421,7 +1434,7 @@ def md_table(df, cols, fmt):
     return '\n'.join([head, rule] + body)
 
 
-def write_memo(res, cc, vt, ct):
+def write_memo(res, cc, ladder, vt, ct):
     L = []
     A = L.append
     A('# NB2-Only Stepwise Count Models, 2011-2021')
@@ -1578,6 +1591,42 @@ def write_memo(res, cc, vt, ct):
           ' | '.join(f"{m3[t]['p']:.3g} -> {cv[t]['p']:.3g}"
                      for t in ('time', 'time2', 'time3')) + ' |')
     A('')
+    # Ruling R6. The frozen ladder's COVID variants sit under DIFFERENT
+    # families (ZINB for inspections, NB1 for violations), and the comparison
+    # splits three ways. Reported as three distinct facts, each derived from
+    # the two JSONs rather than asserted, because CLAUDE.md currently records
+    # the NB1 coefficient as though it were general.
+    A('**How this compares to the ladder\'s own COVID variants, which sit '
+      'under different families.** Three separate things are true and they '
+      'must not be merged:')
+    A('')
+    for cell, outcome in CELLS.items():
+        old_key, old_fam = COVID_LADDER_REF[cell]
+        o_cv = ladder[old_key]['cond']
+        o_m3 = ladder[old_key.replace('M3covid', 'M3')]['cond']
+        n_cv = res[f'{cell}__M3covid__nbinom2__rs']['cond']
+        n_m3 = res[f'{cell}__M3__nbinom2__rs']['cond']
+        A(f'- **{outcome}, the indicator itself:** {old_fam} gives '
+          f'b = {o_cv["covid"]["b"]:+.4f} (p = {o_cv["covid"]["p"]:.3g}); NB2 '
+          f'gives b = {n_cv["covid"]["b"]:+.4f} '
+          f'(p = {n_cv["covid"]["p"]:.3g}).')
+        A(f'- **{outcome}, the time trend under the indicator:** `time2` moves '
+          f'{o_m3["time2"]["p"]:.3g} -> {o_cv["time2"]["p"]:.3g} under '
+          f'{old_fam}, and {n_m3["time2"]["p"]:.3g} -> '
+          f'{n_cv["time2"]["p"]:.3g} under NB2.')
+        A(f'- **{outcome}, before COVID enters at all:** the two families '
+          f'already disagree on Model 3\'s own time trend -- `time` '
+          f'p = {o_m3["time"]["p"]:.3g} under {old_fam} against '
+          f'{n_m3["time"]["p"]:.3g} under NB2, and `time2` '
+          f'{o_m3["time2"]["p"]:.3g} against {n_m3["time2"]["p"]:.3g}. That '
+          f'gap is a property of the family choice, not of the pandemic.')
+    A('')
+    A('The practical consequence for the violations column: the COVID '
+      'coefficient recorded elsewhere in this project is an NB1 estimate and '
+      'does not carry over to NB2, while the qualitative caution it supports '
+      '-- that `time2` stops being significant once the indicator enters -- '
+      'does carry over. Cite the number with its family attached.')
+    A('')
     A('## Cross-software check')
     A('')
     A('`statsmodels` has no multilevel negative binomial, so the independent '
@@ -1632,7 +1681,7 @@ def write_memo(res, cc, vt, ct):
 
 
 def main():
-    res, cc = load()
+    res, cc, ladder = load()
     vt = variance_table(res)
     ct = coefficient_table(res)
     vt.to_csv(GEN + 'nb2_stepwise_variance.csv', index=False)
@@ -1640,7 +1689,7 @@ def main():
     print(vt.to_string(index=False))
     print()
     print(ct.to_string(index=False))
-    write_memo(res, cc, vt, ct)
+    write_memo(res, cc, ladder, vt, ct)
     print(f"\nWrote {GEN}nb2_stepwise_variance.csv, "
           f"{GEN}nb2_stepwise_coefficients.csv, {DOCS}nb2_stepwise_models.md")
 
