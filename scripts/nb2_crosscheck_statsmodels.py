@@ -188,6 +188,7 @@ def main():
 
     with open(GEN + 'nb2_stepwise_crosscheck.json', 'w') as fh:
         json.dump(out, fh, indent=1)
+        fh.write('\n')
     print(f"\nWrote {GEN}nb2_stepwise_crosscheck.json")
     print("\nNOTE: ratios are reported, not thresholded. State fixed effects are "
           "not\nstate random effects -- the estimates differ by more than "

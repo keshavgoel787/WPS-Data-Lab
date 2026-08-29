@@ -133,6 +133,12 @@ def validate_fits():
                 continue
             r = res[key]
             check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+            if not r.get('converged'):
+                # M5: a failed fit lands in the R error branch carrying only
+                # 'converged'/'message' -- none of the fields the rest of this
+                # block indexes directly. Report the failure and move on
+                # instead of crashing the whole validator run on a KeyError.
+                continue
             check(f'{key} positive-definite Hessian', bool(r['pd_hess']))
             check(f'{key} conv_code == 0', r['conv_code'] == 0, f"got {r['conv_code']}")
             check(f'{key} re_tier == rs (no fallback)', r['re_tier'] == 'rs',
@@ -140,8 +146,6 @@ def validate_fits():
             check(f'{key} re_used == (1 + time | state)',
                   r['re_used'] == '(1 + time | state)', f"got {r['re_used']}")
             check(f'{key} family_name == nbinom2', r['family_name'] == 'nbinom2')
-            check(f'{key} sigma2_e is null (count family has no residual variance)',
-                  r['sigma2_e'] is None, f"got {r['sigma2_e']!r}")
             check(f'{key} dispersion (theta) finite and > 0',
                   r['dispersion'] is not None and r['dispersion'] > 0)
             check(f'{key} sigma2_u1 present (random slope was actually fit)',
@@ -173,7 +177,7 @@ def validate_fits():
             base = ['log_inspections'] + base
         for model, extra in (('M1', []), ('M2', m2_add), ('M3', m3_add)):
             r = res.get(f'{cell}__{model}__nbinom2__rs')
-            if r is None:
+            if r is None or not r.get('converged'):
                 continue
             want = {'(Intercept)'} | set(base) | set(extra)
             check(f'{cell} {model}: fixed-effect terms exactly as specified',
@@ -181,6 +185,15 @@ def validate_fits():
                   f"extra {set(r['cond']) - want}, missing {want - set(r['cond'])}")
             check(f'{cell} {model}: no interaction terms',
                   not any(':' in t for t in r['cond']))
+    # M3: the sigma2_e-is-null invariant is a property of the FAMILY (a count
+    # model has no residual variance), so it applies to every record this arm
+    # writes -- not just the six __rs fits checked above. Extend it to all 16
+    # (the __ri series, both __M1matched fits, and both __M3covid fits).
+    for key, r in res.items():
+        if not r.get('converged'):
+            continue
+        check(f'{key} sigma2_e is null (count family has no residual variance)',
+              r.get('sigma2_e') is None, f"got {r.get('sigma2_e')!r}")
 
 
 # ============================================================
@@ -206,6 +219,11 @@ def validate_overlap():
             a, b = res.get(new_key), old[old_key]
             if a is None:
                 check(f'{new_key} present', False, 'missing from results JSON')
+                continue
+            if not a.get('converged'):
+                # M5: a failed fit has no 'n_obs'/'aic'/'cond' to compare.
+                check(f'{new_key}: converged (required for the overlap check)',
+                      False, a.get('message', ''))
                 continue
             check(f'{new_key}: n_obs matches ladder', a['n_obs'] == b['n_obs'],
                   f"{a['n_obs']} vs {b['n_obs']}")
@@ -235,6 +253,8 @@ def validate_ri_series():
                 check(f'{key} present', False, 'missing from results JSON')
                 continue
             check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+            if not r.get('converged'):
+                continue
             check(f'{key} re_tier == ri', r['re_tier'] == 'ri', f"got {r['re_tier']}")
             check(f'{key} re_used == (1 | state)', r['re_used'] == '(1 | state)',
                   f"got {r['re_used']}")
@@ -266,6 +286,8 @@ def validate_ri_series():
         m1 = res.get(f'{cell}__M1__nbinom2__ri', {})
         m3 = res.get(f'{cell}__M3__nbinom2__ri', {})
         check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+        if not r.get('converged'):
+            continue
         check(f'{key} re_tier == ri', r['re_tier'] == 'ri')
         check(f'{key} records the sample it was matched to',
               r.get('sample_model') == 'M3', f"got {r.get('sample_model')!r}")
@@ -303,6 +325,8 @@ def validate_covid():
             continue
         m3 = res.get(f'{cell}__M3__nbinom2__rs', {})
         check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+        if not r.get('converged'):
+            continue
         check(f'{key} re_tier == rs', r['re_tier'] == 'rs')
         check(f'{key} carries a covid term', 'covid' in r['cond'])
         check(f'{key} is M3 + covid and nothing else',
@@ -319,8 +343,11 @@ def validate_covid():
     with open(GEN + 'count_model_results.json') as fh:
         old = json.load(fh)
     old_covid = [k for k in old if '__M3covid__' in k]
+    # M2: `all(...)` over an empty set is vacuously True -- if the frozen
+    # ladder ever had zero '__M3covid__' keys this check would pass having
+    # verified nothing. Require the set to be non-empty too.
     check('frozen ladder COVID variants are not nbinom2 (so a refit was needed)',
-          all(not k.endswith('__nbinom2') for k in old_covid),
+          bool(old_covid) and all(not k.endswith('__nbinom2') for k in old_covid),
           f'found {old_covid}')
 
 
@@ -406,6 +433,20 @@ def validate_crosscheck():
               'section proved nothing')
         print(f"    ({cell}: {n_tested}/{len(terms)} terms distinguishable from "
               f"zero in both fits; ratios reported in the memo, not asserted)")
+        # A2: nb2_stepwise_crosscheck.json snapshots 'b_tmb' at ITS OWN run
+        # time. If the R fits (and this reporter) were re-run without also
+        # re-running the crosscheck script, the memo would print stale
+        # glmmTMB coefficients next to fresh ones everywhere else, and
+        # nothing above (only n_obs is compared) would catch it. Assert the
+        # crosscheck's snapshot of each shared term's glmmTMB coefficient is
+        # EXACTLY the fresh M3 fit's own coefficient.
+        m3_fresh = load_results()[f'{cell}__M3__nbinom2__rs']
+        for t, v in terms.items():
+            check(f'{cell}: crosscheck b_tmb[{t}] matches the current M3 fit '
+                  f'exactly (snapshot staleness guard)',
+                  m3_fresh.get('converged') and v['b_tmb'] == m3_fresh['cond'][t]['b'],
+                  f"crosscheck b_tmb={v['b_tmb']!r}, current b="
+                  f"{m3_fresh.get('cond', {}).get(t, {}).get('b')!r}")
 
 
 # ============================================================
@@ -618,6 +659,42 @@ def validate_memo():
           '17-0' not in memo and '17–0' not in memo and '17 of 17' not in memo)
 
 
+# ============================================================
+# [10] COEFFICIENT TABLE: round-trip and IRR arithmetic
+# ============================================================
+# M6: nb2_stepwise_coefficients.csv and the memo's coefficient tables had no
+# validation at all, unlike the variance table's ~58 assertions. Every row
+# must trace back to the results JSON exactly, and IRR must be exp(b).
+def validate_coefficient_table():
+    section('10', "Coefficient table: round-trip from the results JSON, IRR arithmetic")
+    import math
+    import pandas as pd
+    try:
+        ct = pd.read_csv(GEN + 'nb2_stepwise_coefficients.csv')
+    except FileNotFoundError:
+        check('nb2_stepwise_coefficients.csv exists', False, 'not found')
+        return
+    res = load_results()
+    check('coefficient table is non-empty', len(ct) > 0, f'got {len(ct)} rows')
+    for _, row in ct.iterrows():
+        key = f"{row['cell']}__{row['model']}__nbinom2__rs"
+        tag = f"{key}[{row['term']}]"
+        r = res.get(key)
+        if r is None or not r.get('converged') or row['term'] not in r.get('cond', {}):
+            check(f'{tag}: source record present, converged and carries this term',
+                  False, 'missing/not converged/term absent')
+            continue
+        c = r['cond'][row['term']]
+        check_close(f'{tag}: b round-trips from the JSON', row['b'], c['b'],
+                    1e-9, 'abs')
+        check_close(f'{tag}: se round-trips from the JSON', row['se'], c['se'],
+                    1e-9, 'abs')
+        check_close(f'{tag}: p round-trips from the JSON', row['p'], c['p'],
+                    1e-9, 'abs')
+        check_close(f'{tag}: irr == exp(b)', row['irr'], math.exp(c['b']),
+                    1e-9, 'rel')
+
+
 def main():
     skip_pre = '--skip-precondition' in sys.argv
     validate_precondition(skip_pre)
@@ -630,6 +707,7 @@ def main():
     validate_variance_table()
     validate_frozen()
     validate_memo()
+    validate_coefficient_table()
 
     print()
     print("=" * 78)

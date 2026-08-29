@@ -1,15 +1,24 @@
 """
 Reads the NB2 stepwise artifacts and produces the tables and the memo.
 
-PURE ARTIFACT READER. It fits nothing. Every number it prints traces to
-data/generated/nb2_stepwise_results.json or nb2_stepwise_crosscheck.json.
+PURE ARTIFACT READER. It fits nothing. Every number it prints traces to one of
+three sources: data/generated/nb2_stepwise_results.json (the six substantive
+fits, the RI series, the M1matched baseline, the COVID refits),
+nb2_stepwise_crosscheck.json (the statsmodels cross-check), or -- for the AIC
+penalty comparison and the COVID-family comparison ONLY -- the frozen
+data/generated/count_model_results.json (the six-family ladder), opened
+read-only.
 
-This is the ONLY script in the arm that computes a derived statistic, so
-delta_pct_ri, delta_pct_ri_matched and icc_ri each have exactly one definition:
+This is the ONLY script in the arm that REPORTS delta_pct_ri,
+delta_pct_ri_matched and icc_ri, computed here as:
 
   delta_pct_ri         = 100 * (s2_u0_ri[M1]        - s2_u0_ri[m]) / s2_u0_ri[M1]
   delta_pct_ri_matched = 100 * (s2_u0_ri[M1matched] - s2_u0_ri[m]) / s2_u0_ri[M1matched]
   icc_ri               = s2 / (s2 + log(1 + 1/theta + 1/mu)),  all from the RI fit
+
+validate_nb2_stepwise.py [7] independently RE-DERIVES all three straight from
+the results JSON rather than importing these functions -- that is what makes
+[7] a non-circular cross-check, and it must stay that way.
 
 Spec: docs/superpowers/specs/2026-08-28-nb2-stepwise-design.md
 Run:  python3 scripts/report_nb2_stepwise.py
@@ -38,6 +47,12 @@ def stars(p):
 # The frozen ladder's COVID variants, for the family comparison in the memo.
 # They sit under DIFFERENT families -- that is the whole point of re-deriving
 # them under NB2 -- so the key carries the family it was fit under.
+# Display labels only (cosmetic) for the ladder's own family_name strings --
+# the family that wins each rung is still looked up from the ladder, not
+# hardcoded; this dict only controls how its name is printed.
+FAMILY_DISPLAY = {'poisson': 'Poisson', 'nbinom1': 'NB1', 'nbinom2': 'NB2',
+                   'zip': 'ZIP', 'zinb': 'ZINB', 'zinb_re': 'ZINB+ZI-RE'}
+
 COVID_LADDER_REF = {
     'insp_2021': ('insp_2021__M3covid__zinb', 'ZINB'),
     'viol_cov_2021': ('viol_cov_2021__M3covid__nbinom1', 'NB1'),
@@ -61,6 +76,73 @@ def icc_nb2(s2_u0, theta, mu):
     LINK-SCALE approximation -- not comparable to the project's Gaussian-LMM
     ICC on log(count + 1)."""
     return s2_u0 / (s2_u0 + math.log(1 + 1 / theta + 1 / mu))
+
+
+# --------------------------------------------------------------------------
+# Fix for review B2: the memo used to hardcode the AIC penalty NB2 pays
+# against the ladder's selected family ("about 33 ... about 11 ... at both
+# Model 1 and Model 3"). That text was wrong (M1's violations penalty is
+# +7.06, not +11) and never covered M2 at all. Derive every penalty straight
+# from the already-loaded `ladder` dict instead of typing any of it in.
+# --------------------------------------------------------------------------
+def _plain_ladder_rungs(ladder, cell, model):
+    """The frozen ladder's own fits at this exact (cell, model): keys of the
+    form '{cell}__{model}__{family}' (exactly three '__'-separated parts).
+    Excludes '__altopt'/'__zisens' variants and other model tags
+    (M3covid/M1matched), which all split into more than three parts."""
+    out = {}
+    for key, r in ladder.items():
+        parts = key.split('__')
+        if len(parts) == 3 and parts[0] == cell and parts[1] == model:
+            out[parts[2]] = r
+    return out
+
+
+def best_ladder_rung(ladder, cell, model):
+    """The minimum-AIC converged, non-degenerate, rs-tier ladder family at
+    this rung -- the comparator the spec's own AIC-penalty table (section 3)
+    uses. Returns (family_name, aic)."""
+    candidates = {
+        fam: r for fam, r in _plain_ladder_rungs(ladder, cell, model).items()
+        if r.get('re_tier') == 'rs' and r.get('converged')
+        and not r.get('zi_degenerate', False)
+    }
+    fam, r = min(candidates.items(), key=lambda kv: kv[1]['aic'])
+    return fam, r['aic']
+
+
+def aic_penalty_table(res, ladder):
+    """NB2's AIC penalty against the best available ladder family, at every
+    (cell, model) rung NB2 was fit -- M1, M2 and M3, not just M1/M3."""
+    rows = []
+    for cell, outcome in CELLS.items():
+        for model in MODELS:
+            nb2_aic = res[f'{cell}__{model}__nbinom2__rs']['aic']
+            fam, best_aic = best_ladder_rung(ladder, cell, model)
+            rows.append({'cell': cell, 'outcome': outcome, 'model': model,
+                         'nb2_aic': nb2_aic, 'best_aic': best_aic,
+                         'best_family': fam, 'penalty': nb2_aic - best_aic})
+    return pd.DataFrame(rows)
+
+
+def nb1_margin_table(res, ladder):
+    """NB2's AIC margin over a plain NB1 fit at the SAME rung, wherever the
+    frozen ladder actually has one. The ladder fits M2 only under each cell's
+    selected family, so neither cell has an M2 nbinom1 entry -- this table is
+    therefore M1/M3 only, by construction, not by omission. Positive margin =
+    NB2 beats NB1."""
+    rows = []
+    for cell, outcome in CELLS.items():
+        for model in MODELS:
+            key = f'{cell}__{model}__nbinom1'
+            if key not in ladder:
+                continue
+            nb1_aic = ladder[key]['aic']
+            nb2_aic = res[f'{cell}__{model}__nbinom2__rs']['aic']
+            rows.append({'cell': cell, 'outcome': outcome, 'model': model,
+                         'nb1_aic': nb1_aic, 'nb2_aic': nb2_aic,
+                         'margin': nb1_aic - nb2_aic})
+    return pd.DataFrame(rows)
 
 
 def _sig(p):
@@ -102,25 +184,44 @@ def pre_covid_time_trend_bullet(outcome, old_fam, o_m3, n_m3):
 
 
 def variance_table(res):
+    """M5: a fit that failed to converge lands in the R error branch carrying
+    only 'converged'/'message' -- no 'sigma2_u0', 'cond', etc. Direct
+    indexing on those keys would raise KeyError and abort report generation
+    before validate_nb2_stepwise.py ever runs (which is exactly the crash the
+    spec calls a defect, not just in the validator). Every field access below
+    is therefore gated on 'converged' first; a non-converged row is emitted
+    with None in the fields that fit could not have produced, rather than
+    raising."""
     rows = []
     for cell, outcome in CELLS.items():
-        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
-        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
+        base_r = res[f'{cell}__M1__nbinom2__ri']
+        matched_r = res[f'{cell}__M1matched__nbinom2__ri']
+        base = base_r['sigma2_u0'] if base_r.get('converged') else None
+        matched = matched_r['sigma2_u0'] if matched_r.get('converged') else None
         for model in MODELS:
             rs = res[f'{cell}__{model}__nbinom2__rs']
             ri = res[f'{cell}__{model}__nbinom2__ri']
+            rs_ok, ri_ok = rs.get('converged'), ri.get('converged')
+            sigma2_u0_ri = ri['sigma2_u0'] if ri_ok else None
+            theta = ri['dispersion'] if ri_ok else None
+            mu_fixed = ri['mu_fixed'] if ri_ok else None
             rows.append({
                 'cell': cell, 'outcome': outcome, 'model': model,
-                'sigma2_u0_rs': rs['sigma2_u0'],
-                'sigma2_u1_rs': rs['sigma2_u1'],
-                'sigma_u01_rs': rs['sigma_u01'],
-                'theta': ri['dispersion'],
-                'sigma2_u0_ri': ri['sigma2_u0'],
-                'icc_ri': icc_nb2(ri['sigma2_u0'], ri['dispersion'], ri['mu_fixed']),
-                'mu_fixed': ri['mu_fixed'],
-                'delta_pct_ri': 100 * (base - ri['sigma2_u0']) / base,
-                'delta_pct_ri_matched': 100 * (matched - ri['sigma2_u0']) / matched,
-                'n_obs': rs['n_obs'], 'n_states': rs['n_states'],
+                'sigma2_u0_rs': rs['sigma2_u0'] if rs_ok else None,
+                'sigma2_u1_rs': rs['sigma2_u1'] if rs_ok else None,
+                'sigma_u01_rs': rs['sigma_u01'] if rs_ok else None,
+                'aic_rs': rs['aic'] if rs_ok else None,
+                'theta': theta,
+                'sigma2_u0_ri': sigma2_u0_ri,
+                'icc_ri': (icc_nb2(sigma2_u0_ri, theta, mu_fixed)
+                           if ri_ok else None),
+                'mu_fixed': mu_fixed,
+                'delta_pct_ri': (100 * (base - sigma2_u0_ri) / base
+                                 if ri_ok and base is not None else None),
+                'delta_pct_ri_matched': (
+                    100 * (matched - sigma2_u0_ri) / matched
+                    if ri_ok and matched is not None else None),
+                'n_obs': rs.get('n_obs'), 'n_states': rs.get('n_states'),
             })
     return pd.DataFrame(rows)
 
@@ -130,7 +231,9 @@ def coefficient_table(res):
     for cell, outcome in CELLS.items():
         for model in list(MODELS) + ['M3covid']:
             r = res.get(f'{cell}__{model}__nbinom2__rs')
-            if r is None:
+            # M5: skip records that exist but never converged -- they carry
+            # no 'cond' block to iterate.
+            if r is None or not r.get('converged'):
                 continue
             for term, c in r['cond'].items():
                 rows.append({'cell': cell, 'outcome': outcome, 'model': model,
@@ -158,8 +261,12 @@ def write_memo(res, cc, ladder, vt, ct):
     A('')
     A('**This file is generated by `scripts/report_nb2_stepwise.py` and is '
       'never hand-edited.** Re-run that script instead. Every number traces to '
-      '`data/generated/nb2_stepwise_results.json` or '
-      '`nb2_stepwise_crosscheck.json`.')
+      'one of three sources: `data/generated/nb2_stepwise_results.json` (the '
+      'six substantive fits, the RI series, the M1matched baseline, the COVID '
+      'refits), `nb2_stepwise_crosscheck.json` (the statsmodels cross-check), '
+      'or -- for the AIC-penalty comparison and the COVID-family comparison '
+      'only -- the frozen `count_model_results.json` (the six-family ladder), '
+      'opened read-only.')
     A('')
     A('Spec: `docs/superpowers/specs/2026-08-28-nb2-stepwise-design.md`.')
     A('')
@@ -173,15 +280,43 @@ def write_memo(res, cc, ladder, vt, ct):
       'The violations models carry `log_inspections` as a Level-1 covariate, '
       'matching the published Table 3.')
     A('')
+    apt = aic_penalty_table(res, ladder)
+    nb1t = nb1_margin_table(res, ladder)
+    insp_pen = apt[apt['cell'] == 'insp_2021']['penalty']
+    viol_pen = apt[apt['cell'] == 'viol_cov_2021']['penalty']
     A('**Holding the family at NB2 is an editorial decision, not a fit-based '
-      'one.** At this random-effects structure NB2 loses to the family the '
-      'six-family ladder selected: by about 33 AIC to ZINB for inspections and '
-      'about 11 AIC to NB1 for violations, at both Model 1 and Model 3. What '
-      'fixing the family buys is a table whose three columns are the same '
-      'model class, so the between-state variance actually forms a reduction '
-      'sequence instead of being three different models\' parameters. NB2 is '
-      'the least-bad single choice across both outcomes: it beats NB1 for '
-      'inspections by about 138 AIC while costing about 11 for violations.')
+      'one.** At this random-effects structure NB2 loses to the ladder\'s '
+      'selected family at every rung it was fit -- Model 1, Model 2 and Model '
+      '3, for both outcomes:')
+    A('')
+    A('| Cell | Model | NB2 AIC | Best available AIC | Family | NB2 penalty |')
+    A('|---|---|---|---|---|---|')
+    for _, r in apt.iterrows():
+        A(f"| {r['outcome']} | {r['model']} | {r['nb2_aic']:.2f} | "
+          f"{r['best_aic']:.2f} | "
+          f"{FAMILY_DISPLAY.get(r['best_family'], r['best_family'])} | "
+          f"{r['penalty']:+.2f} |")
+    A('')
+    A(f'That is {insp_pen.min():.2f}-{insp_pen.max():.2f} AIC against ZINB for '
+      f'inspections and {viol_pen.min():.2f}-{viol_pen.max():.2f} AIC against '
+      'NB1 for violations -- NB2 never wins a rung. What fixing the family '
+      'buys is a table whose three columns are the same model class, so the '
+      'between-state variance actually forms a reduction sequence instead of '
+      'being three different models\' parameters.')
+    A('')
+    nb1_bits = ', '.join(
+        f"{r['margin']:+.2f} AIC at {r['model']}"
+        for _, r in nb1t[nb1t['cell'] == 'insp_2021'].iterrows())
+    viol_bits = ', '.join(
+        f"{r['penalty']:+.2f} AIC at {r['model']}"
+        for _, r in apt[apt['cell'] == 'viol_cov_2021'].iterrows())
+    A(f'NB2 is nonetheless the least-bad single choice across both outcomes: '
+      f'wherever the frozen ladder has its own plain-NB1 fit at the same rung '
+      f'(M1 and M3 only -- the ladder fits M2 solely under each cell\'s '
+      f'selected family, so neither cell has an M2 NB1 entry), NB2 beats it '
+      f'for inspections by {nb1_bits}, while costing NB2 {viol_bits} against '
+      'NB1 for violations (violations\' selected family is NB1 itself, so '
+      'that cost is the same number as its penalty row above).')
     A('')
     A('The family-selection evidence, including the zero-inflation comparisons, '
       'lives in `docs/count_models_zinb.md` and is untouched by this arm. '
@@ -213,22 +348,73 @@ def write_memo(res, cc, ladder, vt, ct):
       'link-scale approximation and is **not** the project\'s headline '
       '"ICC ~77%", which comes from a Gaussian LMM on `log(count + 1)`.')
     A('')
+    # A3: the reported ICC is computed entirely from the RI fit (sigma2_u0,
+    # theta and mu all from the (1 | state) refit), but the coefficients two
+    # sections below come from the random-slope (rs) fit, whose implied ICC
+    # differs because its own sigma2_u0/theta/mu differ. Derive both numbers
+    # for Model 1 of each cell rather than asserting a generic caveat.
+    icc_lines = []
+    for cell, outcome in CELLS.items():
+        rs = res[f'{cell}__M1__nbinom2__rs']
+        ri = res[f'{cell}__M1__nbinom2__ri']
+        if rs.get('converged') and ri.get('converged'):
+            icc_rs = icc_nb2(rs['sigma2_u0'], rs['dispersion'], rs['mu_fixed'])
+            icc_ri = icc_nb2(ri['sigma2_u0'], ri['dispersion'], ri['mu_fixed'])
+            icc_lines.append(f'{outcome} M1 is {icc_ri:.3f} on the RI basis '
+                              f'versus {icc_rs:.3f} on the RS basis')
+    A('**The reported ICC is on the random-intercept basis, not the '
+      'random-slope basis the coefficients come from.** ' +
+      '; '.join(icc_lines) + ' -- the two are not the same quantity, because '
+      'sigma^2_u0, theta and mu all differ between the RI and RS fits. Read '
+      'the ICC column as describing the RI series alongside it, not the '
+      'random-slope models whose coefficients follow in the next section.')
+    A('')
     for cell, outcome in CELLS.items():
         sub = vt[vt['cell'] == cell]
         A(f'### {outcome} ({cell})')
         A('')
         A('| Model | sigma^2_u0 (rs) | sigma^2_u1 (rs) | sigma_u01 (rs) | '
-          'theta (ri) | sigma^2_u0 (ri) | ICC (ri) | Delta sigma^2_u0 % | '
-          'Delta % matched | N obs | States |')
-        A('|---|---|---|---|---|---|---|---|---|---|---|')
+          'AIC (rs) | theta (ri) | sigma^2_u0 (ri) | ICC (ri) | '
+          'Delta sigma^2_u0 % | Delta % matched | N obs | States |')
+        A('|---|---|---|---|---|---|---|---|---|---|---|---|')
         for _, r in sub.iterrows():
-            A(f"| {r['model']} | {r['sigma2_u0_rs']:.4f} | "
-              f"{r['sigma2_u1_rs']:.5f} | {r['sigma_u01_rs']:.5f} | "
-              f"{r['theta']:.4f} | {r['sigma2_u0_ri']:.4f} | "
-              f"{r['icc_ri']:.3f} | {r['delta_pct_ri']:+.1f} | "
-              f"{r['delta_pct_ri_matched']:+.1f} | {int(r['n_obs'])} | "
-              f"{int(r['n_states'])} |")
+            def fmt(v, spec):
+                return 'NC' if v is None or v != v else format(v, spec)
+            A(f"| {r['model']} | {fmt(r['sigma2_u0_rs'], '.4f')} | "
+              f"{fmt(r['sigma2_u1_rs'], '.5f')} | "
+              f"{fmt(r['sigma_u01_rs'], '.5f')} | {fmt(r['aic_rs'], '.2f')} | "
+              f"{fmt(r['theta'], '.4f')} | {fmt(r['sigma2_u0_ri'], '.4f')} | "
+              f"{fmt(r['icc_ri'], '.3f')} | {fmt(r['delta_pct_ri'], '+.1f')} | "
+              f"{fmt(r['delta_pct_ri_matched'], '+.1f')} | "
+              f"{fmt(r['n_obs'], '.0f')} | {fmt(r['n_states'], '.0f')} |")
         A('')
+    # A1: the Delta sigma^2_u0 % column can rise from M2 to M3 even when the
+    # added H-2A block does not improve the fit -- derive the AIC verdict and
+    # the added terms' significance directly, rather than leaving the reader
+    # to infer it from the variance table alone.
+    A('**Did the H-2A block (Model 3) improve on Model 2 by AIC?** Derived '
+      'directly, not asserted:')
+    A('')
+    addon_terms = ['h2a_per_farmworker_z', 'dol_demand_met_pct_z', 'pct_flc_z']
+    for cell, outcome in CELLS.items():
+        m2 = res[f'{cell}__M2__nbinom2__rs']
+        m3 = res[f'{cell}__M3__nbinom2__rs']
+        if not (m2.get('converged') and m3.get('converged')):
+            A(f'- **{outcome}:** cannot be derived -- Model 2 or Model 3 did '
+              'not converge.')
+            continue
+        d_aic = m3['aic'] - m2['aic']
+        verdict = ('improved on' if d_aic < 0 else
+                   'did not improve on' if d_aic > 0 else 'exactly matched')
+        ps = {t: m3['cond'][t]['p'] for t in addon_terms}
+        any_sig = any(p < .05 for p in ps.values())
+        p_bits = ', '.join(f'`{t}` p = {p:.3g}' for t, p in ps.items())
+        A(f'- **{outcome}:** Model 3 {verdict} Model 2 by AIC '
+          f'({m3["aic"]:.2f} vs {m2["aic"]:.2f}, delta = {d_aic:+.2f} for '
+          f'three added parameters); the added H-2A-block coefficients are '
+          f'{p_bits} -- {"none" if not any_sig else "at least one"} '
+          'significant at p<.05.')
+    A('')
     A('**Why two reduction columns.** Model 1 keeps all 49 states; Models 2 and '
       '3 keep 46, because AK, RI and VT have no BLS pesticide-applicator series '
       'and drop by listwise deletion once `SPEND_APP_z` enters. `Delta '
@@ -238,6 +424,24 @@ def write_memo(res, cc, ladder, vt, ct):
       'the two columns is exactly what those three states contributed. Neither '
       'number alone tells the truth; read both.')
     A('')
+    # A4: on the M1 row `delta_pct_ri` is 0 by construction (M1 is its own
+    # baseline), but `delta_pct_ri_matched` is NOT -- it compares the SAME
+    # Model-1 formula fit on two different samples (49 vs 46 states), so
+    # whatever value appears there is entirely the sample effect described
+    # above, not anything a covariate did (M1 has no covariates at all).
+    m1_match_bits = []
+    for cell, outcome in CELLS.items():
+        m1_row = vt[(vt['cell'] == cell) & (vt['model'] == 'M1')].iloc[0]
+        v = m1_row['delta_pct_ri_matched']
+        if v == v and v is not None:
+            m1_match_bits.append(f'{outcome} {v:+.1f}%')
+    A('**On the Model-1 row specifically, `Delta % matched` is not zero even '
+      'though Model 1 has no covariates to explain anything** (' +
+      '; '.join(m1_match_bits) + '). That is not model improvement -- Model 1 '
+      'has only one formula, fit twice, once on 49 states and once on 46. The '
+      'entire M1-row value is exactly the sample effect described in the '
+      'paragraph above, and nothing else.')
+    A('')
     # The direction of the sample effect is NOT the same for both outcomes, so
     # this paragraph is derived per cell rather than asserted. Writing the
     # inspections direction as if it were general would mis-describe the
@@ -245,24 +449,59 @@ def write_memo(res, cc, ladder, vt, ct):
     A('**And the two columns differ in opposite directions by outcome**, which '
       'is why the generic warning is not written here:')
     A('')
+    # B3 fix: the closing sentence used to assert, unconditionally, that
+    # "violations are unaffected by [AK/RI/VT's] loss" -- but the very
+    # d_base/d_match values computed in THIS loop show the opposite for
+    # violations (+19.7% vs +21.5%). That claim belongs to the published
+    # log-linear tables, where the violations column never dropped those
+    # states at all; it does not describe this arm. Cache both cells'
+    # figures here so the closing paragraph can be derived, not asserted.
+    sample_effect = {}
     for cell, outcome in CELLS.items():
-        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
-        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
-        m3 = res[f'{cell}__M3__nbinom2__ri']['sigma2_u0']
+        base_r = res[f'{cell}__M1__nbinom2__ri']
+        matched_r = res[f'{cell}__M1matched__nbinom2__ri']
+        m3_r = res[f'{cell}__M3__nbinom2__ri']
+        if not (base_r.get('converged') and matched_r.get('converged')
+                and m3_r.get('converged')):
+            A(f'- **{outcome}:** cannot be derived -- the M1, M1matched or M3 '
+              'random-intercept refit did not converge.')
+            continue
+        base, matched, m3 = (base_r['sigma2_u0'], matched_r['sigma2_u0'],
+                              m3_r['sigma2_u0'])
         d_base = 100 * (base - m3) / base
         d_match = 100 * (matched - m3) / matched
         direction = ('lowers' if matched < base else 'raises')
         reading = ('overstates' if d_base > d_match else 'understates')
+        sample_effect[cell] = {
+            'd_base': d_base, 'd_match': d_match, 'affected': d_base != d_match}
         A(f'- **{outcome}:** dropping AK, RI and VT {direction} the Model-1 '
           f'between-state variance ({base:.4f} on 49 states -> {matched:.4f} on '
           f'46), so the Model-1 basis {reading} what the covariates do: '
           f'Model 3 reduces sigma^2_u0 by {d_base:+.1f}% against Model 1 but '
           f'{d_match:+.1f}% against the matched baseline.')
     A('')
+    viol = sample_effect.get('viol_cov_2021')
+    if viol is None:
+        viol_sentence = ('Whether this arm\'s violations column is affected by '
+                          'the same states could not be derived here (see the '
+                          'bullet above).')
+    elif viol['affected']:
+        viol_sentence = (
+            'In those published tables the violations column never dropped '
+            'AK/RI/VT at all, so it was unaffected by their loss -- that does '
+            'NOT carry over to this arm. Here violations does drop those three '
+            'states once `SPEND_APP_z` enters, and the reduction changes just '
+            f"as inspections' does: {viol['d_base']:+.1f}% against Model 1 "
+            f"versus {viol['d_match']:+.1f}% against the matched baseline (the "
+            'bullet above).')
+    else:
+        viol_sentence = ('In this arm the violations column happens to show '
+                          'the same reduction against both baselines, so the '
+                          'published-tables claim of no effect holds here too.')
     A('The inspections direction reproduces, under a different model class, an '
-      'asymmetry this project already documented for the published log-linear '
-      'tables: AK/RI/VT carry much of the between-state inspection variance, '
-      'and violations are unaffected by their loss.')
+      'asymmetry this project already documented for the published '
+      f'log-linear tables: AK/RI/VT carry much of the between-state '
+      f'inspection variance. {viol_sentence}')
     A('')
     A('## Coefficients')
     A('')

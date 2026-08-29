@@ -455,20 +455,25 @@ panel and covariate blocks; it fits nothing new about zero-inflation and does no
 `docs/count_models_zinb.md` or any ladder artifact. Run in this order:
 
 ```bash
-Rscript scripts/nb2_stepwise_models.R          # 6 substantive M1/M2/M3 fits + RI series +
+Rscript scripts/nb2_stepwise_models.R \
+        data/generated/count_model_panel_2021.csv \
+        data/generated/nb2_stepwise_results.json  # 6 substantive M1/M2/M3 fits + RI series +
                                                 #   M1matched baseline + COVID refit, all
                                                 #   nbinom2, (1 + time | state), no fallback
                                                 # → data/generated/nb2_stepwise_results.json
 python3 scripts/nb2_crosscheck_statsmodels.py  # statsmodels NegativeBinomialP(p=2) + state
                                                 #   fixed effects, Level-1 terms only
                                                 # → data/generated/nb2_stepwise_crosscheck.json
-python3 scripts/report_nb2_stepwise.py         # pure artifact reader; computes delta_pct_ri,
-                                                #   delta_pct_ri_matched, icc_ri (defined
-                                                #   nowhere else)
+python3 scripts/report_nb2_stepwise.py         # pure artifact reader; the only script that
+                                                #   REPORTS delta_pct_ri, delta_pct_ri_matched,
+                                                #   icc_ri -- validate_nb2_stepwise.py [7]
+                                                #   independently RE-DERIVES all three as a
+                                                #   cross-check, which is what makes [7] non-
+                                                #   circular, and must stay that way
                                                 # → data/generated/nb2_stepwise_variance.csv,
                                                 #   nb2_stepwise_coefficients.csv,
                                                 #   docs/nb2_stepwise_models.md
-python3 scripts/validate_nb2_stepwise.py       # sections [0]-[9]; [0] reruns the existing
+python3 scripts/validate_nb2_stepwise.py       # sections [0]-[10]; [0] reruns the existing
                                                 #   Gaussian gate as a precondition
 ```
 
@@ -479,13 +484,18 @@ python3 scripts/validate_nb2_stepwise.py       # sections [0]-[9]; [0] reruns th
   with no fallback tier. This does not extend to the 2011–2019 establishments window or to
   the violations-as-offset specification.
 - **NB2 is an editorial choice, not a fit-based one — it is never the winning family.** At
-  this random-effects structure it loses to the ladder's selected family at every rung: ~33
-  AIC to ZINB for inspections, ~11 AIC to NB1 for violations, at both M1 and M3. What fixing
-  the family buys is a single model class across all three build-up steps, so the
-  between-state variance actually forms one reduction sequence rather than three unrelated
-  models' parameters. NB2 is the least-bad single choice across both outcomes (it beats NB1
-  for inspections by ~138 AIC while costing only ~11 for violations) — a compromise, not a
-  win.
+  this random-effects structure it loses to the ladder's selected family at every rung it was
+  fit — M1, M2 *and* M3, not just M1/M3: 32.74–33.58 AIC to ZINB for inspections, 7.06–13.73
+  AIC to NB1 for violations (all six penalties are in `docs/nb2_stepwise_models.md`'s first
+  table, derived from `count_model_results.json`, not typed in). **Do not write "~11 AIC at
+  both M1 and M3"** — a review-round-1 defect: M1's violations penalty is 7.06, not 11, and
+  M2's is 13.73. What fixing the family buys is a single model class across all three
+  build-up steps, so the between-state variance actually forms one reduction sequence rather
+  than three unrelated models' parameters. NB2 is the least-bad single choice across both
+  outcomes — wherever the ladder has its own plain-NB1 fit at the same rung (M1 and M3 only;
+  the ladder fits M2 solely under each cell's selected family) NB2 beats it for inspections by
+  162.22 AIC at M1 and 138.33 AIC at M3, while costing NB2 7.06/13.73/10.74 AIC (M1/M2/M3)
+  against NB1 for violations — a compromise, not a win.
 - **Two reduction bases, both reported, because the sample changes between M1 and M2/M3.**
   M1 keeps all 49 states; M2/M3 drop AK/RI/VT (no BLS pesticide-applicator series) to 46.
   `delta_pct_ri` measures every model against a single Model-1 baseline on Model 1's own
@@ -515,7 +525,7 @@ python3 scripts/validate_nb2_stepwise.py       # sections [0]-[9]; [0] reruns th
   the corrected COVID note above for the violations-specific numbers this produced.
 - Full memo: `docs/nb2_stepwise_models.md` (generated, never hand-edited — re-run
   `report_nb2_stepwise.py` instead). Validator: `scripts/validate_nb2_stepwise.py`, sections
-  `[0]`–`[9]`; do not quote a single total, read the per-section breakdown (the same
+  `[0]`-`[10]`; do not quote a single total, read the per-section breakdown (the same
   convention as `validate_count_models.py`).
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
