@@ -948,10 +948,26 @@ def validate_crosscheck():
               c['n_obs'] == load_results()[f'{cell}__M3__nbinom2__rs']['n_obs'],
               f"crosscheck {c['n_obs']}")
         terms = c['terms']
-        check(f'{cell}: cross-check covers every M3 fixed effect except the intercept',
-              set(terms) == set(load_results()[f'{cell}__M3__nbinom2__rs']['cond'])
-              - {'(Intercept)'},
-              f'got {sorted(terms)}')
+        # Ruling R7. State fixed effects ABSORB any state-invariant regressor,
+        # so the check can only cover the time-varying (Level-1) terms. The
+        # expected split is re-derived HERE from the panel, independently of
+        # what the cross-check script wrote, so the two computations can
+        # genuinely disagree.
+        import pandas as _pd
+        _p = _pd.read_csv(GEN + 'count_model_panel_2021.csv')
+        _m3 = [t for t in load_results()[f'{cell}__M3__nbinom2__rs']['cond']
+               if t != '(Intercept)']
+        _d = _p[[ 'state'] + _m3].dropna()
+        _varying = {t for t in _m3
+                    if _d.groupby('state')[t].std(ddof=0).max() > 1e-12}
+        check(f'{cell}: cross-check covers exactly the time-varying M3 terms',
+              set(terms) == _varying, f'got {sorted(terms)}, want {sorted(_varying)}')
+        check(f'{cell}: absorbed terms are exactly the state-invariant M3 terms',
+              set(c.get('terms_absorbed', [])) == set(_m3) - _varying,
+              f"got {sorted(c.get('terms_absorbed', []))}, "
+              f"want {sorted(set(_m3) - _varying)}")
+        check(f'{cell}: absorbed terms carry a stated reason',
+              bool(str(c.get('absorbed_reason', '')).strip()))
         # The assertion. Sign agreement ONLY among terms both implementations
         # resolve away from zero -- a term neither can distinguish from zero has
         # no sign to agree about, and demanding one would be manufacturing a
@@ -1639,6 +1655,18 @@ def write_memo(res, cc, ladder, vt, ct):
       'among terms both implementations resolve away from zero (|b| > 2 SE in '
       'both). The ratios below are reported for judgement, not thresholded.')
     A('')
+    A('**What this check can and cannot cover.** State fixed effects absorb any '
+      'regressor that is constant within a state, so the Level-2 covariates are '
+      'perfectly collinear with the state dummies and their coefficients are '
+      'not identified at all under this estimator -- the design matrix is '
+      'rank-deficient by exactly the number of them. They are therefore dropped '
+      'from the comparison, by name, below. This is a property of fixed-effects '
+      'estimation, not a shortcoming of either implementation, and it means the '
+      'cross-check validates the **Level-1 (time-varying) terms only**. The '
+      'Level-2 covariates -- the spending, commodity-mix and H-2A-share '
+      'variables that Models 2 and 3 are built from -- are NOT independently '
+      'confirmed by this check, and no reader should take them as such.')
+    A('')
     A('The zero-inflation cross-check in the six-family pipeline has no '
       'counterpart here -- an NB2-only arm has no zero-inflation component.')
     A('')
@@ -1647,6 +1675,12 @@ def write_memo(res, cc, ladder, vt, ct):
         A(f'### {outcome} ({cell}) -- N = {c["n_obs"]}, '
           f'{c["n_states"] - 1} state dummies, converged = {c["converged"]}')
         A('')
+        absorbed = c.get('terms_absorbed', [])
+        if absorbed:
+            A(f'Absorbed by the state dummies and excluded from the comparison '
+              f'({len(absorbed)}): ' +
+              ', '.join(f'`{t}`' for t in absorbed) + '.')
+            A('')
         A('| Term | b (statsmodels FE) | b (glmmTMB RE) | ratio | '
           'both distinguishable from 0 | sign |')
         A('|---|---|---|---|---|---|')
