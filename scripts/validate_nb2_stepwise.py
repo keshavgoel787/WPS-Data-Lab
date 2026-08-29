@@ -282,6 +282,48 @@ def validate_ri_series():
               'percentages would then be identical and one of them is wrong')
 
 
+# ============================================================
+# [5] COVID ROBUSTNESS under nbinom2
+# ============================================================
+def validate_covid():
+    section('5', 'COVID robustness refit under nbinom2')
+    res = load_results()
+    import pandas as pd
+    p = pd.read_csv(GEN + 'count_model_panel_2021.csv')
+    # The indicator must be what it claims to be before any coefficient on it
+    # is interpretable.
+    covid_years = set(p.loc[p['covid'] == 1, 'year'])
+    check('covid indicator marks exactly 2020 and 2021',
+          covid_years == {2020, 2021}, f'got {sorted(covid_years)}')
+    for cell in CELLS:
+        key = f'{cell}__M3covid__nbinom2__rs'
+        r = res.get(key)
+        if r is None:
+            check(f'{key} present', False, 'missing from results JSON')
+            continue
+        m3 = res.get(f'{cell}__M3__nbinom2__rs', {})
+        check(f'{key} converged', bool(r['converged']), r.get('message', ''))
+        check(f'{key} re_tier == rs', r['re_tier'] == 'rs')
+        check(f'{key} carries a covid term', 'covid' in r['cond'])
+        check(f'{key} is M3 + covid and nothing else',
+              set(r['cond']) == set(m3.get('cond', {})) | {'covid'},
+              f"got {sorted(r['cond'])}")
+        check(f'{key} sits on the M3 sample',
+              r['n_obs'] == m3.get('n_obs'),
+              f"{r['n_obs']} vs M3 {m3.get('n_obs')}")
+        check(f'{key} covid SE is finite',
+              r['cond']['covid']['se'] == r['cond']['covid']['se']
+              and r['cond']['covid']['se'] < float('inf'))
+    # The whole point of the refit: it must be a DIFFERENT family from the
+    # frozen ladder's COVID variants, or nothing has been re-derived.
+    with open(GEN + 'count_model_results.json') as fh:
+        old = json.load(fh)
+    old_covid = [k for k in old if '__M3covid__' in k]
+    check('frozen ladder COVID variants are not nbinom2 (so a refit was needed)',
+          all(not k.endswith('__nbinom2') for k in old_covid),
+          f'found {old_covid}')
+
+
 def main():
     skip_pre = '--skip-precondition' in sys.argv
     validate_precondition(skip_pre)
@@ -289,6 +331,7 @@ def main():
     validate_fits()
     validate_overlap()
     validate_ri_series()
+    validate_covid()
 
     print()
     print("=" * 78)

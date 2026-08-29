@@ -201,6 +201,35 @@ for (cell_name in names(CELLS)) {
   results[[key]] <- res
 }
 
+# ------------------------------------------------------------
+# COVID robustness, refit under nbinom2.
+#
+# The frozen ladder's COVID variants are insp_2021__M3covid__zinb and
+# viol_cov_2021__M3covid__nbinom1 -- neither is nbinom2, so neither transfers.
+# This matters beyond bookkeeping: the violations sensitivity recorded in
+# CLAUDE.md (indicator -0.279, p ~ 0.096, with time2 moving from p ~ 2.0e-5 to
+# p ~ 0.26 once the indicator enters) is an NB1 result and must be re-derived
+# here. If it moves, the CLAUDE.md note gets corrected; if it holds, that is
+# worth stating too.
+#
+# viol_off_2021 was excluded from the ladder's COVID cells for a recorded
+# reason (the offset drops every zero-inspection state-year). That exclusion is
+# moot here: this arm does not fit the offset spec at all.
+# ------------------------------------------------------------
+for (cell_name in names(CELLS)) {
+  cl <- CELLS[[cell_name]]
+  key <- sprintf("%s__M3covid__nbinom2__rs", cell_name)
+  cat("fitting", key, "(COVID robustness)\n")
+  res <- fit_nb2(panel, cl$dv, c(rhs_for(cl, "M3"), "covid"), RS_RE)
+  res$cell <- cell_name; res$model <- "M3covid"
+  res$outcome <- cl$outcome; res$re_tier <- "rs"
+  if (!isTRUE(res$converged)) {
+    cat(sprintf("WARNING [%s]: did NOT converge; message=%s\n", key,
+                res$message %||% ""))
+  }
+  results[[key]] <- res
+}
+
 write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
 cat("\nWrote", length(results), "entries to", out_json, "\n")
 n_bad <- sum(vapply(results, function(r) !isTRUE(r$converged), logical(1)))
