@@ -1503,10 +1503,36 @@ def write_memo(res, cc, vt, ct):
       '3 keep 46, because AK, RI and VT have no BLS pesticide-applicator series '
       'and drop by listwise deletion once `SPEND_APP_z` enters. `Delta '
       'sigma^2_u0 %` is measured against a single Model-1 baseline on Model 1\'s '
-      'own sample, so every column starts from Model 1 -- but part of that '
-      'reduction is the three states leaving, not the covariates. `Delta % '
-      'matched` refits the Model-1 baseline on the Model-2/3 sample and isolates '
-      'the covariates. Neither number alone tells the truth; read both.')
+      'own sample, so every column starts from Model 1. `Delta % matched` refits '
+      'the Model-1 baseline on the Model-2/3 sample, so the difference between '
+      'the two columns is exactly what those three states contributed. Neither '
+      'number alone tells the truth; read both.')
+    A('')
+    # The direction of the sample effect is NOT the same for both outcomes, so
+    # this paragraph is derived per cell rather than asserted. Writing the
+    # inspections direction as if it were general would mis-describe the
+    # violations column: there the Model-1 basis UNDERstates the covariates.
+    A('**And the two columns differ in opposite directions by outcome**, which '
+      'is why the generic warning is not written here:')
+    A('')
+    for cell, outcome in CELLS.items():
+        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
+        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
+        m3 = res[f'{cell}__M3__nbinom2__ri']['sigma2_u0']
+        d_base = 100 * (base - m3) / base
+        d_match = 100 * (matched - m3) / matched
+        direction = ('lowers' if matched < base else 'raises')
+        reading = ('overstates' if d_base > d_match else 'understates')
+        A(f'- **{outcome}:** dropping AK, RI and VT {direction} the Model-1 '
+          f'between-state variance ({base:.4f} on 49 states -> {matched:.4f} on '
+          f'46), so the Model-1 basis {reading} what the covariates do: '
+          f'Model 3 reduces sigma^2_u0 by {d_base:+.1f}% against Model 1 but '
+          f'{d_match:+.1f}% against the matched baseline.')
+    A('')
+    A('The inspections direction reproduces, under a different model class, an '
+      'asymmetry this project already documented for the published log-linear '
+      'tables: AK/RI/VT carry much of the between-state inspection variance, '
+      'and violations are unaffected by their loss.')
     A('')
     A('## Coefficients')
     A('')
