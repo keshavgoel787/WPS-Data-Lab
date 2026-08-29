@@ -1,0 +1,115 @@
+{
+ "insp_2021": {
+  "n_obs": 506,
+  "n_states": 46,
+  "converged": true,
+  "warnings": [],
+  "terms": {
+   "time": {
+    "b_sm": -0.05781883277484937,
+    "se_sm": 0.016756550851354374,
+    "b_tmb": -0.061051130657,
+    "se_tmb": 0.019127335883,
+    "ratio": 0.947055888279769,
+    "sign_agrees": true,
+    "both_nonzero": true
+   },
+   "time2": {
+    "b_sm": -0.0027106261873277642,
+    "se_sm": 0.0037989959270505946,
+    "b_tmb": -0.0046728562089,
+    "se_tmb": 0.0035591533477,
+    "ratio": 0.580079092133214,
+    "sign_agrees": true,
+    "both_nonzero": false
+   },
+   "time3": {
+    "b_sm": 0.00012072797374105532,
+    "se_sm": 0.0009333694584781156,
+    "b_tmb": -7.5250178963e-05,
+    "se_tmb": 0.0008641144829,
+    "ratio": -1.6043546394808765,
+    "sign_agrees": false,
+    "both_nonzero": false
+   },
+   "h2a_per_farmworker_z": {
+    "b_sm": 0.09906105432952435,
+    "se_sm": 0.040955335705659,
+    "b_tmb": 0.067499012968,
+    "se_tmb": 0.051850503777,
+    "ratio": 1.467592635413607,
+    "sign_agrees": true,
+    "both_nonzero": false
+   }
+  },
+  "terms_absorbed": [
+   "SPEND_APP_z",
+   "SPEND_WORK_z",
+   "dol_demand_met_pct_z",
+   "lii_2017_z",
+   "pct_flc_z"
+  ],
+  "absorbed_reason": "state-invariant on this analytic sample (max within-state SD <= tolerance) -- collinear with the state dummies by construction, so a full state-fixed-effects design cannot identify it"
+ },
+ "viol_cov_2021": {
+  "n_obs": 501,
+  "n_states": 46,
+  "converged": true,
+  "warnings": [],
+  "terms": {
+   "log_inspections": {
+    "b_sm": 0.7230739984206686,
+    "se_sm": 0.07894624022640698,
+    "b_tmb": 0.72651792531,
+    "se_tmb": 0.07468912861,
+    "ratio": 0.9952596807740677,
+    "sign_agrees": true,
+    "both_nonzero": true
+   },
+   "time": {
+    "b_sm": 0.08301428834663901,
+    "se_sm": 0.028972552501742663,
+    "b_tmb": 0.050678245589,
+    "se_tmb": 0.036038592856,
+    "ratio": 1.6380655522269645,
+    "sign_agrees": true,
+    "both_nonzero": false
+   },
+   "time2": {
+    "b_sm": -0.01533975968663256,
+    "se_sm": 0.006581148036548715,
+    "b_tmb": -0.022634320858,
+    "se_tmb": 0.0064436186413,
+    "ratio": 0.6777212262240592,
+    "sign_agrees": true,
+    "both_nonzero": true
+   },
+   "time3": {
+    "b_sm": -0.005678576636536497,
+    "se_sm": 0.0016054603228040512,
+    "b_tmb": -0.0059973167826,
+    "se_tmb": 0.0015219660361,
+    "ratio": 0.9468528747742219,
+    "sign_agrees": true,
+    "both_nonzero": true
+   },
+   "h2a_per_farmworker_z": {
+    "b_sm": -0.14014152576779154,
+    "se_sm": 0.06305750556822126,
+    "b_tmb": -0.13892247076,
+    "se_tmb": 0.085744293809,
+    "ratio": 1.0087750743355088,
+    "sign_agrees": true,
+    "both_nonzero": false
+   }
+  },
+  "terms_absorbed": [
+   "SPEND_APP_z",
+   "SPEND_WORK_z",
+   "dol_demand_met_pct_z",
+   "lii_2017_z",
+   "pct_flc_z"
+  ],
+  "absorbed_reason": "state-invariant on this analytic sample (max within-state SD <= tolerance) -- collinear with the state dummies by construction, so a full state-fixed-effects design cannot identify it"
+ }
+}

@@ -324,6 +324,90 @@ def validate_covid():
           f'found {old_covid}')
 
 
+# ============================================================
+# [6] CROSS-SOFTWARE CHECK (statsmodels NB2, state fixed effects)
+# ============================================================
+# Independently re-derived here (not imported from nb2_crosscheck_statsmodels.py)
+# so the validator's notion of "which terms fixed effects can identify" can
+# disagree with the cross-check script's own if either one has a bug. Five of
+# the six Model-3-added covariates are Level-2 (state-level, time-invariant)
+# by this project's own design and are collinear with a full set of state
+# dummies by construction; they cannot be fit under state fixed effects at all.
+_CC_WITHIN_STATE_SD_TOL = 1e-12
+_CC_CUBIC = ['time', 'time2', 'time3']
+_CC_M3_ADD = ['SPEND_APP_z', 'SPEND_WORK_z', 'lii_2017_z',
+              'h2a_per_farmworker_z', 'dol_demand_met_pct_z', 'pct_flc_z']
+_CC_CELL_BASE = {
+    'insp_2021': _CC_CUBIC,
+    'viol_cov_2021': ['log_inspections'] + _CC_CUBIC,
+}
+_CC_CELL_DV = {'insp_2021': 'inspections', 'viol_cov_2021': 'violations'}
+
+
+def _identifiable_split(cell):
+    """Return (time_varying, state_invariant) term sets for `cell`, computed
+    directly from the panel on that cell's own M3 analytic sample."""
+    import pandas as pd
+    panel = pd.read_csv(GEN + 'count_model_panel_2021.csv')
+    rhs = _CC_CELL_BASE[cell] + _CC_M3_ADD
+    need = [_CC_CELL_DV[cell], 'state'] + rhs
+    d = panel[need].dropna()
+    within_sd = d.groupby('state')[rhs].std().max()
+    varying = {t for t in rhs if within_sd[t] > _CC_WITHIN_STATE_SD_TOL}
+    invariant = {t for t in rhs if within_sd[t] <= _CC_WITHIN_STATE_SD_TOL}
+    return varying, invariant
+
+
+def validate_crosscheck():
+    section('6', 'Cross-software check: statsmodels NegativeBinomialP(p=2) + state FE')
+    try:
+        with open(GEN + 'nb2_stepwise_crosscheck.json') as fh:
+            cc = json.load(fh)
+    except FileNotFoundError:
+        check('nb2_stepwise_crosscheck.json exists', False, 'not found')
+        return
+    for cell in CELLS:
+        c = cc.get(cell)
+        if c is None:
+            check(f'{cell} present in cross-check', False)
+            continue
+        check(f'{cell}: statsmodels fit converged', bool(c['converged']))
+        check(f'{cell}: same analytic sample as the glmmTMB M3 fit',
+              c['n_obs'] == load_results()[f'{cell}__M3__nbinom2__rs']['n_obs'],
+              f"crosscheck {c['n_obs']}")
+        terms = c['terms']
+        varying, invariant = _identifiable_split(cell)
+        # Five of the six M3-added covariates are state-invariant and are
+        # absorbed by a full set of state dummies by construction (verified:
+        # the design matrix is rank-deficient by exactly the size of that
+        # set). The cross-check must cover exactly the time-varying subset,
+        # not "every M3 fixed effect except the intercept" -- that older
+        # assertion asked for something mathematically impossible.
+        check(f'{cell}: cross-check covers exactly the terms fixed effects '
+              f'can identify (time-varying within at least one state)',
+              set(terms) == varying,
+              f'got {sorted(terms)}, expected {sorted(varying)}')
+        check(f'{cell}: cross-check records exactly the state-invariant '
+              f'terms as absorbed',
+              set(c.get('terms_absorbed', [])) == invariant,
+              f"got {sorted(c.get('terms_absorbed', []))}, expected {sorted(invariant)}")
+        # The assertion. Sign agreement ONLY among terms both implementations
+        # resolve away from zero -- a term neither can distinguish from zero has
+        # no sign to agree about, and demanding one would be manufacturing a
+        # check that passes by luck.
+        contested = [t for t, v in terms.items()
+                     if v['both_nonzero'] and not v['sign_agrees']]
+        check(f'{cell}: all clearly-nonzero terms agree in sign across software',
+              not contested, f'disagree: {contested}')
+        n_tested = sum(1 for v in terms.values() if v['both_nonzero'])
+        check(f'{cell}: at least one term was actually testable',
+              n_tested > 0,
+              'no term was distinguishable from zero in both fits, so this '
+              'section proved nothing')
+        print(f"    ({cell}: {n_tested}/{len(terms)} terms distinguishable from "
+              f"zero in both fits; ratios reported in the memo, not asserted)")
+
+
 def main():
     skip_pre = '--skip-precondition' in sys.argv
     validate_precondition(skip_pre)
@@ -332,6 +416,7 @@ def main():
     validate_overlap()
     validate_ri_series()
     validate_covid()
+    validate_crosscheck()
 
     print()
     print("=" * 78)
