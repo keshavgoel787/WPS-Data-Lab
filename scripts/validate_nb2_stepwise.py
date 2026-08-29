@@ -408,6 +408,141 @@ def validate_crosscheck():
               f"zero in both fits; ratios reported in the memo, not asserted)")
 
 
+# ============================================================
+# [7] VARIANCE ARITHMETIC
+# ============================================================
+def validate_variance_table():
+    section('7', 'Variance components table: arithmetic and basis')
+    import math
+    import pandas as pd
+    try:
+        v = pd.read_csv(GEN + 'nb2_stepwise_variance.csv')
+    except FileNotFoundError:
+        check('nb2_stepwise_variance.csv exists', False, 'not found')
+        return
+    res = load_results()
+    check('one row per cell x model', len(v) == 6, f'got {len(v)}')
+    for _, row in v.iterrows():
+        cell, model = row['cell'], row['model']
+        rs = res[f'{cell}__{model}__nbinom2__rs']
+        ri = res[f'{cell}__{model}__nbinom2__ri']
+        tag = f'{cell} {model}'
+        # The *_rs columns come from the random-slope fits...
+        check_close(f'{tag}: sigma2_u0_rs from the rs fit',
+                    row['sigma2_u0_rs'], rs['sigma2_u0'], 1e-9, 'rel')
+        check_close(f'{tag}: sigma2_u1_rs from the rs fit',
+                    row['sigma2_u1_rs'], rs['sigma2_u1'], 1e-9, 'rel')
+        # ...and sigma2_u0_ri, theta and the ICC all come from the RI fit, so
+        # the ICC and the Delta share one basis.
+        check_close(f'{tag}: sigma2_u0_ri from the ri fit',
+                    row['sigma2_u0_ri'], ri['sigma2_u0'], 1e-9, 'rel')
+        check_close(f'{tag}: theta from the ri fit',
+                    row['theta'], ri['dispersion'], 1e-9, 'rel')
+        want_icc = ri['sigma2_u0'] / (ri['sigma2_u0'] + math.log(
+            1 + 1 / ri['dispersion'] + 1 / ri['mu_fixed']))
+        check_close(f'{tag}: icc_ri matches Nakagawa OLV formula',
+                    row['icc_ri'], want_icc, 1e-9, 'rel')
+        check(f'{tag}: icc_ri in (0, 1)', 0 < row['icc_ri'] < 1,
+              f"got {row['icc_ri']}")
+        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
+        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
+        check_close(f'{tag}: delta_pct_ri arithmetic',
+                    row['delta_pct_ri'],
+                    100 * (base - ri['sigma2_u0']) / base, 1e-9, 'abs')
+        check_close(f'{tag}: delta_pct_ri_matched arithmetic',
+                    row['delta_pct_ri_matched'],
+                    100 * (matched - ri['sigma2_u0']) / matched, 1e-9, 'abs')
+        check(f'{tag}: n_obs/n_states agree with the rs fit',
+              row['n_obs'] == rs['n_obs'] and row['n_states'] == rs['n_states'])
+    for cell in CELLS:
+        m1 = v[(v['cell'] == cell) & (v['model'] == 'M1')].iloc[0]
+        check(f'{cell}: M1 delta_pct_ri == 0 (it is its own baseline)',
+              abs(m1['delta_pct_ri']) < 1e-9, f"got {m1['delta_pct_ri']}")
+    # No sigma2_e column anywhere -- a count family has no residual variance.
+    check('no residual-variance column in the variance table',
+          not any(c in v.columns for c in ('sigma2_e', 'sigma_e', 'residual_variance')),
+          f'columns: {list(v.columns)}')
+
+
+# ============================================================
+# [8] FROZEN ARTIFACTS
+# ============================================================
+def validate_frozen():
+    section('8', 'Frozen artifacts unchanged')
+    frozen = [
+        'scripts/count_models_zinb.R',
+        'scripts/report_count_models.py',
+        'scripts/validate_count_models.py',
+        'scripts/build_count_model_panel.py',
+        'data/generated/count_model_results.json',
+        'data/generated/count_model_panel_2019.csv',
+        'data/generated/count_model_panel_2021.csv',
+        'docs/count_models_zinb.md',
+    ]
+    proc = subprocess.run(['git', 'diff', 'HEAD', '--name-only', '--'] + frozen,
+                          capture_output=True, text=True, cwd=ROOT)
+    changed = [ln for ln in proc.stdout.split('\n') if ln.strip()]
+    check('no frozen count-model artifact modified', not changed,
+          f'modified: {changed}')
+    proc = subprocess.run(['git', 'diff', 'HEAD', '--name-only'],
+                          capture_output=True, text=True, cwd=ROOT)
+    touched = [ln for ln in proc.stdout.split('\n') if ln.strip()]
+    bad = [f for f in touched
+           if f.endswith('.docx') or 'paper_table' in f]
+    check('no .docx and no paper_table artifact modified', not bad,
+          f'modified: {bad}')
+
+
+# ============================================================
+# [9] MEMO
+# ============================================================
+MEMO_FORBIDDEN_PATTERNS = [
+    # NB2 lost to the selected family at every rung. Any of these would read as
+    # a fit-based win. Spec section 3.
+    'nbinom2 was selected', 'NB2 was selected', 'NB2 is selected',
+    'NB2 won', 'NB2 wins', 'nbinom2 wins',
+    'best-fitting family', 'the preferred family',
+    # A count family has no residual variance. NOTE: this also forbids the memo
+    # from DENYING one in those exact words, which is why the memo writes the
+    # denial hyphenated ('no residual-variance column'). That is deliberate --
+    # do not "fix" the memo by removing the hyphen.
+    'residual variance', 'sigma2_e', 'sigma^2_e',
+    # The Delta comes from the RI series, never from the random-slope fits.
+    'reduction in the random-slope',
+]
+
+
+def validate_memo():
+    section('9', 'Memo')
+    try:
+        with open('/Users/keshavgoel/Research/docs/nb2_stepwise_models.md') as fh:
+            memo = fh.read()
+    except FileNotFoundError:
+        check('docs/nb2_stepwise_models.md exists', False, 'not found')
+        return
+    check('memo marks itself generated',
+          'generated' in memo.lower() and 'never hand-edited' in memo.lower())
+    for pat in MEMO_FORBIDDEN_PATTERNS:
+        check(f'memo does not contain: {pat!r}', pat.lower() not in memo.lower())
+    # The caveats the spec requires by name.
+    required = [
+        ('AIC penalty is stated', 'editorial'),
+        ('link-scale caveat present', 'link scale'),
+        ('sample-change caveat present', 'AK, RI and VT'),
+        ('ICC formula printed', 'Nakagawa'),
+        ('COVID section present', 'COVID'),
+        ('cross-check section present', 'state fixed effects'),
+    ]
+    # Case-SENSITIVE and exact-phrase. A case-folded 'AK' matched 'make',
+    # 'take' and 'breaks', so that row passed no matter what the memo said.
+    for label, needle in required:
+        check(f'memo: {label}', needle in memo, f'{needle!r} not found')
+    # The ZI-NB tallies belong to the other memo; restating them here would
+    # invite a reader to think this arm re-tested zero-inflation. It did not.
+    check('memo does not restate the ZI-NB tallies',
+          '17-0' not in memo and '17–0' not in memo and '17 of 17' not in memo)
+
+
 def main():
     skip_pre = '--skip-precondition' in sys.argv
     validate_precondition(skip_pre)
@@ -417,6 +552,9 @@ def main():
     validate_ri_series()
     validate_covid()
     validate_crosscheck()
+    validate_variance_table()
+    validate_frozen()
+    validate_memo()
 
     print()
     print("=" * 78)

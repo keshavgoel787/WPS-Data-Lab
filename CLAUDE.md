@@ -183,7 +183,18 @@ Wyoming has no row in the WPS view at all.
   the selected count family (`viol_cov_2021`, NB1) the COVID indicator is −0.279 (p ≈ 0.096)
   and `time2` goes from p ≈ 2.0e-5 to p ≈ 0.26 when the indicator is added. The violations
   time trend is *less* COVID-robust than this sentence originally implied; the log-linear
-  check understated the sensitivity. See `docs/count_models_zinb.md`.
+  check understated the sensitivity. See `docs/count_models_zinb.md`. **This −0.279/p≈0.096
+  figure is specific to NB1** — it is the selected family for that cell, not a family-free
+  fact. The 2026-08-28 NB2-only stepwise arm (see below) refits the identical Model 3 + COVID
+  specification under `nbinom2` and gets a materially different, non-significant coefficient:
+  b = −0.188 (p = 0.446). Both numbers are correct for the fit they come from; neither
+  supersedes the other, because the two arms hold different families fixed on purpose. Cite
+  whichever family the surrounding analysis is actually using. See
+  `docs/nb2_stepwise_models.md`.
+  **Also newly documented: the two families disagree on the violations time trend even
+  *before* COVID enters.** At Model 3 with no COVID indicator, `time` is p = 0.0129 under NB1
+  versus p = 0.1597 under NB2 — a family-driven disagreement on the plain (non-pandemic) time
+  trend, not something the pandemic years introduce. See `docs/nb2_stepwise_models.md`.
 - Spending over the wider window tracks the old one closely (SPEND_WORK r=0.963,
   SPEND_APP r=0.997, median ratio ≈1.00), so the window change does not distort the
   spending measure.
@@ -434,6 +445,78 @@ above. Headline tallies were re-verified unchanged after the ladder re-run: ZI-N
   6 `__altopt` + 6 `__meta` + **6 Gaussian** (M1/M2/M3 × 2 outcomes, was 2) + 2 COVID +
   **6 `__zisens`**. `selection_table()` still returns **97** genuine fits: `__zisens` is
   excluded by key suffix, so no headline tally moved.
+
+**2026-08-28 NB2-only stepwise count models (standalone arm, ladder untouched).** The
+six-family ladder above answers a family-selection question; this arm answers a different
+one — holding the family fixed at `nbinom2` across all three build-up steps so the two
+outcomes' Model 1 → Model 2 → Model 3 sequences are directly comparable as one model class,
+which the ladder's per-cell family selection does not give you. It reuses the frozen 2021 WPS
+panel and covariate blocks; it fits nothing new about zero-inflation and does not touch
+`docs/count_models_zinb.md` or any ladder artifact. Run in this order:
+
+```bash
+Rscript scripts/nb2_stepwise_models.R          # 6 substantive M1/M2/M3 fits + RI series +
+                                                #   M1matched baseline + COVID refit, all
+                                                #   nbinom2, (1 + time | state), no fallback
+                                                # → data/generated/nb2_stepwise_results.json
+python3 scripts/nb2_crosscheck_statsmodels.py  # statsmodels NegativeBinomialP(p=2) + state
+                                                #   fixed effects, Level-1 terms only
+                                                # → data/generated/nb2_stepwise_crosscheck.json
+python3 scripts/report_nb2_stepwise.py         # pure artifact reader; computes delta_pct_ri,
+                                                #   delta_pct_ri_matched, icc_ri (defined
+                                                #   nowhere else)
+                                                # → data/generated/nb2_stepwise_variance.csv,
+                                                #   nb2_stepwise_coefficients.csv,
+                                                #   docs/nb2_stepwise_models.md
+python3 scripts/validate_nb2_stepwise.py       # sections [0]-[9]; [0] reruns the existing
+                                                #   Gaussian gate as a precondition
+```
+
+- **Six models, two cells, 2011–2021 WPS window only**: `insp_2021` and `viol_cov_2021`
+  (violations with `log_inspections` as a Level-1 covariate, matching Table 3), each M1
+  (cubic time only) → M2 (+ `SPEND_APP_z`, `SPEND_WORK_z`, `lii_2017_z`) → M3 (+
+  `h2a_per_farmworker_z`, `dol_demand_met_pct_z`, `pct_flc_z`), all at `(1 + time | state)`
+  with no fallback tier. This does not extend to the 2011–2019 establishments window or to
+  the violations-as-offset specification.
+- **NB2 is an editorial choice, not a fit-based one — it is never the winning family.** At
+  this random-effects structure it loses to the ladder's selected family at every rung: ~33
+  AIC to ZINB for inspections, ~11 AIC to NB1 for violations, at both M1 and M3. What fixing
+  the family buys is a single model class across all three build-up steps, so the
+  between-state variance actually forms one reduction sequence rather than three unrelated
+  models' parameters. NB2 is the least-bad single choice across both outcomes (it beats NB1
+  for inspections by ~138 AIC while costing only ~11 for violations) — a compromise, not a
+  win.
+- **Two reduction bases, both reported, because the sample changes between M1 and M2/M3.**
+  M1 keeps all 49 states; M2/M3 drop AK/RI/VT (no BLS pesticide-applicator series) to 46.
+  `delta_pct_ri` measures every model against a single Model-1 baseline on Model 1's own
+  49-state sample; `delta_pct_ri_matched` refits that same Model-1 baseline on the
+  Model-2/3 46-state sample instead. Both are on a random-intercept-only (`ri`) refit series,
+  never the random-slope (`rs`) fits the coefficients come from — under a random slope,
+  σ²_u0 is the between-state variance *at the 2017 centering year* and trades off against
+  σ²_u1, so it is not bounded to [0, 1] and can go negative (as documented above for the
+  log-LMM violations table). The two bases disagree in **opposite directions by outcome**:
+  dropping AK/RI/VT *lowers* the inspections Model-1 baseline (so the unmatched column
+  *overstates* what the covariates do — inspections M3 is +16.3% against Model 1 but only
+  +5.1% against the matched baseline) and *raises* the violations one (so the unmatched
+  column *understates* it — violations M3 is +19.7% against Model 1 but +21.5% matched).
+- **`icc_ri`** is Nakagawa's observation-level (distribution-specific) variance for a
+  log-link NB2, `σ²_u0 / (σ²_u0 + ln(1 + 1/θ + 1/μ))`, all four quantities from the same `ri`
+  fit. It is a link-scale approximation and is **not** comparable to this project's headline
+  "ICC ~77%", which is a Gaussian LMM quantity on `log(count + 1)`.
+- **The cross-check is retired-and-replaced, not extended.** The six-family ladder's
+  zero-inflation cross-check has no counterpart here — an NB2-only arm has no ZI component.
+  Instead, `nb2_crosscheck_statsmodels.py` fits the same Model-3 fixed effects with state
+  dummies in `statsmodels`, which cannot identify the five Level-2 (state-invariant)
+  covariates at all (collinear with the dummies by construction) — the check therefore
+  covers the Level-1 (time-varying) terms only, and the Level-2 spending/commodity-mix/H-2A
+  coefficients are **not** independently confirmed by it.
+- **COVID robustness was re-derived under `nbinom2`, not carried over** — the ladder's own
+  COVID variants sit under ZINB (inspections) and NB1 (violations), different families. See
+  the corrected COVID note above for the violations-specific numbers this produced.
+- Full memo: `docs/nb2_stepwise_models.md` (generated, never hand-edited — re-run
+  `report_nb2_stepwise.py` instead). Validator: `scripts/validate_nb2_stepwise.py`, sections
+  `[0]`–`[9]`; do not quote a single total, read the per-section breakdown (the same
+  convention as `validate_count_models.py`).
 
 Scripts must be run from `/Users/keshavgoel/Research/` — all file paths are absolute and hardcoded to the `data/`, `figures/`, and `docs/` subdirectories.
 
