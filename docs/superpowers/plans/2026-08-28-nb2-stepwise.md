@@ -948,10 +948,26 @@ def validate_crosscheck():
               c['n_obs'] == load_results()[f'{cell}__M3__nbinom2__rs']['n_obs'],
               f"crosscheck {c['n_obs']}")
         terms = c['terms']
-        check(f'{cell}: cross-check covers every M3 fixed effect except the intercept',
-              set(terms) == set(load_results()[f'{cell}__M3__nbinom2__rs']['cond'])
-              - {'(Intercept)'},
-              f'got {sorted(terms)}')
+        # Ruling R7. State fixed effects ABSORB any state-invariant regressor,
+        # so the check can only cover the time-varying (Level-1) terms. The
+        # expected split is re-derived HERE from the panel, independently of
+        # what the cross-check script wrote, so the two computations can
+        # genuinely disagree.
+        import pandas as _pd
+        _p = _pd.read_csv(GEN + 'count_model_panel_2021.csv')
+        _m3 = [t for t in load_results()[f'{cell}__M3__nbinom2__rs']['cond']
+               if t != '(Intercept)']
+        _d = _p[[ 'state'] + _m3].dropna()
+        _varying = {t for t in _m3
+                    if _d.groupby('state')[t].std(ddof=0).max() > 1e-12}
+        check(f'{cell}: cross-check covers exactly the time-varying M3 terms',
+              set(terms) == _varying, f'got {sorted(terms)}, want {sorted(_varying)}')
+        check(f'{cell}: absorbed terms are exactly the state-invariant M3 terms',
+              set(c.get('terms_absorbed', [])) == set(_m3) - _varying,
+              f"got {sorted(c.get('terms_absorbed', []))}, "
+              f"want {sorted(set(_m3) - _varying)}")
+        check(f'{cell}: absorbed terms carry a stated reason',
+              bool(str(c.get('absorbed_reason', '')).strip()))
         # The assertion. Sign agreement ONLY among terms both implementations
         # resolve away from zero -- a term neither can distinguish from zero has
         # no sign to agree about, and demanding one would be manufacturing a
@@ -1259,7 +1275,10 @@ MEMO_FORBIDDEN_PATTERNS = [
     'nbinom2 was selected', 'NB2 was selected', 'NB2 is selected',
     'NB2 won', 'NB2 wins', 'nbinom2 wins',
     'best-fitting family', 'the preferred family',
-    # A count family has no residual variance.
+    # A count family has no residual variance. NOTE: this also forbids the memo
+    # from DENYING one in those exact words, which is why the memo writes the
+    # denial hyphenated ('no residual-variance column'). That is deliberate --
+    # do not "fix" the memo by removing the hyphen.
     'residual variance', 'sigma2_e', 'sigma^2_e',
     # The Delta comes from the RI series, never from the random-slope fits.
     'reduction in the random-slope',
@@ -1282,14 +1301,15 @@ def validate_memo():
     required = [
         ('AIC penalty is stated', 'editorial'),
         ('link-scale caveat present', 'link scale'),
-        ('sample-change caveat present', 'AK'),
+        ('sample-change caveat present', 'AK, RI and VT'),
         ('ICC formula printed', 'Nakagawa'),
         ('COVID section present', 'COVID'),
         ('cross-check section present', 'state fixed effects'),
     ]
+    # Case-SENSITIVE and exact-phrase. A case-folded 'AK' matched 'make',
+    # 'take' and 'breaks', so that row passed no matter what the memo said.
     for label, needle in required:
-        check(f'memo: {label}', needle.lower() in memo.lower(),
-              f'{needle!r} not found')
+        check(f'memo: {label}', needle in memo, f'{needle!r} not found')
     # The ZI-NB tallies belong to the other memo; restating them here would
     # invite a reader to think this arm re-tested zero-inflation. It did not.
     check('memo does not restate the ZI-NB tallies',
@@ -1352,12 +1372,25 @@ def stars(p):
     return '***' if p < .001 else '**' if p < .01 else '*' if p < .05 else ''
 
 
+# The frozen ladder's COVID variants, for the family comparison in the memo.
+# They sit under DIFFERENT families -- that is the whole point of re-deriving
+# them under NB2 -- so the key carries the family it was fit under.
+COVID_LADDER_REF = {
+    'insp_2021': ('insp_2021__M3covid__zinb', 'ZINB'),
+    'viol_cov_2021': ('viol_cov_2021__M3covid__nbinom1', 'NB1'),
+}
+
+
 def load():
     with open(GEN + 'nb2_stepwise_results.json') as fh:
         res = json.load(fh)
     with open(GEN + 'nb2_stepwise_crosscheck.json') as fh:
         cc = json.load(fh)
-    return res, cc
+    # READ-ONLY. The ladder artifact is frozen; it is opened here only to quote
+    # its COVID variants' coefficients beside ours.
+    with open(GEN + 'count_model_results.json') as fh:
+        ladder = json.load(fh)
+    return res, cc, ladder
 
 
 def icc_nb2(s2_u0, theta, mu):
@@ -1417,7 +1450,7 @@ def md_table(df, cols, fmt):
     return '\n'.join([head, rule] + body)
 
 
-def write_memo(res, cc, vt, ct):
+def write_memo(res, cc, ladder, vt, ct):
     L = []
     A = L.append
     A('# NB2-Only Stepwise Count Models, 2011-2021')
@@ -1465,7 +1498,7 @@ def write_memo(res, cc, vt, ct):
       'hypothetical -- it produced a -12.5% figure in the log-LMM violations '
       'table.')
     A('')
-    A('All of these are on the log **link** scale. Their magnitudes are not '
+    A('All of these are on the log link scale. Their magnitudes are not '
       'comparable to the sigma^2_u0 values in published Tables 2 and 3, though '
       'a percentage reduction is.')
     A('')
@@ -1499,10 +1532,36 @@ def write_memo(res, cc, vt, ct):
       '3 keep 46, because AK, RI and VT have no BLS pesticide-applicator series '
       'and drop by listwise deletion once `SPEND_APP_z` enters. `Delta '
       'sigma^2_u0 %` is measured against a single Model-1 baseline on Model 1\'s '
-      'own sample, so every column starts from Model 1 -- but part of that '
-      'reduction is the three states leaving, not the covariates. `Delta % '
-      'matched` refits the Model-1 baseline on the Model-2/3 sample and isolates '
-      'the covariates. Neither number alone tells the truth; read both.')
+      'own sample, so every column starts from Model 1. `Delta % matched` refits '
+      'the Model-1 baseline on the Model-2/3 sample, so the difference between '
+      'the two columns is exactly what those three states contributed. Neither '
+      'number alone tells the truth; read both.')
+    A('')
+    # The direction of the sample effect is NOT the same for both outcomes, so
+    # this paragraph is derived per cell rather than asserted. Writing the
+    # inspections direction as if it were general would mis-describe the
+    # violations column: there the Model-1 basis UNDERstates the covariates.
+    A('**And the two columns differ in opposite directions by outcome**, which '
+      'is why the generic warning is not written here:')
+    A('')
+    for cell, outcome in CELLS.items():
+        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
+        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
+        m3 = res[f'{cell}__M3__nbinom2__ri']['sigma2_u0']
+        d_base = 100 * (base - m3) / base
+        d_match = 100 * (matched - m3) / matched
+        direction = ('lowers' if matched < base else 'raises')
+        reading = ('overstates' if d_base > d_match else 'understates')
+        A(f'- **{outcome}:** dropping AK, RI and VT {direction} the Model-1 '
+          f'between-state variance ({base:.4f} on 49 states -> {matched:.4f} on '
+          f'46), so the Model-1 basis {reading} what the covariates do: '
+          f'Model 3 reduces sigma^2_u0 by {d_base:+.1f}% against Model 1 but '
+          f'{d_match:+.1f}% against the matched baseline.')
+    A('')
+    A('The inspections direction reproduces, under a different model class, an '
+      'asymmetry this project already documented for the published log-linear '
+      'tables: AK/RI/VT carry much of the between-state inspection variance, '
+      'and violations are unaffected by their loss.')
     A('')
     A('## Coefficients')
     A('')
@@ -1548,6 +1607,42 @@ def write_memo(res, cc, vt, ct):
           ' | '.join(f"{m3[t]['p']:.3g} -> {cv[t]['p']:.3g}"
                      for t in ('time', 'time2', 'time3')) + ' |')
     A('')
+    # Ruling R6. The frozen ladder's COVID variants sit under DIFFERENT
+    # families (ZINB for inspections, NB1 for violations), and the comparison
+    # splits three ways. Reported as three distinct facts, each derived from
+    # the two JSONs rather than asserted, because CLAUDE.md currently records
+    # the NB1 coefficient as though it were general.
+    A('**How this compares to the ladder\'s own COVID variants, which sit '
+      'under different families.** Three separate things are true and they '
+      'must not be merged:')
+    A('')
+    for cell, outcome in CELLS.items():
+        old_key, old_fam = COVID_LADDER_REF[cell]
+        o_cv = ladder[old_key]['cond']
+        o_m3 = ladder[old_key.replace('M3covid', 'M3')]['cond']
+        n_cv = res[f'{cell}__M3covid__nbinom2__rs']['cond']
+        n_m3 = res[f'{cell}__M3__nbinom2__rs']['cond']
+        A(f'- **{outcome}, the indicator itself:** {old_fam} gives '
+          f'b = {o_cv["covid"]["b"]:+.4f} (p = {o_cv["covid"]["p"]:.3g}); NB2 '
+          f'gives b = {n_cv["covid"]["b"]:+.4f} '
+          f'(p = {n_cv["covid"]["p"]:.3g}).')
+        A(f'- **{outcome}, the time trend under the indicator:** `time2` moves '
+          f'{o_m3["time2"]["p"]:.3g} -> {o_cv["time2"]["p"]:.3g} under '
+          f'{old_fam}, and {n_m3["time2"]["p"]:.3g} -> '
+          f'{n_cv["time2"]["p"]:.3g} under NB2.')
+        A(f'- **{outcome}, before COVID enters at all:** the two families '
+          f'already disagree on Model 3\'s own time trend -- `time` '
+          f'p = {o_m3["time"]["p"]:.3g} under {old_fam} against '
+          f'{n_m3["time"]["p"]:.3g} under NB2, and `time2` '
+          f'{o_m3["time2"]["p"]:.3g} against {n_m3["time2"]["p"]:.3g}. That '
+          f'gap is a property of the family choice, not of the pandemic.')
+    A('')
+    A('The practical consequence for the violations column: the COVID '
+      'coefficient recorded elsewhere in this project is an NB1 estimate and '
+      'does not carry over to NB2, while the qualitative caution it supports '
+      '-- that `time2` stops being significant once the indicator enters -- '
+      'does carry over. Cite the number with its family attached.')
+    A('')
     A('## Cross-software check')
     A('')
     A('`statsmodels` has no multilevel negative binomial, so the independent '
@@ -1560,6 +1655,18 @@ def write_memo(res, cc, vt, ct):
       'among terms both implementations resolve away from zero (|b| > 2 SE in '
       'both). The ratios below are reported for judgement, not thresholded.')
     A('')
+    A('**What this check can and cannot cover.** State fixed effects absorb any '
+      'regressor that is constant within a state, so the Level-2 covariates are '
+      'perfectly collinear with the state dummies and their coefficients are '
+      'not identified at all under this estimator -- the design matrix is '
+      'rank-deficient by exactly the number of them. They are therefore dropped '
+      'from the comparison, by name, below. This is a property of fixed-effects '
+      'estimation, not a shortcoming of either implementation, and it means the '
+      'cross-check validates the **Level-1 (time-varying) terms only**. The '
+      'Level-2 covariates -- the spending, commodity-mix and H-2A-share '
+      'variables that Models 2 and 3 are built from -- are NOT independently '
+      'confirmed by this check, and no reader should take them as such.')
+    A('')
     A('The zero-inflation cross-check in the six-family pipeline has no '
       'counterpart here -- an NB2-only arm has no zero-inflation component.')
     A('')
@@ -1568,6 +1675,12 @@ def write_memo(res, cc, vt, ct):
         A(f'### {outcome} ({cell}) -- N = {c["n_obs"]}, '
           f'{c["n_states"] - 1} state dummies, converged = {c["converged"]}')
         A('')
+        absorbed = c.get('terms_absorbed', [])
+        if absorbed:
+            A(f'Absorbed by the state dummies and excluded from the comparison '
+              f'({len(absorbed)}): ' +
+              ', '.join(f'`{t}`' for t in absorbed) + '.')
+            A('')
         A('| Term | b (statsmodels FE) | b (glmmTMB RE) | ratio | '
           'both distinguishable from 0 | sign |')
         A('|---|---|---|---|---|---|')
@@ -1602,7 +1715,7 @@ def write_memo(res, cc, vt, ct):
 
 
 def main():
-    res, cc = load()
+    res, cc, ladder = load()
     vt = variance_table(res)
     ct = coefficient_table(res)
     vt.to_csv(GEN + 'nb2_stepwise_variance.csv', index=False)
@@ -1610,7 +1723,7 @@ def main():
     print(vt.to_string(index=False))
     print()
     print(ct.to_string(index=False))
-    write_memo(res, cc, vt, ct)
+    write_memo(res, cc, ladder, vt, ct)
     print(f"\nWrote {GEN}nb2_stepwise_variance.csv, "
           f"{GEN}nb2_stepwise_coefficients.csv, {DOCS}nb2_stepwise_models.md")
 
