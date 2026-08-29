@@ -479,18 +479,58 @@ def validate_frozen():
         'data/generated/count_model_panel_2021.csv',
         'docs/count_models_zinb.md',
     ]
+    # --- (a) working-tree check: catches uncommitted edits. ---
     proc = subprocess.run(['git', 'diff', 'HEAD', '--name-only', '--'] + frozen,
                           capture_output=True, text=True, cwd=ROOT)
     changed = [ln for ln in proc.stdout.split('\n') if ln.strip()]
-    check('no frozen count-model artifact modified', not changed,
-          f'modified: {changed}')
+    check('no frozen count-model artifact modified (working tree vs HEAD)',
+          not changed, f'modified: {changed}')
     proc = subprocess.run(['git', 'diff', 'HEAD', '--name-only'],
                           capture_output=True, text=True, cwd=ROOT)
     touched = [ln for ln in proc.stdout.split('\n') if ln.strip()]
     bad = [f for f in touched
            if f.endswith('.docx') or 'paper_table' in f]
-    check('no .docx and no paper_table artifact modified', not bad,
-          f'modified: {bad}')
+    check('no .docx and no paper_table artifact modified (working tree vs HEAD)',
+          not bad, f'modified: {bad}')
+    # --- (b) committed-history check: `git diff HEAD` alone is blind to
+    # anything already committed on this branch -- it only ever compares the
+    # working tree to HEAD, so a frozen artifact edited and then committed
+    # passes check (a) unconditionally, which is exactly the case this
+    # section exists to catch (review Finding 2). Diff against the branch's
+    # merge-base with main instead. The merge-base is computed fresh on every
+    # run, never hardcoded, so it stays correct as the branch grows. If it
+    # cannot be resolved, FAIL loudly rather than silently skip -- a guard
+    # that quietly stops guarding is worse than no guard. ---
+    mb = subprocess.run(['git', 'merge-base', 'main', 'HEAD'],
+                        capture_output=True, text=True, cwd=ROOT)
+    merge_base = mb.stdout.strip()
+    mb_ok = mb.returncode == 0 and bool(merge_base)
+    check('git merge-base main HEAD resolves (required for the '
+          'committed-history guard)', mb_ok,
+          f'returncode {mb.returncode}; stdout {mb.stdout!r}; '
+          f'stderr {mb.stderr!r}')
+    if not mb_ok:
+        check('no frozen count-model artifact modified (merge-base vs HEAD)',
+              False, 'merge-base could not be resolved -- guard did not run')
+        check('no .docx and no paper_table artifact modified '
+              '(merge-base vs HEAD)', False,
+              'merge-base could not be resolved -- guard did not run')
+        return
+    proc = subprocess.run(['git', 'diff', f'{merge_base}..HEAD', '--name-only',
+                          '--'] + frozen,
+                          capture_output=True, text=True, cwd=ROOT)
+    changed_hist = [ln for ln in proc.stdout.split('\n') if ln.strip()]
+    check('no frozen count-model artifact modified (merge-base vs HEAD)',
+          not changed_hist,
+          f'modified since merge-base {merge_base}: {changed_hist}')
+    proc = subprocess.run(['git', 'diff', f'{merge_base}..HEAD', '--name-only'],
+                          capture_output=True, text=True, cwd=ROOT)
+    touched_hist = [ln for ln in proc.stdout.split('\n') if ln.strip()]
+    bad_hist = [f for f in touched_hist
+                if f.endswith('.docx') or 'paper_table' in f]
+    check('no .docx and no paper_table artifact modified (merge-base vs HEAD)',
+          not bad_hist,
+          f'modified since merge-base {merge_base}: {bad_hist}')
 
 
 # ============================================================
@@ -537,6 +577,41 @@ def validate_memo():
     # 'take' and 'breaks', so that row passed no matter what the memo said.
     for label, needle in required:
         check(f'memo: {label}', needle in memo, f'{needle!r} not found')
+    # Review Finding 1: the 'before COVID enters at all' bullet asserted a
+    # fixed 'the two families already disagree' regardless of what the
+    # p-values actually show, and for inspections neither `time` nor `time2`
+    # flips significance status -- the memo was contradicting its own printed
+    # numbers. Derive the expected verdict HERE, straight from the two JSONs,
+    # independent of whatever wording the reporter produced, and check the
+    # memo's per-cell bullet says the right thing.
+    _covid_ladder_ref = {
+        'insp_2021': ('insp_2021__M3__zinb', 'ZINB'),
+        'viol_cov_2021': ('viol_cov_2021__M3__nbinom1', 'NB1'),
+    }
+    _outcome_name = {'insp_2021': 'inspections', 'viol_cov_2021': 'violations'}
+    res = load_results()
+    with open(GEN + 'count_model_results.json') as fh:
+        ladder = json.load(fh)
+    for cell in CELLS:
+        old_key, old_fam = _covid_ladder_ref[cell]
+        o_m3 = ladder[old_key]['cond']
+        n_m3 = res[f'{cell}__M3__nbinom2__rs']['cond']
+        flips = [t for t in ('time', 'time2')
+                 if (o_m3[t]['p'] < .05) != (n_m3[t]['p'] < .05)]
+        expect_disagree = bool(flips)
+        outcome = _outcome_name[cell]
+        marker = f'{outcome}, before COVID enters at all:'
+        matches = [ln for ln in memo.splitlines() if marker in ln]
+        if not matches:
+            check(f'{cell}: pre-COVID time-trend bullet present', False,
+                  f'marker {marker!r} not found in memo')
+            continue
+        line = matches[0]
+        says_disagree = 'disagree' in line.lower()
+        check(f'{cell}: pre-COVID time-trend bullet verdict matches the '
+              f'JSONs (expected {"disagree" if expect_disagree else "agree"}, '
+              f'flips={flips})',
+              says_disagree == expect_disagree, f'line: {line!r}')
     # The ZI-NB tallies belong to the other memo; restating them here would
     # invite a reader to think this arm re-tested zero-inflation. It did not.
     check('memo does not restate the ZI-NB tallies',

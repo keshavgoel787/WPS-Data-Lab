@@ -95,10 +95,10 @@ The inspections direction reproduces, under a different model class, an asymmetr
 
 - **inspections, the indicator itself:** ZINB gives b = -0.4160 (p = 0.00173); NB2 gives b = -0.4397 (p = 0.00168).
 - **inspections, the time trend under the indicator:** `time2` moves 0.184 -> 0.0623 under ZINB, and 0.189 -> 0.0596 under NB2.
-- **inspections, before COVID enters at all:** the two families already disagree on Model 3's own time trend -- `time` p = 0.00208 under ZINB against 0.00141 under NB2, and `time2` 0.184 against 0.189. That gap is a property of the family choice, not of the pandemic.
+- **inspections, before COVID enters at all:** the two families agree on Model 3's own time trend -- `time` p = 0.00208 under ZINB against 0.00141 under NB2 and `time2` p = 0.184 under ZINB against 0.189 under NB2. Both families agree: `time` significant under both families, `time2` non-significant under both families.
 - **violations, the indicator itself:** NB1 gives b = -0.2786 (p = 0.0964); NB2 gives b = -0.1880 (p = 0.446).
 - **violations, the time trend under the indicator:** `time2` moves 1.96e-05 -> 0.262 under NB1, and 0.000444 -> 0.187 under NB2.
-- **violations, before COVID enters at all:** the two families already disagree on Model 3's own time trend -- `time` p = 0.0129 under NB1 against 0.16 under NB2, and `time2` 1.96e-05 against 0.000444. That gap is a property of the family choice, not of the pandemic.
+- **violations, before COVID enters at all:** the two families disagree on Model 3's own time trend -- `time` p = 0.0129 under NB1 against 0.16 under NB2 and `time2` p = 1.96e-05 under NB1 against 0.000444 under NB2. Significance status (p < .05) flips on `time`. That gap is a property of the family choice, not of the pandemic.
 
 The practical consequence for the violations column: the COVID coefficient recorded elsewhere in this project is an NB1 estimate and does not carry over to NB2, while the qualitative caution it supports -- that `time2` stops being significant once the indicator enters -- does carry over. Cite the number with its family attached.
 

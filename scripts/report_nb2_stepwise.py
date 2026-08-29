@@ -63,6 +63,44 @@ def icc_nb2(s2_u0, theta, mu):
     return s2_u0 / (s2_u0 + math.log(1 + 1 / theta + 1 / mu))
 
 
+def _sig(p):
+    return p < .05
+
+
+def pre_covid_time_trend_bullet(outcome, old_fam, o_m3, n_m3):
+    """The 'before COVID enters at all' bullet. Fix for review Finding 1: the
+    old text asserted 'the two families already disagree' unconditionally,
+    but for inspections neither `time` nor `time2` actually flips
+    significance status (both p<.05 on `time`, both n.s. on `time2`) -- the
+    families agree there. Compute the verdict from the p-values themselves,
+    per term, and phrase the sentence accordingly, following the same
+    derive-don't-assert pattern used for the sample-effect direction/reading
+    a few sections up in this file. Never claim a disagreement the numbers
+    don't show, and never suppress a genuine one (violations' `time` really
+    does flip)."""
+    terms = ('time', 'time2')
+    flipped = [t for t in terms if _sig(o_m3[t]['p']) != _sig(n_m3[t]['p'])]
+    detail = ' and '.join(
+        f'`{t}` p = {o_m3[t]["p"]:.3g} under {old_fam} against '
+        f'{n_m3[t]["p"]:.3g} under NB2'
+        for t in terms)
+    if flipped:
+        flip_list = ' and '.join(f'`{t}`' for t in flipped)
+        verb = 'disagree'
+        tail = (f'Significance status (p < .05) flips on {flip_list}. That '
+                'gap is a property of the family choice, not of the '
+                'pandemic.')
+    else:
+        verb = 'agree'
+        statuses = ', '.join(
+            f'`{t}` {"significant" if _sig(o_m3[t]["p"]) else "non-significant"} '
+            'under both families'
+            for t in terms)
+        tail = f'Both families agree: {statuses}.'
+    return (f'- **{outcome}, before COVID enters at all:** the two families '
+            f'{verb} on Model 3\'s own time trend -- {detail}. {tail}')
+
+
 def variance_table(res):
     rows = []
     for cell, outcome in CELLS.items():
@@ -293,12 +331,7 @@ def write_memo(res, cc, ladder, vt, ct):
           f'{o_m3["time2"]["p"]:.3g} -> {o_cv["time2"]["p"]:.3g} under '
           f'{old_fam}, and {n_m3["time2"]["p"]:.3g} -> '
           f'{n_cv["time2"]["p"]:.3g} under NB2.')
-        A(f'- **{outcome}, before COVID enters at all:** the two families '
-          f'already disagree on Model 3\'s own time trend -- `time` '
-          f'p = {o_m3["time"]["p"]:.3g} under {old_fam} against '
-          f'{n_m3["time"]["p"]:.3g} under NB2, and `time2` '
-          f'{o_m3["time2"]["p"]:.3g} against {n_m3["time2"]["p"]:.3g}. That '
-          f'gap is a property of the family choice, not of the pandemic.')
+        A(pre_covid_time_trend_bullet(outcome, old_fam, o_m3, n_m3))
     A('')
     A('The practical consequence for the violations column: the COVID '
       'coefficient recorded elsewhere in this project is an NB1 estimate and '
