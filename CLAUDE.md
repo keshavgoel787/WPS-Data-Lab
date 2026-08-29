@@ -492,10 +492,15 @@ python3 scripts/validate_nb2_stepwise.py       # sections [0]-[10]; [0] reruns t
   M2's is 13.73. What fixing the family buys is a single model class across all three
   build-up steps, so the between-state variance actually forms one reduction sequence rather
   than three unrelated models' parameters. NB2 is the least-bad single choice across both
-  outcomes — wherever the ladder has its own plain-NB1 fit at the same rung (M1 and M3 only;
-  the ladder fits M2 solely under each cell's selected family) NB2 beats it for inspections by
-  162.22 AIC at M1 and 138.33 AIC at M3, while costing NB2 7.06/13.73/10.74 AIC (M1/M2/M3)
-  against NB1 for violations — a compromise, not a win.
+  outcomes — wherever the ladder has its own plain-NB1 fit at the same rung, NB2 beats it for
+  inspections by 162.22 AIC at M1 and 138.33 AIC at M3 (inspections has **no** M2 NB1 entry,
+  because ZINB, not NB1, is its selected family there), while costing NB2 7.06/13.73/10.74 AIC
+  (M1/M2/M3) against NB1 for violations — a compromise, not a win. **Do not write "neither
+  cell has an M2 NB1 entry"** — a residual-review-round defect: that is true for inspections
+  only. Violations' selected family IS nbinom1, so the ladder fits one at every model there,
+  M2 included (`viol_cov_2021__M2__nbinom1` exists, converged, AIC 3630.469), which is exactly
+  why the M2 figure above exists at all. Scope any "M1 and M3 only" NB1-coverage claim to
+  inspections; for violations it is M1, M2 *and* M3.
 - **Two reduction bases, both reported, because the sample changes between M1 and M2/M3.**
   M1 keeps all 49 states; M2/M3 drop AK/RI/VT (no BLS pesticide-applicator series) to 46.
   `delta_pct_ri` measures every model against a single Model-1 baseline on Model 1's own

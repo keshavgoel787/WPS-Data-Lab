@@ -113,11 +113,27 @@ def best_ladder_rung(ladder, cell, model):
 
 def aic_penalty_table(res, ladder):
     """NB2's AIC penalty against the best available ladder family, at every
-    (cell, model) rung NB2 was fit -- M1, M2 and M3, not just M1/M3."""
+    (cell, model) rung NB2 was fit -- M1, M2 and M3, not just M1/M3.
+
+    M5 (residual finding, fix wave 2026-08-29): a record that failed to
+    converge lands in the R error branch and carries only
+    'converged'/'message' -- no 'aic'. Direct indexing used to raise
+    KeyError here, and because this function runs at the TOP of
+    write_memo(), that crash happened after main() had already written both
+    CSVs, leaving the memo stale relative to them. Gate on 'converged' and
+    emit a None-valued row instead, so all three artifacts stay in sync
+    (either all written fresh, or the whole run aborts before any of them
+    do -- never a partial write)."""
     rows = []
     for cell, outcome in CELLS.items():
         for model in MODELS:
-            nb2_aic = res[f'{cell}__{model}__nbinom2__rs']['aic']
+            r = res[f'{cell}__{model}__nbinom2__rs']
+            if not r.get('converged'):
+                rows.append({'cell': cell, 'outcome': outcome, 'model': model,
+                             'nb2_aic': None, 'best_aic': None,
+                             'best_family': None, 'penalty': None})
+                continue
+            nb2_aic = r['aic']
             fam, best_aic = best_ladder_rung(ladder, cell, model)
             rows.append({'cell': cell, 'outcome': outcome, 'model': model,
                          'nb2_aic': nb2_aic, 'best_aic': best_aic,
@@ -127,22 +143,45 @@ def aic_penalty_table(res, ladder):
 
 def nb1_margin_table(res, ladder):
     """NB2's AIC margin over a plain NB1 fit at the SAME rung, wherever the
-    frozen ladder actually has one. The ladder fits M2 only under each cell's
-    selected family, so neither cell has an M2 nbinom1 entry -- this table is
-    therefore M1/M3 only, by construction, not by omission. Positive margin =
-    NB2 beats NB1."""
+    frozen ladder actually has one. Positive margin = NB2 beats NB1.
+
+    Coverage is NOT symmetric across cells, and must not be described as if
+    it were (residual-review Finding 2: an earlier draft claimed "the ladder
+    fits M2 only under each cell's selected family, so neither cell has an
+    M2 nbinom1 entry" -- true for inspections, false for violations, whose
+    selected family IS nbinom1, so the ladder fits one at every model
+    including M2). Which (cell, model) rows this table actually returns is
+    read back out of `ladder` here, at call time, by callers that need to
+    describe the coverage in prose -- nothing above should be restated as a
+    fixed M1/M3 claim.
+
+    M5: a non-converged NB2 record has no 'aic' either; gated the same way
+    as aic_penalty_table for the same reason (write_memo() calls this before
+    the memo is assembled, after the CSVs are already on disk)."""
     rows = []
     for cell, outcome in CELLS.items():
         for model in MODELS:
             key = f'{cell}__{model}__nbinom1'
             if key not in ladder:
                 continue
+            r = res[f'{cell}__{model}__nbinom2__rs']
+            if not r.get('converged'):
+                rows.append({'cell': cell, 'outcome': outcome, 'model': model,
+                             'nb1_aic': ladder[key]['aic'], 'nb2_aic': None,
+                             'margin': None})
+                continue
             nb1_aic = ladder[key]['aic']
-            nb2_aic = res[f'{cell}__{model}__nbinom2__rs']['aic']
+            nb2_aic = r['aic']
             rows.append({'cell': cell, 'outcome': outcome, 'model': model,
                          'nb1_aic': nb1_aic, 'nb2_aic': nb2_aic,
                          'margin': nb1_aic - nb2_aic})
     return pd.DataFrame(rows)
+
+
+def _fmt(v, spec='.2f'):
+    """Safe formatter for the memo's derived tables/prose: None (a
+    non-converged rung, M5) prints as 'NC' instead of raising on `:spec`."""
+    return 'NC' if v is None or v != v else format(v, spec)
 
 
 def _sig(p):
@@ -292,10 +331,10 @@ def write_memo(res, cc, ladder, vt, ct):
     A('| Cell | Model | NB2 AIC | Best available AIC | Family | NB2 penalty |')
     A('|---|---|---|---|---|---|')
     for _, r in apt.iterrows():
-        A(f"| {r['outcome']} | {r['model']} | {r['nb2_aic']:.2f} | "
-          f"{r['best_aic']:.2f} | "
-          f"{FAMILY_DISPLAY.get(r['best_family'], r['best_family'])} | "
-          f"{r['penalty']:+.2f} |")
+        A(f"| {r['outcome']} | {r['model']} | {_fmt(r['nb2_aic'])} | "
+          f"{_fmt(r['best_aic'])} | "
+          f"{FAMILY_DISPLAY.get(r['best_family'], r['best_family']) or 'NC'} | "
+          f"{_fmt(r['penalty'], '+.2f')} |")
     A('')
     A(f'That is {insp_pen.min():.2f}-{insp_pen.max():.2f} AIC against ZINB for '
       f'inspections and {viol_pen.min():.2f}-{viol_pen.max():.2f} AIC against '
@@ -304,19 +343,46 @@ def write_memo(res, cc, ladder, vt, ct):
       'between-state variance actually forms a reduction sequence instead of '
       'being three different models\' parameters.')
     A('')
+    # Finding 2 (residual-review fix wave 2026-08-29): the old paragraph
+    # asserted, for BOTH outcomes at once, that the ladder's NB1 coverage is
+    # "M1 and M3 only... neither cell has an M2 NB1 entry". That is true for
+    # inspections (ZINB, not NB1, is its selected family, so the ladder never
+    # fits a plain NB1 for insp_2021's M2) but false for violations, whose
+    # selected family IS nbinom1 -- the ladder fits one at every model there,
+    # M2 included (viol_cov_2021__M2__nbinom1 exists, converged, AIC
+    # 3630.469), and the very next clause of the old sentence quoted that
+    # M2 value without noticing the contradiction. Derive each outcome's
+    # actual model coverage from `nb1t` (built straight from the ladder JSON)
+    # instead of asserting it, so this cannot rot the same way twice.
+    insp_present = [m for m in MODELS
+                    if m in set(nb1t.loc[nb1t['cell'] == 'insp_2021', 'model'])]
+    viol_present = [m for m in MODELS
+                    if m in set(nb1t.loc[nb1t['cell'] == 'viol_cov_2021', 'model'])]
+    insp_missing = [m for m in MODELS if m not in insp_present]
+    viol_missing = [m for m in MODELS if m not in viol_present]
     nb1_bits = ', '.join(
-        f"{r['margin']:+.2f} AIC at {r['model']}"
+        f"{_fmt(r['margin'], '+.2f')} AIC at {r['model']}"
         for _, r in nb1t[nb1t['cell'] == 'insp_2021'].iterrows())
     viol_bits = ', '.join(
-        f"{r['penalty']:+.2f} AIC at {r['model']}"
+        f"{_fmt(r['penalty'], '+.2f')} AIC at {r['model']}"
         for _, r in apt[apt['cell'] == 'viol_cov_2021'].iterrows())
+    insp_gap = (f'inspections only has an NB1 entry at {"/".join(insp_present)} '
+                f'(no {"/".join(insp_missing)}), because ZINB, not NB1, is its '
+                'selected family there'
+                if insp_missing else
+                'the ladder fits an NB1 at every model for inspections too')
+    viol_gap = (f'violations only has an NB1 entry at {"/".join(viol_present)} '
+                f'(no {"/".join(viol_missing)})'
+                if viol_missing else
+                'unlike inspections, the ladder fits an NB1 at every model for '
+                'violations too, because NB1 is precisely violations\' own '
+                'selected family')
     A(f'NB2 is nonetheless the least-bad single choice across both outcomes: '
-      f'wherever the frozen ladder has its own plain-NB1 fit at the same rung '
-      f'(M1 and M3 only -- the ladder fits M2 solely under each cell\'s '
-      f'selected family, so neither cell has an M2 NB1 entry), NB2 beats it '
-      f'for inspections by {nb1_bits}, while costing NB2 {viol_bits} against '
-      'NB1 for violations (violations\' selected family is NB1 itself, so '
-      'that cost is the same number as its penalty row above).')
+      f'wherever the frozen ladder has its own plain-NB1 fit at the same rung, '
+      f'NB2 beats it for inspections by {nb1_bits} ({insp_gap}), while '
+      f'costing NB2 {viol_bits} against NB1 for violations at every model, '
+      f'{"/".join(viol_present)} ({viol_gap} -- so that M2 cost is the same '
+      'number as its penalty-table row above, not a gap in coverage).')
     A('')
     A('The family-selection evidence, including the zero-inflation comparisons, '
       'lives in `docs/count_models_zinb.md` and is untouched by this arm. '
@@ -539,8 +605,15 @@ def write_memo(res, cc, ladder, vt, ct):
       'time2 p, M3 -> M3+covid | time3 p, M3 -> M3+covid |')
     A('|---|---|---|---|---|---|---|')
     for cell, outcome in CELLS.items():
-        m3 = res[f'{cell}__M3__nbinom2__rs']['cond']
-        cv = res[f'{cell}__M3covid__nbinom2__rs']['cond']
+        m3_r = res[f'{cell}__M3__nbinom2__rs']
+        cv_r = res[f'{cell}__M3covid__nbinom2__rs']
+        # M5: guard against a non-converged M3 or M3covid record (R error
+        # branch, no 'cond') the same way variance_table()/coefficient_table()
+        # already do, instead of indexing 'cond' directly.
+        if not (m3_r.get('converged') and cv_r.get('converged')):
+            A(f'| {outcome} | NC | NC | NC | NC | NC | NC |')
+            continue
+        m3, cv = m3_r['cond'], cv_r['cond']
         c = cv['covid']
         A(f"| {outcome} | {c['b']:.3f} ({c['se']:.3f}){stars(c['p'])} | "
           f"{c['p']:.3g} | {math.exp(c['b']):.3f} | " +
@@ -560,8 +633,15 @@ def write_memo(res, cc, ladder, vt, ct):
         old_key, old_fam = COVID_LADDER_REF[cell]
         o_cv = ladder[old_key]['cond']
         o_m3 = ladder[old_key.replace('M3covid', 'M3')]['cond']
-        n_cv = res[f'{cell}__M3covid__nbinom2__rs']['cond']
-        n_m3 = res[f'{cell}__M3__nbinom2__rs']['cond']
+        n_cv_r = res[f'{cell}__M3covid__nbinom2__rs']
+        n_m3_r = res[f'{cell}__M3__nbinom2__rs']
+        # M5: same guard as the table above -- a non-converged M3 or
+        # M3covid record has no 'cond' to index.
+        if not (n_cv_r.get('converged') and n_m3_r.get('converged')):
+            A(f'- **{outcome}:** cannot be derived -- the NB2 Model 3 or '
+              'Model 3+COVID refit did not converge.')
+            continue
+        n_cv, n_m3 = n_cv_r['cond'], n_m3_r['cond']
         A(f'- **{outcome}, the indicator itself:** {old_fam} gives '
           f'b = {o_cv["covid"]["b"]:+.4f} (p = {o_cv["covid"]["p"]:.3g}); NB2 '
           f'gives b = {n_cv["covid"]["b"]:+.4f} '

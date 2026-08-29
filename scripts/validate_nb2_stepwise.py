@@ -467,36 +467,68 @@ def validate_variance_table():
         cell, model = row['cell'], row['model']
         rs = res[f'{cell}__{model}__nbinom2__rs']
         ri = res[f'{cell}__{model}__nbinom2__ri']
+        base_r = res[f'{cell}__M1__nbinom2__ri']
+        matched_r = res[f'{cell}__M1matched__nbinom2__ri']
         tag = f'{cell} {model}'
-        # The *_rs columns come from the random-slope fits...
-        check_close(f'{tag}: sigma2_u0_rs from the rs fit',
-                    row['sigma2_u0_rs'], rs['sigma2_u0'], 1e-9, 'rel')
-        check_close(f'{tag}: sigma2_u1_rs from the rs fit',
-                    row['sigma2_u1_rs'], rs['sigma2_u1'], 1e-9, 'rel')
-        # ...and sigma2_u0_ri, theta and the ICC all come from the RI fit, so
-        # the ICC and the Delta share one basis.
-        check_close(f'{tag}: sigma2_u0_ri from the ri fit',
-                    row['sigma2_u0_ri'], ri['sigma2_u0'], 1e-9, 'rel')
-        check_close(f'{tag}: theta from the ri fit',
-                    row['theta'], ri['dispersion'], 1e-9, 'rel')
-        want_icc = ri['sigma2_u0'] / (ri['sigma2_u0'] + math.log(
-            1 + 1 / ri['dispersion'] + 1 / ri['mu_fixed']))
-        check_close(f'{tag}: icc_ri matches Nakagawa OLV formula',
-                    row['icc_ri'], want_icc, 1e-9, 'rel')
-        check(f'{tag}: icc_ri in (0, 1)', 0 < row['icc_ri'] < 1,
-              f"got {row['icc_ri']}")
-        base = res[f'{cell}__M1__nbinom2__ri']['sigma2_u0']
-        matched = res[f'{cell}__M1matched__nbinom2__ri']['sigma2_u0']
-        check_close(f'{tag}: delta_pct_ri arithmetic',
-                    row['delta_pct_ri'],
-                    100 * (base - ri['sigma2_u0']) / base, 1e-9, 'abs')
-        check_close(f'{tag}: delta_pct_ri_matched arithmetic',
-                    row['delta_pct_ri_matched'],
-                    100 * (matched - ri['sigma2_u0']) / matched, 1e-9, 'abs')
-        check(f'{tag}: n_obs/n_states agree with the rs fit',
-              row['n_obs'] == rs['n_obs'] and row['n_states'] == rs['n_states'])
+        # M5-style guard: a record that failed to converge lands in the R
+        # error branch and carries only 'converged'/'message' (plus a few
+        # bookkeeping fields) -- none of 'sigma2_u0'/'dispersion'/etc. Report
+        # the non-convergence as its own FAIL/PASS and skip the arithmetic
+        # checks that would otherwise raise a bare KeyError, rather than
+        # aborting the whole section (and every section after it).
+        rs_ok = bool(rs.get('converged'))
+        ri_ok = bool(ri.get('converged'))
+        check(f'{tag}: rs fit converged (required for the *_rs columns)',
+              rs_ok, rs.get('message', ''))
+        check(f'{tag}: ri fit converged (required for theta/ICC/Delta)',
+              ri_ok, ri.get('message', ''))
+        if rs_ok:
+            # The *_rs columns come from the random-slope fits...
+            check_close(f'{tag}: sigma2_u0_rs from the rs fit',
+                        row['sigma2_u0_rs'], rs['sigma2_u0'], 1e-9, 'rel')
+            check_close(f'{tag}: sigma2_u1_rs from the rs fit',
+                        row['sigma2_u1_rs'], rs['sigma2_u1'], 1e-9, 'rel')
+        if ri_ok:
+            # ...and sigma2_u0_ri, theta and the ICC all come from the RI
+            # fit, so the ICC and the Delta share one basis.
+            check_close(f'{tag}: sigma2_u0_ri from the ri fit',
+                        row['sigma2_u0_ri'], ri['sigma2_u0'], 1e-9, 'rel')
+            check_close(f'{tag}: theta from the ri fit',
+                        row['theta'], ri['dispersion'], 1e-9, 'rel')
+            want_icc = ri['sigma2_u0'] / (ri['sigma2_u0'] + math.log(
+                1 + 1 / ri['dispersion'] + 1 / ri['mu_fixed']))
+            check_close(f'{tag}: icc_ri matches Nakagawa OLV formula',
+                        row['icc_ri'], want_icc, 1e-9, 'rel')
+            check(f'{tag}: icc_ri in (0, 1)', 0 < row['icc_ri'] < 1,
+                  f"got {row['icc_ri']}")
+            base_ok = bool(base_r.get('converged'))
+            matched_ok = bool(matched_r.get('converged'))
+            check(f'{tag}: M1 ri baseline converged (required for delta_pct_ri)',
+                  base_ok, base_r.get('message', ''))
+            check(f'{tag}: M1matched ri baseline converged '
+                  '(required for delta_pct_ri_matched)',
+                  matched_ok, matched_r.get('message', ''))
+            if base_ok:
+                base = base_r['sigma2_u0']
+                check_close(f'{tag}: delta_pct_ri arithmetic',
+                            row['delta_pct_ri'],
+                            100 * (base - ri['sigma2_u0']) / base, 1e-9, 'abs')
+            if matched_ok:
+                matched = matched_r['sigma2_u0']
+                check_close(f'{tag}: delta_pct_ri_matched arithmetic',
+                            row['delta_pct_ri_matched'],
+                            100 * (matched - ri['sigma2_u0']) / matched,
+                            1e-9, 'abs')
+        if rs_ok:
+            check(f'{tag}: n_obs/n_states agree with the rs fit',
+                  row['n_obs'] == rs['n_obs'] and row['n_states'] == rs['n_states'])
     for cell in CELLS:
         m1 = v[(v['cell'] == cell) & (v['model'] == 'M1')].iloc[0]
+        m1_ri_ok = bool(res[f'{cell}__M1__nbinom2__ri'].get('converged'))
+        if not m1_ri_ok:
+            check(f'{cell}: M1 delta_pct_ri == 0 (it is its own baseline) '
+                  '-- skipped, M1 ri fit did not converge', True)
+            continue
         check(f'{cell}: M1 delta_pct_ri == 0 (it is its own baseline)',
               abs(m1['delta_pct_ri']) < 1e-9, f"got {m1['delta_pct_ri']}")
     # No sigma2_e column anywhere -- a count family has no residual variance.
