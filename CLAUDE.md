@@ -682,3 +682,34 @@ fallback before the JSON is written.
   afterwards. The 2026-08-31 convergence fix legitimately modified `paper_table_params_2021.json`
   and `WPS_Table_Sheels_augmented_2021.docx`; that is authorized work, not a freeze violation,
   because the freeze bound the NB2 arm's own commits and it kept that promise.
+
+**2026-08-31 same convergence fix applied to the 2019 arm (`paper_table_models_corrected.py`).**
+Identical treatment to the 2021 arm above: `warnings.filterwarnings('ignore')` removed, `fit()`
+given the same `OPTIMIZERS` ladder, `GRAD_TOL` and `FAILURE_WARNING_MARKERS`, and a
+`fit_report()` before the JSON write. **Keep the two scripts' `fit()` in sync.**
+
+- **Exactly 2 fits were broken, independently confirming what `validate_count_models.py`
+  item 5 predicted** (inspections M1 and violations M2, both random-slope):
+  | fit | lbfgs | used | recovered |
+  |---|---|---|---|
+  | `log_inspections ~ cubic` (M1) | loglik −419.372, \|grad\| 69.2 | `cg` | −399.553, **+19.82** |
+  | `log_violations ~ log_insp + cubic + SPEND_APP_z + SPEND_WORK_z + lii_2017_z` (M2) | loglik −393.616, \|grad\| 21.9 | `cg` | −392.626, +0.99 |
+  The inspections M1 error is **19.8 log-likelihood units** — far larger than anything in the
+  2021 window, where the worst was 8.5.
+- **48 JSON values changed; 0 published `*_ri` values changed**, so as in 2021 the
+  State-to-State Variation block is unaffected. But the printed coefficient changes here are
+  **more consequential than 2021's**, and two of them change what the paper can say:
+  - **Inspections M1 `time`: `-0.069*` → `-0.069***`.** The coefficient is identical; the SE
+    nearly halves (0.0339 → 0.0203), moving p from 0.041 to 0.0007. The non-converged fit was
+    *understating* the precision of the inspections time trend.
+  - **Violations M2 `SPEND_APP_z`: −0.159 (n.s.) → −0.172+ (p < .10).** A spending predictor
+    moves from null to marginally significant. SE 0.1079 → 0.1019.
+  - **Violations M2 `lii_2017_z` SIGN FLIP: +0.0388 → −0.0052.** Non-significant either way,
+    so nothing is claimed on it, but any prose describing its direction is now wrong.
+  - Violations M2 `SPEND_WORK_z` −0.315* → −0.329*, `log_inspections` 0.172** → 0.178**.
+- Regenerated: `paper_table_params_corrected.json`, `docs/WPS_Table_Sheels_augmented.docx`
+  (15 cells) and `docs/WPS_Table_Sheels_filled_corrected.docx` (9 cells). Both 2019 docx now
+  differ from the versions circulated on 2026-08-14.
+- **Both windows are now fixed.** `paper_table_models.py` (the ORIGINAL pre-correction 2019
+  script) still carries `filterwarnings('ignore')` and has NOT been treated — it feeds
+  `WPS_Table_Sheels_filled_cubic.docx`, which is superseded and not in use.
