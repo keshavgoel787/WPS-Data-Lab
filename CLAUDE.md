@@ -673,3 +673,12 @@ fallback before the JSON is written.
   (`validate_count_models.py` item 5 finds 2 of 12 published 2011–2019 fits carrying a
   gradient failure under `lbfgs`) and has NOT been given this treatment — that is the obvious
   next piece of work.
+- **Known limitation of `validate_nb2_stepwise.py` section [8], found 2026-08-31.** The
+  committed-history arm diffs `git merge-base main HEAD`..HEAD. On a feature branch that is
+  the branch point and the check is real; **on `main` the merge-base IS HEAD**, so the range
+  is empty and that arm passes vacuously. Only the working-tree arm still bites there. The
+  guard therefore verifies "this branch did not touch the frozen artifacts", not "they have
+  never changed" — which is the right question while a branch is in flight and the wrong one
+  afterwards. The 2026-08-31 convergence fix legitimately modified `paper_table_params_2021.json`
+  and `WPS_Table_Sheels_augmented_2021.docx`; that is authorized work, not a freeze violation,
+  because the freeze bound the NB2 arm's own commits and it kept that promise.
