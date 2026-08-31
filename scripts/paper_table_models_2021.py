@@ -44,7 +44,12 @@ import pandas as pd
 import numpy as np
 from statsmodels.regression.mixed_linear_model import MixedLM
 import warnings
-warnings.filterwarnings('ignore')
+
+# NOTE (2026-08-31): `warnings.filterwarnings('ignore')` used to sit here. It
+# hid a ConvergenceWarning on the Table 3 Model 1 fit, whose non-converged
+# estimates (b(log_inspections) = 0.4954, sigma^2_u0 = 2.4438) were then
+# published. Warnings are now captured per fit in fit() and reported. Do not
+# reinstate a blanket filter.
 
 STATE_ABBREV_TO_NAME = {
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
@@ -120,14 +125,108 @@ Z_H2A = ['h2a_per_farmworker_z'] + Z_H2A_L2
 # ============================================================
 # [3] FIT HELPERS (verbatim from paper_table_models_corrected.py)
 # ============================================================
+# Optimizers tried, in order. `lbfgs` stays FIRST and is kept whenever it
+# converges cleanly, so every fit that was already sound reproduces bit for bit;
+# only a fit lbfgs actually fails on falls through to the rest.
+OPTIMIZERS = ['lbfgs', 'cg', 'powell', 'bfgs']
+
+# Largest |gradient| still treated as converged. statsmodels can return a
+# result whose `converged` flag is True while the gradient is far from zero, so
+# the flag alone is not sufficient -- the published Table 3 Model 1 reported
+# |grad| = 76.8 at a log-likelihood 8.1 below the true optimum.
+GRAD_TOL = 1e-2
+
+# Not every warning means the fit is bad. "The MLE may be on the boundary of the
+# parameter space" is a legitimate result (a variance component estimated at
+# zero) and arrives with a tiny gradient; disqualifying it would churn fits that
+# are already correct. Only warnings reporting an actual optimizer FAILURE
+# disqualify a fit -- these are the ones raised on the published Table 3 Model 1.
+FAILURE_WARNING_MARKERS = ('failed', 'not converge', 'did not converge')
+
+FIT_LOG = []  # one record per fit that needed a fallback; printed by fit_report()
+
+
+def _is_failure(msgs):
+    return any(any(m in str(w).lower() for m in FAILURE_WARNING_MARKERS)
+               for w in msgs)
+
+
+def _grad_norm(res):
+    """Max |gradient| at the reported optimum, or nan if unavailable."""
+    try:
+        g = res.model.score(res.params_object, profile_fe=False)
+        return float(np.max(np.abs(g)))
+    except Exception:
+        return float('nan')
+
+
 def fit(dv, rhs, data, re_formula='~time'):
+    """Fit one MixedLM, trying OPTIMIZERS in order and keeping the first that
+    converges cleanly (no warning, converged flag set, small gradient).
+
+    If none is clean, keep the highest-log-likelihood candidate and record it,
+    rather than silently returning whatever the first optimizer produced."""
     need = {dv} | {t for term in rhs for t in term.split(':')}
     d = data.dropna(subset=[c for c in need if c in data.columns]).copy()
     d['state'] = pd.Categorical(d['state'])
     kw = {} if re_formula is None else {'re_formula': re_formula}
-    res = MixedLM.from_formula(f"{dv} ~ " + " + ".join(rhs), data=d,
-                               groups=d['state'], **kw).fit(method='lbfgs')
+    model = MixedLM.from_formula(f"{dv} ~ " + " + ".join(rhs), data=d,
+                                 groups=d['state'], **kw)
+    label = f"{dv} ~ {' + '.join(rhs)} | re={re_formula}"
+
+    candidates = []
+    for method in OPTIMIZERS:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            try:
+                res = model.fit(method=method)
+            except Exception as exc:  # optimizer blew up; try the next one
+                candidates.append((method, None, float('-inf'), float('nan'),
+                                   [f'{type(exc).__name__}: {exc}']))
+                continue
+        msgs = sorted({str(w.message) for w in caught})
+        gnorm = _grad_norm(res)
+        clean = (not _is_failure(msgs)) and bool(getattr(res, 'converged', True)) \
+            and np.isfinite(gnorm) and gnorm <= GRAD_TOL
+        candidates.append((method, res, float(res.llf), gnorm, msgs))
+        if clean:
+            if method != OPTIMIZERS[0]:
+                FIT_LOG.append({'fit': label, 'used': method,
+                                'reason': f"{OPTIMIZERS[0]} not clean",
+                                'llf': float(res.llf), 'grad': gnorm,
+                                'first_llf': float(candidates[0][2]),
+                                'first_grad': candidates[0][3],
+                                'first_msgs': candidates[0][4]})
+            return res, d
+
+    # Nothing was clean. Keep the best log-likelihood and say so loudly.
+    usable = [c for c in candidates if c[1] is not None]
+    if not usable:
+        raise RuntimeError(f"every optimizer failed for {label}")
+    method, res, llf, gnorm, msgs = max(usable, key=lambda c: c[2])
+    FIT_LOG.append({'fit': label, 'used': method, 'reason': 'NO CLEAN FIT',
+                    'llf': llf, 'grad': gnorm, 'first_llf': float(candidates[0][2]),
+                    'first_grad': candidates[0][3], 'first_msgs': msgs})
     return res, d
+
+
+def fit_report():
+    """Print every fit that did not converge cleanly under the first optimizer."""
+    print("\n" + "=" * 72)
+    print("OPTIMIZER FALLBACKS")
+    print("=" * 72)
+    if not FIT_LOG:
+        print(f"None -- every fit converged cleanly under '{OPTIMIZERS[0]}'.")
+        return
+    for r in FIT_LOG:
+        print(f"\n  {r['fit']}")
+        print(f"    {OPTIMIZERS[0]}: loglik {r['first_llf']:.3f}, "
+              f"|grad| {r['first_grad']:.4g}")
+        if r['first_msgs']:
+            for m in r['first_msgs']:
+                print(f"      warning: {m}")
+        print(f"    used '{r['used']}': loglik {r['llf']:.3f}, "
+              f"|grad| {r['grad']:.4g}  ({r['reason']})")
 
 def stars(p):
     return ('***' if p < .001 else '**' if p < .01 else '*' if p < .05 else '+' if p < .10 else '')
@@ -227,6 +326,8 @@ ORDER_VIOL = [('log Inspections', 'log_inspections')] + ORDER_INSP
 
 show(f"TABLE 2 -- WPS INSPECTIONS 2011-{END_YEAR}  [DV = log(inspections+1)]", insp, ORDER_INSP)
 show(f"TABLE 3 -- WPS VIOLATIONS 2011-{END_YEAR}  [DV = log(violations+1)]", viol, ORDER_VIOL)
+
+fit_report()
 
 with open(GEN + 'paper_table_params_2021.json', 'w') as f:
     json.dump({'inspections': insp, 'violations': viol}, f, indent=2)
