@@ -199,6 +199,121 @@ rhs_for <- function(cl, model) {
          stop("unknown model: ", model))
 }
 
+# ------------------------------------------------------------
+# The ZI tier ladder (spec 5).
+#
+# A ZI tier may NEVER introduce a predictor absent from the conditional model.
+# Two reasons: it preserves Jafari's mirroring principle, and -- decisively --
+# it guarantees every tier within a (cell, model) shares ONE analytic sample,
+# because listwise deletion is computed over the conditional predictor set and
+# the ZI set adds nothing to it. Attaching a `reduced` ZI block to an M1 whose
+# conditional part has no covariates would silently drop AK/RI/VT via
+# SPEND_APP_z and change N, making the tiers non-comparable.
+#
+# Consequently: at M1 `covariates` and `reduced` are empty and are SKIPPED; at
+# M2 `reduced` duplicates `covariates` and is SKIPPED. Every skip carries a
+# reason so a reader never has to infer one from a gap in the output.
+# ------------------------------------------------------------
+zi_tiers_for <- function(cond_rhs) {
+  raw <- list(
+    list(tag = "mirror",     vars = cond_rhs),
+    list(tag = "covariates", vars = intersect(M3_ADD, cond_rhs)),
+    list(tag = "reduced",    vars = intersect(M2_ADD, cond_rhs)),
+    list(tag = "intercept",  vars = character(0)))
+
+  kept <- list()
+  out <- list()
+  for (t in raw) {
+    reason <- ""
+    if (t$tag != "intercept" && length(t$vars) == 0) {
+      reason <- "empty predictor set at this model (no such terms in the conditional part)"
+    } else {
+      dup <- Find(function(k) identical(sort(k$vars), sort(t$vars)), kept)
+      if (!is.null(dup)) reason <- sprintf("duplicate of tier '%s'", dup$tag)
+    }
+    t$skipped <- nzchar(reason)
+    t$skip_reason <- reason
+    if (!t$skipped) kept[[length(kept) + 1]] <- t
+    out[[length(out) + 1]] <- t
+  }
+  out
+}
+
+zi_formula <- function(vars, with_re) {
+  rhs <- if (length(vars)) paste(c("1", vars), collapse = " + ") else "1"
+  if (with_re) rhs <- paste(rhs, "+ (1 | state)")
+  stats::as.formula(paste("~", rhs))
+}
+
+# ZI-boundary degeneracy (spec 6.2): a fit that reports converged = TRUE but
+# whose zero-inflation parameter has wandered to the edge of identifiability.
+# A SELECTION-ELIGIBILITY flag, not deletion -- the record stays in the JSON
+# with its reason.
+#
+# The previous arm had to guard the log-likelihood criterion with a
+# tier-equality test, because comparing a rs-tier ZI fit against a ri-tier
+# non-ZI one is not a degeneracy test at all. That guard is UNNECESSARY here
+# (one RE structure), but whether the criterion was APPLICABLE is still
+# recorded so the validator can assert it fired wherever a counterpart existed.
+mark_zi_degenerate <- function(res, counterpart) {
+  reasons <- character(0)
+  zi_int <- res$zi[["(Intercept)"]]
+  if (!is.null(zi_int)) {
+    if (is.finite(zi_int$b) && abs(zi_int$b) > 15) reasons <- c(reasons, "|zi_intercept| > 15")
+    if (is.finite(zi_int$se) && zi_int$se > 100) reasons <- c(reasons, "se(zi_intercept) > 100")
+  }
+  applicable <- !is.null(counterpart) && isTRUE(res$converged) &&
+    isTRUE(counterpart$converged) && is.finite(res$loglik %||% NA_real_) &&
+    is.finite(counterpart$loglik %||% NA_real_)
+  if (applicable && abs(res$loglik - counterpart$loglik) < 1e-4) {
+    reasons <- c(reasons, "loglik matches non-ZI counterpart within 1e-4")
+  }
+  res$zi_loglik_criterion_applied <- applicable
+  res$zi_degenerate <- length(reasons) > 0
+  res$zi_degenerate_reason <- paste(reasons, collapse = "; ")
+  res
+}
+
+# Walk the tiers in order, keeping the FIRST that converges cleanly and is not
+# ZI-boundary-degenerate. This is a FIDELITY rule, not an AIC rule: within a
+# family we want the richest mirror that is estimable (spec 5.3). AIC is used
+# only ACROSS families, where it is valid because all tiers of a (cell, model)
+# share one sample.
+#
+# `counterpart` is the same-cell/model plain-family fit used for the
+# log-likelihood degeneracy criterion; pass NULL when none exists.
+fit_zi_ladder <- function(d, dv, rhs, family, with_re, counterpart = NULL) {
+  attempts <- list()
+  last <- NULL
+  for (t in zi_tiers_for(rhs)) {
+    if (t$skipped) {
+      attempts[[length(attempts) + 1]] <- list(
+        tier = t$tag, skipped = TRUE, skip_reason = t$skip_reason)
+      next
+    }
+    res <- fit_spec(d, dv, rhs, family, zi = zi_formula(t$vars, with_re))
+    res$zi_tier_reached <- t$tag
+    res <- mark_zi_degenerate(res, counterpart)
+    attempts[[length(attempts) + 1]] <- list(
+      tier = t$tag, skipped = FALSE, skip_reason = "",
+      converged = isTRUE(res$converged),
+      zi_degenerate = isTRUE(res$zi_degenerate),
+      zi_degenerate_reason = res$zi_degenerate_reason,
+      aic = res$aic %||% NA_real_,
+      message = res$message %||% "")
+    last <- res
+    if (isTRUE(res$converged) && !isTRUE(res$zi_degenerate)) {
+      res$zi_tier_attempts <- attempts
+      return(res)
+    }
+  }
+  # Nothing converged cleanly. Return the LAST attempt as-is, flags intact, so
+  # the failure is reported rather than masked by a silent substitution.
+  if (is.null(last)) return(NULL)
+  last$zi_tier_attempts <- attempts
+  last
+}
+
 cells <- build_cells()
 results <- list()
 
