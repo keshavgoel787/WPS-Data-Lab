@@ -1,0 +1,150 @@
+cell,window,outcome,model,family,zi_tier_reached,block,term,label,b,se,z,p,stars,irr
+insp_2019,2019,inspections,M1,zinb2_re,mirror,conditional,(Intercept),Intercept,2.8330717238,0.15209500973,18.6269867022,1.9415195088e-77,***,16.997592626114802
+insp_2019,2019,inspections,M1,zinb2_re,mirror,conditional,time,time,-0.063059421954,0.01651921148,-3.8173384988,0.00013489903352,***,0.9388876814908882
+insp_2019,2019,inspections,M1,zinb2_re,mirror,conditional,time2,time²,-0.010267572845,0.010559701019,-0.97233556387,0.3308836367,,0.9897849587367207
+insp_2019,2019,inspections,M1,zinb2_re,mirror,conditional,time3,time³,-0.0009087239125,0.0016474812448,-0.55158376787,0.58123356009,,0.9990916888520355
+insp_2019,2019,inspections,M1,zinb2_re,mirror,zero_inflated,(Intercept),Intercept,-10.8473391372,2.9967634709,-3.6196847841,0.00029496211269,***,
+insp_2019,2019,inspections,M1,zinb2_re,mirror,zero_inflated,time,time,0.24894536197,0.41910695254,0.59399005544,0.55251876432,,
+insp_2019,2019,inspections,M1,zinb2_re,mirror,zero_inflated,time2,time²,0.30658207626,0.3133909333,0.97827359916,0.32793902375,,
+insp_2019,2019,inspections,M1,zinb2_re,mirror,zero_inflated,time3,time³,0.036014725654,0.047294351136,0.76150163368,0.44635750346,,
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,(Intercept),Intercept,2.9635685591,0.11403048536,25.9892655006,6.5487108471e-149,***,19.36696073062758
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,time,time,-0.065032094356,0.016670424354,-3.9010461266,9.5777897287e-05,***,0.9370373892832446
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,time2,time²,-0.010341559608,0.010659127218,-0.97020697816,0.33194333312,,0.9897117304605526
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,time3,time³,-0.00086589296341,0.0016639126529,-0.52039568416,0.60278781753,,0.999134481813722
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.29986229928,0.11204740754,-2.6762091679,0.0074460158583,**,0.7409202389079252
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.11255575129,0.15321027434,-0.73464884634,0.46255338139,,0.8935475292923905
+insp_2019,2019,inspections,M2,zinb2,mirror,conditional,lii_2017_z,Labor intensity index 2017 (z),-0.22118644737,0.16932620796,-1.3062741441,0.1914593466,,0.8015672162576909
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,(Intercept),Intercept,-6.8617796499,1.7284154536,-3.9699828161,7.187781553e-05,***,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,time,time,0.20162936394,0.36554903834,0.55157952229,0.58123646954,,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,time2,time²,0.24956381311,0.2818438611,0.88546833036,0.37590409309,,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,time3,time³,0.029314476164,0.042142094239,0.695610332,0.48667289395,,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,SPEND_APP_z,STAG $ per applicator (z),-1.5408870324,1.6033754577,-0.96102695411,0.33653861534,,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,SPEND_WORK_z,STAG $ per farmworker (z),0.15155515419,0.53014625674,0.28587423238,0.77497445009,,
+insp_2019,2019,inspections,M2,zinb2,mirror,zero_inflated,lii_2017_z,Labor intensity index 2017 (z),-1.5841140156,1.1020215571,-1.437461913,0.15058678753,,
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,(Intercept),Intercept,2.9623560734,0.11420974447,25.9378574668,2.492766017e-148,***,19.343492797830752
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,time,time,-0.064913956208,0.016874793683,-3.8467999922,0.00011967058145,***,0.9371480956842172
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,time2,time²,-0.010323427499,0.01065398208,-0.96897361211,0.33255835529,,0.9897296761842242
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,time3,time³,-0.00086539648282,0.0016638009634,-0.52013221645,0.60297142537,,0.999134977864722
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.28711080383,0.12263808403,-2.3411227117,0.019225846842,*,0.7504285738700824
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.11137353852,0.15392135041,-0.72357433341,0.46932710352,,0.8946045172613529
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,lii_2017_z,Labor intensity index 2017 (z),-0.22149465166,0.17225270488,-1.2858703834,0.19848830139,,0.8013202078693946
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,h2a_per_farmworker_z,H-2A per farmworker (z),-0.0019380013397,0.040777260734,-0.047526521027,0.96209359349,,0.9980638753723438
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,dol_demand_met_pct_z,DOL demand met % (z),0.028865944198,0.13916287591,0.20742560837,0.83567748489,,1.0292866033849797
+insp_2019,2019,inspections,M3,zinb2,mirror,conditional,pct_flc_z,% farm labor contractor (z),0.032794991495,0.13295126239,0.24666927494,0.80516418694,,1.0333386743082122
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,(Intercept),Intercept,-11.4002552323,4.9234287068,-2.3155113867,0.02058496213,*,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,time,time,0.53782258776,0.42250581625,1.2729353469,0.20304098506,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,time2,time²,0.30283080784,0.28748090174,1.0533945247,0.29216021257,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,time3,time³,0.03077463972,0.042741560668,0.72001675275,0.47151468091,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,SPEND_APP_z,STAG $ per applicator (z),-4.7018750064,4.3800185783,-1.0734828911,0.28305451097,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,SPEND_WORK_z,STAG $ per farmworker (z),1.2011212517,1.0865098698,1.1054858175,0.26894913646,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,lii_2017_z,Labor intensity index 2017 (z),-4.9337019398,2.9798169284,-1.6557063935,0.097781291932,+,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,h2a_per_farmworker_z,H-2A per farmworker (z),-4.6870760397,3.538204743,-1.3247045833,0.18526915242,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,dol_demand_met_pct_z,DOL demand met % (z),0.28668604496,2.0798122804,0.13784226955,0.89036507693,,
+insp_2019,2019,inspections,M3,zinb2,mirror,zero_inflated,pct_flc_z,% farm labor contractor (z),-2.6710502784,1.5241438477,-1.7524922483,0.07968920163,+,
+insp_2021,2021,inspections,M1,zinb2,mirror,conditional,(Intercept),Intercept,3.5509193681,0.15396466002,23.06321053,1.0840614254e-117,***,34.84533845842941
+insp_2021,2021,inspections,M1,zinb2,mirror,conditional,time,time,-0.046386567842,0.016248239999,-2.8548672253,0.004305482448,**,0.95467284502938
+insp_2021,2021,inspections,M1,zinb2,mirror,conditional,time2,time²,-0.0028449967266,0.0036762733349,-0.77388063056,0.4390013849,,0.9971590464414117
+insp_2021,2021,inspections,M1,zinb2,mirror,conditional,time3,time³,-5.7975324722e-05,0.00091004206363,-0.063706203305,0.94920416526,,0.9999420263558146
+insp_2021,2021,inspections,M1,zinb2,mirror,zero_inflated,(Intercept),Intercept,-3.7830249959,0.90053378821,-4.2008695792,2.6589173687e-05,***,
+insp_2021,2021,inspections,M1,zinb2,mirror,zero_inflated,time,time,2.1891589444,2.0359116361,1.0752720823,0.28225293146,,
+insp_2021,2021,inspections,M1,zinb2,mirror,zero_inflated,time2,time²,-1.7573147996,1.4243287311,-1.233784562,0.21728319359,,
+insp_2021,2021,inspections,M1,zinb2,mirror,zero_inflated,time3,time³,0.30342789656,0.24986222533,1.2143808299,0.22460233233,,
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,(Intercept),Intercept,3.6837195663,0.1512552739,24.3543214815,5.2173008775e-131,***,39.79413606160692
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,time,time,-0.045104084583,0.016593823407,-2.7181248996,0.0065653049834,**,0.955897982412122
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,time2,time²,-0.0019974503822,0.0037572632749,-0.53162374742,0.59498661394,,0.998004543194237
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,time3,time³,3.7852062911e-05,0.0009298562229,0.040707436245,0.96752913324,,1.0000378527793095
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.02587059762,0.15194514807,-0.1702627425,0.86480351057,,0.9744611790462229
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,SPEND_WORK_z,STAG $ per farmworker (z),0.22426213133,0.17318268528,1.2949454558,0.19533904615,,1.2513990073246832
+insp_2021,2021,inspections,M2,zinb2,mirror,conditional,lii_2017_z,Labor intensity index 2017 (z),0.082818238499,0.2301274175,0.35987992826,0.7189369277,,1.0863443350253028
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,(Intercept),Intercept,-4.4910988165,1.1373411362,-3.9487702269,7.8553706612e-05,***,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,time,time,2.3161608935,2.1314199622,1.0866750497,0.27718044434,,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,time2,time²,-1.8537537522,1.4845170759,-1.2487251122,0.21176563266,,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,time3,time³,0.31952694697,0.25924255381,1.2325405003,0.21774724745,,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,SPEND_APP_z,STAG $ per applicator (z),0.83620944323,0.32524558484,2.5710093609,0.010140258601,*,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,SPEND_WORK_z,STAG $ per farmworker (z),-2.1021388328,1.6091409427,-1.3063733431,0.19142562645,,
+insp_2021,2021,inspections,M2,zinb2,mirror,zero_inflated,lii_2017_z,Labor intensity index 2017 (z),0.48223508745,0.67693431417,0.71238091695,0.47622892923,,
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,(Intercept),Intercept,3.6824804142,0.15107438986,24.3752790768,3.1283173966e-131,***,39.744855613629625
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,time,time,-0.049400473908,0.016588745465,-2.9779511665,0.0029018221452,**,0.9517998823452747
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,time2,time²,-0.0033825975645,0.0037751266541,-0.89602227274,0.3702408678,,0.9966231169734984
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,time3,time³,-0.00011384434448,0.00092499444838,-0.12307570568,0.90204714906,,0.9998861621355415
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.002261143315,0.16502674646,-0.01370167784,0.98906798485,,0.9977414111438503
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,SPEND_WORK_z,STAG $ per farmworker (z),0.17172436996,0.17323061521,0.99130497086,0.32153668647,,1.1873505186361673
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,lii_2017_z,Labor intensity index 2017 (z),0.066479584258,0.23326273244,0.28499873753,0.77564510914,,1.068739144749801
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,h2a_per_farmworker_z,H-2A per farmworker (z),0.087396650205,0.03976651841,2.1977445776,0.027967312937,*,1.091329469937412
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,dol_demand_met_pct_z,DOL demand met % (z),0.12228698678,0.21381492099,0.57192915355,0.56736997229,,1.1300783728007027
+insp_2021,2021,inspections,M3,zinb2,mirror,conditional,pct_flc_z,% farm labor contractor (z),-0.013564680323,0.18443209295,-0.073548372773,0.94136975237,,0.9865269053752108
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,(Intercept),Intercept,-6.8064211708,2.2016069363,-3.0915696433,0.0019910127172,**,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,time,time,2.7119876447,2.296679048,1.1808300542,0.23767024224,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,time2,time²,-2.0804814289,1.5933462236,-1.3057309191,0.1916440795,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,time3,time³,0.35485096289,0.27696055252,1.2812328675,0.20011188479,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,SPEND_APP_z,STAG $ per applicator (z),1.3041703601,0.6356457266,2.0517252072,0.040196375561,*,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,SPEND_WORK_z,STAG $ per farmworker (z),-3.0364034598,2.5358507647,-1.1973904388,0.2311544086,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,lii_2017_z,Labor intensity index 2017 (z),-0.25147509254,0.85851090092,-0.29292009254,0.7695832305,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,h2a_per_farmworker_z,H-2A per farmworker (z),-4.1625671687,3.1570461672,-1.3185005693,0.18733613461,,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,dol_demand_met_pct_z,DOL demand met % (z),1.6606239322,0.96597054684,1.7191248094,0.085591648222,+,
+insp_2021,2021,inspections,M3,zinb2,mirror,zero_inflated,pct_flc_z,% farm labor contractor (z),-0.15060691179,0.85134477771,-0.17690472266,0.85958322899,,
+viol_2019,2019,violations,M1,nbinom2,,conditional,(Intercept),Intercept,1.5443041353,0.25481869007,6.0604037122,1.357803145e-09,***,4.684710567811753
+viol_2019,2019,violations,M1,nbinom2,,conditional,log_inspections,log Inspections,0.23369572326,0.06590163345,3.5461294512,0.00039093411394,***,1.2632600530720794
+viol_2019,2019,violations,M1,nbinom2,,conditional,time,time,0.25067972739,0.052672439228,4.7592200221,1.9434249682e-06,***,1.2848985006288387
+viol_2019,2019,violations,M1,nbinom2,,conditional,time2,time²,-0.051946858928,0.033654348832,-1.5435407527,0.12269962759,,0.9493793165370177
+viol_2019,2019,violations,M1,nbinom2,,conditional,time3,time³,-0.012768783501,0.0053405919299,-2.3908929326,0.016807453461,*,0.9873123915455259
+viol_2019,2019,violations,M2,nbinom2,,conditional,(Intercept),Intercept,1.6858396631,0.25309428104,6.6609156724,2.7212675712e-11,***,5.396980675879075
+viol_2019,2019,violations,M2,nbinom2,,conditional,log_inspections,log Inspections,0.18655379565,0.065413229766,2.8519276043,0.0043454996244,**,1.2050894489121924
+viol_2019,2019,violations,M2,nbinom2,,conditional,time,time,0.24359779857,0.052380602646,4.6505344777,3.3107588905e-06,***,1.2758310861952726
+viol_2019,2019,violations,M2,nbinom2,,conditional,time2,time²,-0.053828730786,0.033452108562,-1.6091281865,0.1075883151,,0.9475943863503716
+viol_2019,2019,violations,M2,nbinom2,,conditional,time3,time³,-0.012844703052,0.0053093949501,-2.4192404544,0.015552955401,*,0.9872374380773158
+viol_2019,2019,violations,M2,nbinom2,,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.31095808381,0.12290182732,-2.5301339337,0.011401899366,*,0.7327445890870551
+viol_2019,2019,violations,M2,nbinom2,,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.38785911951,0.16749405246,-2.3156590567,0.020576891585,*,0.6785079250600922
+viol_2019,2019,violations,M2,nbinom2,,conditional,lii_2017_z,Labor intensity index 2017 (z),-0.18874096902,0.18090064232,-1.0433405133,0.29679061386,,0.8280009568182073
+viol_2019,2019,violations,M3,nbinom2,,conditional,(Intercept),Intercept,1.646777759,0.24376834564,6.7555028717,1.4234068854e-11,***,5.190228685895353
+viol_2019,2019,violations,M3,nbinom2,,conditional,log_inspections,log Inspections,0.19423705022,0.064322784222,3.0197239216,0.0025300519236,**,1.2143841188616435
+viol_2019,2019,violations,M3,nbinom2,,conditional,time,time,0.24366252277,0.052801059869,4.6147278742,3.9361070118e-06,***,1.2759136660140893
+viol_2019,2019,violations,M3,nbinom2,,conditional,time2,time²,-0.053584362944,0.033507832082,-1.5991593492,0.10978520024,,0.9478259762410638
+viol_2019,2019,violations,M3,nbinom2,,conditional,time3,time³,-0.012799336494,0.0053217013362,-2.4051211606,0.016167104695,*,0.9872822266577542
+viol_2019,2019,violations,M3,nbinom2,,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.19123669208,0.11875843331,-1.6102998899,0.10733240327,,0.825937072249994
+viol_2019,2019,violations,M3,nbinom2,,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.38345716096,0.15202708827,-2.5222949761,0.011659189362,*,0.6815012722836897
+viol_2019,2019,violations,M3,nbinom2,,conditional,lii_2017_z,Labor intensity index 2017 (z),-0.11364766662,0.16256898779,-0.69907347131,0.4845061165,,0.8925723835322619
+viol_2019,2019,violations,M3,nbinom2,,conditional,h2a_per_farmworker_z,H-2A per farmworker (z),0.0017843299165,0.077857719243,0.022917829264,0.98171581843,,1.0017859227803827
+viol_2019,2019,violations,M3,nbinom2,,conditional,dol_demand_met_pct_z,DOL demand met % (z),0.11164520315,0.13404808296,0.83287429916,0.4049156258,,1.1181160861967283
+viol_2019,2019,violations,M3,nbinom2,,conditional,pct_flc_z,% farm labor contractor (z),0.43413125074,0.12320797931,3.5235644083,0.00042578359734,***,1.5436214562796895
+viol_2021,2021,violations,M1,zinb2_re,mirror,conditional,(Intercept),Intercept,0.3511521565,0.27205723758,1.2907289643,0.1967976774,,1.420703478736112
+viol_2021,2021,violations,M1,zinb2_re,mirror,conditional,log_inspections,log Inspections,0.69514234279,0.065660731258,10.5868809175,3.428251718e-26,***,2.003994307781117
+viol_2021,2021,violations,M1,zinb2_re,mirror,conditional,time,time,0.14797832003,0.025564646962,5.7883967752,7.106139629e-09,***,1.159487758430662
+viol_2021,2021,violations,M1,zinb2_re,mirror,conditional,time2,time²,-0.017339531118,0.0058272215099,-2.9756087166,0.0029240768553,**,0.9828099334231782
+viol_2021,2021,violations,M1,zinb2_re,mirror,conditional,time3,time³,-0.0066132036413,0.0013817557652,-4.7860872434,1.7006415475e-06,***,0.9934086154653403
+viol_2021,2021,violations,M1,zinb2_re,mirror,zero_inflated,(Intercept),Intercept,-1.0990913804,0.85750046639,-1.281738522,0.19993438678,,
+viol_2021,2021,violations,M1,zinb2_re,mirror,zero_inflated,log_inspections,log Inspections,-0.46400367505,0.21120264807,-2.1969595519,0.028023335086,*,
+viol_2021,2021,violations,M1,zinb2_re,mirror,zero_inflated,time,time,0.21650273709,0.19258952932,1.1241667076,0.26094231019,,
+viol_2021,2021,violations,M1,zinb2_re,mirror,zero_inflated,time2,time²,-0.041084459233,0.043847821356,-0.93697834835,0.3487696954,,
+viol_2021,2021,violations,M1,zinb2_re,mirror,zero_inflated,time3,time³,0.01015505692,0.01359716663,0.74685095768,0.45515353208,,
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,(Intercept),Intercept,-0.24484658219,0.29354780888,-0.83409439549,0.40422779309,,0.7828246282697413
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,log_inspections,log Inspections,0.82875478056,0.069285094749,11.961516161,5.6520407775e-33,***,2.290464832426215
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,time,time,0.1199429066,0.025689768908,4.6688978412,3.0281990275e-06,***,1.1274324807882208
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,time2,time²,-0.017405508457,0.0060388880681,-2.8822373028,0.0039486223419,**,0.9827450923780715
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,time3,time³,-0.0060680405107,0.0014368373705,-4.2231922941,2.4086614345e-05,***,0.9939503328648724
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,SPEND_APP_z,STAG $ per applicator (z),0.010521240915,0.14742167892,0.071368342784,0.94310460414,,1.0105767837926192
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.2669516137,0.17160744066,-1.5555946332,0.11980451572,,0.7657101204486362
+viol_2021,2021,violations,M2,zinb2_re,intercept,conditional,lii_2017_z,Labor intensity index 2017 (z),-0.0022293757853,0.22543506391,-0.0098892148656,0.99210967675,,0.9977731074272154
+viol_2021,2021,violations,M2,zinb2_re,intercept,zero_inflated,(Intercept),Intercept,-2.8169027377,0.47387909281,-5.9443490552,2.7755759499e-09,***,
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,(Intercept),Intercept,0.047457434858,0.29202717734,0.16251033651,0.87090398912,,1.0486015662967774
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,log_inspections,log Inspections,0.75795930632,0.069745728466,10.8674656211,1.6471277684e-27,***,2.1339171030520365
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,time,time,0.14274241146,0.025500309375,5.5976737128,2.1724713075e-08,***,1.1534326523636154
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,time2,time²,-0.016982393516,0.0061293674774,-2.7706600361,0.0055942801584,**,0.9831609944908453
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,time3,time³,-0.0064594288276,0.0014333863484,-4.5064115721,6.5933143605e-06,***,0.993561388436128
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,SPEND_APP_z,STAG $ per applicator (z),-0.0073878076261,0.15456815577,-0.047796440277,0.96187847356,,0.9926394151445438
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,SPEND_WORK_z,STAG $ per farmworker (z),-0.23873936676,0.16403830789,-1.4553878898,0.14556190713,,0.7876201356114514
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,lii_2017_z,Labor intensity index 2017 (z),0.10503267723,0.21852626993,0.48064096485,0.63077169546,,1.110746905894799
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,h2a_per_farmworker_z,H-2A per farmworker (z),-0.0074579593837,0.05697520914,-0.13089832396,0.89585574056,,0.992569782187374
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,dol_demand_met_pct_z,DOL demand met % (z),-0.266996433,0.20106704021,-1.3278975645,0.18421194944,,0.7656758026260909
+viol_2021,2021,violations,M3,zinb2_re,mirror,conditional,pct_flc_z,% farm labor contractor (z),0.09661405627,0.17247848606,0.56015134685,0.57537620966,,1.1014351995703833
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,(Intercept),Intercept,-0.20808850301,0.99525295279,-0.20908102049,0.83438499073,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,log_inspections,log Inspections,-0.67024321356,0.2483678297,-2.6985910952,0.0069633677289,**,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,time,time,0.31466877062,0.25418374336,1.2379578901,0.21573167527,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,time2,time²,-0.11253341967,0.12121509468,-0.92837793814,0.35321155842,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,time3,time³,0.021220520013,0.031734461304,0.66869009716,0.50369318585,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,SPEND_APP_z,STAG $ per applicator (z),-0.15746479102,0.35904715762,-0.43856297892,0.66097822699,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,SPEND_WORK_z,STAG $ per farmworker (z),0.75951181252,0.38138749182,1.9914439482,0.0464321017,*,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,lii_2017_z,Labor intensity index 2017 (z),-0.2191686058,0.59686524284,-0.36719947831,0.71347022843,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,h2a_per_farmworker_z,H-2A per farmworker (z),0.31372347545,0.30031215098,1.0446579481,0.29618108683,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,dol_demand_met_pct_z,DOL demand met % (z),0.26137092402,0.5465724878,0.47819992747,0.63250791414,,
+viol_2021,2021,violations,M3,zinb2_re,mirror,zero_inflated,pct_flc_z,% farm labor contractor (z),-0.3395472172,0.43476336654,-0.78099316395,0.43480651535,,

@@ -713,3 +713,97 @@ given the same `OPTIMIZERS` ladder, `GRAD_TOL` and `FAILURE_WARNING_MARKERS`, an
 - **Both windows are now fixed.** `paper_table_models.py` (the ORIGINAL pre-correction 2019
   script) still carries `filterwarnings('ignore')` and has NOT been treated — it feeds
   `WPS_Table_Sheels_filled_cubic.docx`, which is superseded and not in use.
+
+**2026-09-10 Jafari-aligned crossed random-effects models (standalone arm).** Three PI
+directives: random intercepts only (**no random slope anywhere**); crossed random effects of
+**state and year**, substituting time for Jafari's industry dimension; and a best-fitting
+family selected **independently per outcome** — the PI explicitly retracted the NB2 arm's
+symmetry rationale ("I was wrong; let's not substitute model symmetry for precision"). Plus a
+methodological correction: the zero-inflation component now carries the **same predictors as
+the conditional component** wherever estimable, and **both blocks are reported** in Jafari
+Table 5 format. Design spec:
+`docs/superpowers/specs/2026-09-10-jafari-crossed-re-design.md`. Plan:
+`docs/superpowers/plans/2026-09-10-jafari-crossed-re.md`. Memo:
+`docs/jafari_crossed_models.md` (**generated**, never hand-edited).
+
+```bash
+Rscript scripts/r_env_check.R
+Rscript scripts/jafari_crossed_models.R data/generated/jafari_crossed_gaussian.json --gaussian-only
+Rscript scripts/jafari_crossed_models.R data/generated/jafari_crossed_results.json
+python3 scripts/report_jafari_crossed.py
+python3 scripts/validate_jafari_crossed.py   # sections [0]-[10]
+```
+
+- **`glmmTMB` already fit the two components simultaneously.** The PI's diagnosis that Jafari
+  fits the structural-zero and conditional models jointly while ours did not was right about
+  the *output* and wrong about the *estimation*: `ziformula` is estimated in the same
+  likelihood, and always was. The two real gaps were that the ladder set `ziformula = ~1`
+  where Jafari mirrors the full predictor list, and that the reporter never printed a ZI
+  block. Both are closed here; **no new estimation machinery was needed.**
+- **Result: a zero-inflated family wins 3 of 4 cells, and the FULL Jafari ZI mirror is
+  estimable in all three** — `insp_2019` ZI-NB2 (AIC 3236.50), `insp_2021` ZI-NB2 (4585.73),
+  `viol_2021` **ZI-NB2 + ZI-RE** (3592.05), each with all 10 conditional predictors also in
+  the ZI block. The spec predicted only `viol_2021` could carry the mirror; that was too
+  pessimistic. Dropping the random slope for crossed random *intercepts* frees enough
+  parameters for a 10-parameter ZI block. **`viol_2019` is the exception**: plain NB2, with
+  all ZI rungs sitting at exactly plain-AIC + 2.00 — one parameter buying zero likelihood —
+  consistent with that cell being zero-**deflated** in the six-family ladder too. 10 fits are
+  `zi_degenerate`; 6 fail to converge (all `*_re` rungs).
+- **Winner stability:** `insp_2019` is the one cell where the M1 and M3 winners differ
+  (ZI-NB2 + ZI-RE → ZI-NB2). The other three are stable.
+- **ZI strength, 25 of 27** against its own negative-binomial counterpart (the comparison that
+  isolates inflation while holding the parameterisation fixed). The **2 losses are both
+  ZI-NB1 + ZI-RE vs NB1** (`insp_2019` M3, −0.65 AIC; `insp_2021` M1, −7.35). Do **not** write
+  that a zero-inflated family never lost here — that was true of the previous arm's matched
+  set, and is false of this one. ZI-NB2 specifically is 6–0 against NB2 and 6–0 against NB1.
+  This arm fits **ZI-NB1 rungs**, closing the previous ladder's documented blind spot, so an
+  NB1 win is now tested against its own zero-inflated counterpart rather than winning by
+  default.
+- **KEY METHODOLOGICAL FINDING: the year random effect is empty in 3 of the 4 count models.**
+  σ²_year = 2.8e-10 (`insp_2019`), 3.7e-07 (`insp_2021`), 2.9e-09 (`viol_2021`) — all pinned
+  at the boundary — against 3.07e-02 for `viol_2019` alone. The 2020/2021 year BLUPs are
+  ~1e-05 or smaller. The fixed cubic absorbs the smooth year variation, leaving the crossed
+  year dimension nothing to explain. **The crossed state × time structure therefore behaves
+  as a state-only random intercept in practice**, and any reading of this arm should say so
+  rather than implying the year dimension is doing work. This is the cubic/`(1|year)` overlap
+  the spec flagged in §4.3, materialising.
+- **No COVID indicator.** `(1|year)` absorbs the pandemic shock by construction; a dummy would
+  compete with the term containing it. Year BLUPs are reported instead — and per the finding
+  above they are ~0, so this arm says nothing about COVID. **Not** comparable to the other
+  arms' COVID coefficients (−0.590*** log-LMM inspections; −0.279 NB1 / −0.188 NB2 violations).
+- **Structural-zero probabilities are the SAMPLE MEAN of the per-observation ZI probability**
+  (`zi_prob_mean`, from `predict(type="zprob")`), never `plogis(b0)` and never the
+  Gauss-Hermite marginal `E[plogis(b0+u)]`. Both of the latter evaluate the ZI linear
+  predictor at x = 0, which is the whole story ONLY for an intercept-only ZI block; with
+  `log_inspections` (sample mean ~3.5, never z-scored) in a mirrored ZI formula, x = 0
+  describes no state in the data. A draft of this memo reported **0.4639** for `viol_2021`
+  while the same fitted model simulates 78 zeros in 501 rows. Correct values: 0.0094 /
+  0.0116 / 0.1193, each just below its observed zero rate (0.0095 / 0.0138 / 0.1717), as
+  must hold since structural zeros are a subset of all zeros. The intercept-based quantities
+  are withheld at any non-`intercept` tier, and `validate_jafari_crossed.py [7]` enforces
+  both the withholding and the bound that caught the defect.
+- **ZI predictors are always a SUBSET of conditional predictors.** This keeps one analytic
+  sample per (cell, model), which is what makes AIC comparable across ZI tiers — asserted in
+  `[4]`, not assumed. Consequently at M1 the `covariates`/`reduced` tiers are skipped (empty)
+  and at M2 `reduced` duplicates `covariates`; every skip carries a recorded reason.
+  **Within a family the ZI ladder is a FIDELITY rule, not an AIC rule** (richest estimable
+  mirror); AIC is used only ACROSS families.
+- **Four cells, not six.** The violations-as-offset variant is dropped: the `log(inspections)`
+  offset deletes every zero-inspection state-year, and in 2011–2021 all 7 rows it drops are
+  also zero-violation rows — it throws away the structural zeros the arm exists to model.
+- **Not comparable to `docs/count_models_zinb.md`.** Different random-effects structure, so
+  the fixed effects condition on a different variance partition. σ² here is on the **log
+  link** scale; **no Δσ² percentage is computed in this arm at all** (that needs a
+  random-intercept-only refit series against a single Model-1 baseline, which this ladder
+  does not produce).
+- **The crossed-RE R/Python bridge is gated independently.** The previous arm's Gaussian gate
+  validated `(1 + time | state)` and says nothing about a crossed structure.
+  `validate_jafari_crossed.py [2]` fits the same Gaussian crossed model in
+  `statsmodels.MixedLM` via `vc_formula` and matches `glmmTMB` to ~7 significant figures.
+  Its variance comparator is **boundary-aware with a scale-relative floor** (1e-4 × σ²_e),
+  because σ²_year is at the boundary in 3 of 8 Gaussian fits and a relative tolerance between
+  two near-zero numbers is not a test.
+- **Nothing existing was modified.** Section `[10]` guards the frozen artifacts; its history
+  arm is vacuous on `main` (same known limitation as `validate_nb2_stepwise.py [8]`), so this
+  arm was developed on the `jafari-crossed-re` branch where the question it asks is the right
+  one.
