@@ -350,5 +350,173 @@ if (gaussian_only) {
   quit(status = 0)
 }
 
+# ------------------------------------------------------------
+# The family ladder (spec 4.4). EIGHT families, not the previous arm's six.
+#
+# Two deliberate changes. (1) A zero-inflated NB1 now exists: the old ladder's
+# ZI rungs were all NB2-based, so when plain NB1 won both 2021 violations cells
+# it beat a candidate set lacking its own ZI counterpart -- a documented blind
+# spot left open only because closing it would have reopened selection.
+# Selection is reopened here, so it is closed. (2) ZI random intercepts are on
+# `state` only, never `year`: a year-level ZI random intercept would be
+# identified off as few as 7 zeros spread across 11 years.
+# ------------------------------------------------------------
+LADDER <- list(
+  list(tag = "poisson",  family = poisson, zi = FALSE, zi_re = FALSE),
+  list(tag = "nbinom1",  family = nbinom1, zi = FALSE, zi_re = FALSE),
+  list(tag = "nbinom2",  family = nbinom2, zi = FALSE, zi_re = FALSE),
+  list(tag = "zip",      family = poisson, zi = TRUE,  zi_re = FALSE),
+  list(tag = "zinb1",    family = nbinom1, zi = TRUE,  zi_re = FALSE),
+  list(tag = "zinb2",    family = nbinom2, zi = TRUE,  zi_re = FALSE),
+  list(tag = "zinb1_re", family = nbinom1, zi = TRUE,  zi_re = TRUE),
+  list(tag = "zinb2_re", family = nbinom2, zi = TRUE,  zi_re = TRUE))
+
+FAMILY_TAGS <- vapply(LADDER, `[[`, "", "tag")
+
+# Which plain family each ZI rung is the zero-inflated version OF. Used for the
+# log-likelihood degeneracy criterion and for the matched ZI-strength tally.
+COUNTERPART <- c(zip = "poisson", zinb1 = "nbinom1", zinb2 = "nbinom2",
+                 zinb1_re = "nbinom1", zinb2_re = "nbinom2")
+
+# `x[["missing"]]` is an ERROR in R for both named vectors and lists -- it does
+# NOT return NULL -- so `COUNTERPART[[tag]] %||% ""` never reaches the %||%.
+# These two guarded accessors are the only way this file looks up an
+# optionally-absent name.
+counterpart_of <- function(tag) {
+  if (!is.null(tag) && tag %in% names(COUNTERPART)) unname(COUNTERPART[[tag]])
+  else NA_character_
+}
+lget <- function(l, k) {
+  if (is.null(k) || length(k) != 1 || is.na(k) || !(k %in% names(l))) NULL else l[[k]]
+}
+
+# A *_re fit whose ZI random intercept has collapsed becomes
+# formula-for-formula identical to its non-RE twin at the same cell, model and
+# ZI tier. That is not a distinct competitor -- it is the twin wearing another
+# name -- so it is marked and excluded from selection.
+mark_collapse <- function(res_re, res_plain) {
+  if (!is.null(res_plain) && !is.null(res_re) &&
+      identical(res_re$formula, res_plain$formula) &&
+      identical(res_re$zi_formula, res_plain$zi_formula)) {
+    res_re$collapsed_to <- res_plain$family_tag
+  }
+  res_re
+}
+
+# Lowest AIC among converged, non-degenerate, non-collapsed fits. The
+# empty-candidate-set fallback is RETAINED (erroring here would abort the whole
+# ladder over one cell) but RECORDED: a defaulted winner is not a selection
+# result and must never be reported as one.
+pick_winner <- function(fit_list) {
+  eligible <- Filter(function(r) isTRUE(r$converged) && is.finite(r$aic %||% NA_real_) &&
+                       is.null(r$collapsed_to) && !isTRUE(r$zi_degenerate), fit_list)
+  if (length(eligible) == 0) {
+    warning("pick_winner: no eligible fit; defaulting to nbinom2",
+            call. = FALSE, immediate. = TRUE)
+    return(list(tag = "nbinom2", defaulted = TRUE, n_eligible = 0L))
+  }
+  list(tag = eligible[[which.min(vapply(eligible, function(r) r$aic, numeric(1)))]]$family_tag,
+       defaulted = FALSE, n_eligible = length(eligible))
+}
+
+eligible_tags <- function(fit_list) {
+  ok <- Filter(function(r) isTRUE(r$converged) && is.null(r$collapsed_to) &&
+                 !isTRUE(r$zi_degenerate), fit_list)
+  sort(vapply(ok, function(r) r$family_tag, character(1)))
+}
+
+# ------------------------------------------------------------
+# The ladder: 8 families x {M1, M3} x 4 cells, all at (1 | state) + (1 | year).
+# Selection races at M3 -- the model a family must survive with every covariate
+# present. M1 is refit across the full ladder as a stability check and gets its
+# OWN recorded winner, so "the winner changed as covariates entered" is a
+# readable fact rather than an inference.
+# ------------------------------------------------------------
+fit_one <- function(cl, model, rung, plain_fits) {
+  rhs <- rhs_for(cl, model)
+  cp_tag <- counterpart_of(rung$tag)
+  counterpart <- lget(plain_fits, cp_tag)
+  if (rung$zi) {
+    res <- fit_zi_ladder(cl$d, cl$dv, rhs, rung$family, rung$zi_re, counterpart)
+  } else {
+    res <- fit_spec(cl$d, cl$dv, rhs, rung$family, zi = ~0)
+    res$zi_tier_reached <- NA_character_
+    res$zi_tier_attempts <- list()
+    res$zi_degenerate <- FALSE
+    res$zi_degenerate_reason <- ""
+    res$zi_loglik_criterion_applied <- FALSE
+  }
+  res$cell <- cl$name; res$model <- model; res$family_tag <- rung$tag
+  res$window <- cl$window; res$outcome <- cl$outcome
+  res$zi_counterpart <- cp_tag
+  res$is_winner <- FALSE
+  res
+}
+
+for (cell_name in names(cells)) {
+  cl <- cells[[cell_name]]
+  cl$name <- cell_name
+
+  for (model in c("M1", "M3")) {
+    plain_fits <- list()
+    for (rung in LADDER) {
+      key <- sprintf("%s__%s__%s", cell_name, model, rung$tag)
+      cat("fitting", key, "\n")
+      res <- fit_one(cl, model, rung, plain_fits)
+
+      if (rung$zi_re) {
+        twin <- lget(plain_fits, sub("_re$", "", rung$tag))
+        res <- mark_collapse(res, twin)
+      }
+      res$eligible_for_selection <- isTRUE(res$converged) &&
+        is.null(res$collapsed_to) && !isTRUE(res$zi_degenerate)
+
+      if (!isTRUE(res$converged)) {
+        cat(sprintf("  NOT CONVERGED at %s; message=%s\n",
+                    CROSSED_RE, res$message %||% ""))
+      }
+      results[[key]] <- res
+      plain_fits[[rung$tag]] <- res
+    }
+  }
+
+  m1 <- results[sprintf("%s__M1__%s", cell_name, FAMILY_TAGS)]
+  m3 <- results[sprintf("%s__M3__%s", cell_name, FAMILY_TAGS)]
+  pw1 <- pick_winner(m1); pw3 <- pick_winner(m3)
+
+  results[[sprintf("%s__M1__%s", cell_name, pw1$tag)]]$is_winner <- TRUE
+  results[[sprintf("%s__M3__%s", cell_name, pw3$tag)]]$is_winner <- TRUE
+
+  # M2 under the M3 winner only -- a downstream product of selection, never a
+  # competitor. It walks its OWN ZI tier ladder, because the mirror is defined
+  # against M2's conditional predictor set and M2's mirror is not M3's.
+  win <- Filter(function(r) r$tag == pw3$tag, LADDER)[[1]]
+  key <- sprintf("%s__M2__%s", cell_name, pw3$tag)
+  cat("fitting", key, "(winning family at M3)\n")
+  m2_plain <- list()
+  if (win$zi) {
+    cp_tag_m2 <- counterpart_of(win$tag)
+    cp_rung <- Filter(function(r) r$tag == cp_tag_m2, LADDER)[[1]]
+    m2_plain[[cp_tag_m2]] <- fit_one(cl, "M2", cp_rung, list())
+  }
+  res <- fit_one(cl, "M2", win, m2_plain)
+  res$is_winner <- FALSE
+  res$eligible_for_selection <- FALSE
+  results[[key]] <- res
+
+  results[[sprintf("%s__meta", cell_name)]] <- list(
+    cell = cell_name, window = cl$window, outcome = cl$outcome,
+    m1_winner = pw1$tag, m3_winner = pw3$tag,
+    stable = identical(pw1$tag, pw3$tag),
+    winner_defaulted_m1 = isTRUE(pw1$defaulted),
+    winner_defaulted_m3 = isTRUE(pw3$defaulted),
+    n_eligible_m1 = pw1$n_eligible, n_eligible_m3 = pw3$n_eligible,
+    eligible_m1 = eligible_tags(m1), eligible_m3 = eligible_tags(m3),
+    m2_family = pw3$tag)
+}
+
 write_json(results, out_json, auto_unbox = TRUE, digits = 10, na = "null")
 cat("\nWrote", length(results), "entries to", out_json, "\n")
+n_bad <- sum(vapply(results, function(r) !is.null(r$converged) && !isTRUE(r$converged),
+                    logical(1)))
+if (n_bad > 0) cat("WARNING:", n_bad, "fit(s) did not converge -- see 'converged' flags\n")
