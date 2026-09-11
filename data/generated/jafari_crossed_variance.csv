@@ -1,0 +1,5 @@
+cell,window,outcome,family,family_label,zi_tier_reached,sigma2_state,sigma2_year,sigma2_zi_state,dispersion,family_name,sigma2_e,pr_structural_zero_sample_mean,pr_structural_zero_median_state,pr_structural_zero_marginal,pct_states_above_0.10,obs_zeros,exp_zeros,exp_zeros_se,year_blup_2020,year_blup_2021,n_obs,n_states,n_years
+insp_2019,2019,inspections,zinb2,ZI-NB2,mirror,0.49383456361,2.7783478996e-10,,7.858936126,nbinom2,,0.0094100534375,,,,4,5.3535,0.054952513722,,,423,47,9
+insp_2021,2021,inspections,zinb2,ZI-NB2,mirror,0.91618801278,3.6847475631e-07,,4.8068840772,nbinom2,,0.011649817961,,,,7,7.185,0.059372974282,-1.1400047956e-05,5.5034486857e-06,506,46,11
+viol_2019,2019,violations,nbinom2,NB2,,0.39075261686,0.030735138387,,4.3907564447,nbinom2,,,,,,7,23.2095,0.13165854268,,,378,47,9
+viol_2021,2021,violations,zinb2_re,ZI-NB2 + ZI-RE,mirror,0.75071661247,2.9488208259e-09,2.4272477683,2.7314202862,nbinom2,,0.1193012939,,,,86,78.143,0.24513429158,-4.3667838174e-09,1.0677005446e-10,501,46,11

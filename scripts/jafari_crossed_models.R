@@ -134,6 +134,26 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, re = CROSSED_RE, REML = FALSE)
     stats::setNames(as.list(as.numeric(re_yr[, 1])), rownames(re_yr))
   }, error = function(e) NULL)
 
+  # SAMPLE-AVERAGE structural-zero probability: mean over the analytic sample of
+  # the per-observation zero-inflation probability, conditional on the fitted
+  # random effects. THIS is the interpretable "what share of state-years are
+  # structural zeros".
+  #
+  # It exists because plogis(zi_intercept) -- and even the Gauss-Hermite
+  # marginal E[plogis(b0 + u)] over the ZI random intercept -- answer a
+  # DIFFERENT question once the ZI block carries covariates, which under this
+  # arm's mirrored ZI formula it usually does. Both of those evaluate the ZI
+  # linear predictor at x = 0, and for a term like log_inspections (mean ~3.5,
+  # never z-scored) x = 0 is far outside the data. For viol_2021 the two
+  # disagree by a factor of ~3: the GH marginal reported 0.46 while the fitted
+  # model simulates 78 zeros in 501 rows. A reader would have concluded that
+  # nearly half of all state-years were structural zeros.
+  zi_prob_mean <- NA_real_
+  if (!identical(deparse1(zi), deparse1(~0))) {
+    zi_prob_mean <- tryCatch(mean(stats::predict(fit, type = "zprob")),
+                             error = function(e) NA_real_)
+  }
+
   obs_zeros <- exp_zeros <- exp_zeros_se <- NA_real_
   sim_warn <- character(0)
   if (!is_gaussian) {
@@ -163,7 +183,7 @@ fit_spec <- function(d, dv, rhs, family, zi = ~0, re = CROSSED_RE, REML = FALSE)
                sigma2_zi_state = s2_zi,
                sigma_zi_state = if (is.na(s2_zi)) NA_real_ else sqrt(s2_zi),
                family_name = fam_name, dispersion = disp, sigma2_e = s2_e,
-               year_blups = year_blups,
+               year_blups = year_blups, zi_prob_mean = zi_prob_mean,
                obs_zeros = obs_zeros, exp_zeros = exp_zeros,
                exp_zeros_se = exp_zeros_se,
                sim_message = if (length(sim_warn))
