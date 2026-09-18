@@ -161,7 +161,18 @@ def coefficient_table(r):
                         'label': TERM_LABEL.get(term, term),
                         'b': est['b'], 'se': est['se'], 'z': est['z'], 'p': est['p'],
                         'stars': stars(est['p']),
-                        'irr': float(np.exp(est['b'])) if block == 'conditional' else None,
+                        # exp(b) means a DIFFERENT thing in each block, so the two
+                        # live in separate columns and are never merged: an
+                        # incidence rate ratio on the expected count, versus an
+                        # odds ratio on being a structural zero. Both are null on
+                        # the intercept rows, where exp(b) is a baseline level and
+                        # not a ratio at all (see the memo's "How to read" note).
+                        'irr': (float(np.exp(est['b']))
+                                if block == 'conditional' and term != '(Intercept)'
+                                else None),
+                        'odds_ratio': (float(np.exp(est['b']))
+                                       if block == 'zero_inflated' and term != '(Intercept)'
+                                       else None),
                     })
     return pd.DataFrame(rows)
 
@@ -278,12 +289,49 @@ def _fmt(b, se, p):
     return f'{b:.4f} ({se:.4f}){stars(p)}', f'{p:.3g}'
 
 
+def _fmt_exp(b, term):
+    """exp(b) for the printed tables, or an em dash where it is not a ratio.
+
+    The intercept is deliberately NOT exponentiated. exp(intercept) is a
+    baseline count (conditional block) or baseline odds (zero-inflation block)
+    at the point where EVERY predictor is zero -- which for these models
+    includes `log Inspections = 0`, a state-year with a single inspection, a
+    point no state in the sample occupies. Printing it in a column headed IRR /
+    OR would invite exactly the ratio misreading this column exists to prevent,
+    so both blocks get an em dash there, consistently.
+    """
+    if term == '(Intercept)':
+        return '—'
+    v = float(np.exp(b))
+    if not np.isfinite(v):
+        return '—'
+    if v != 0 and (v >= 1000 or v < 0.001):
+        return f'{v:.2e}'
+    return f'{v:.3f}'
+
+
+COND_BLOCK_HEADER = (
+    '| **CONDITIONAL (count) model** — expected COUNT, given the state-year is '
+    'NOT a structural zero | | exp(b) = **IRR** | |')
+ZI_BLOCK_HEADER = (
+    '| **ZERO-INFLATION model** — log-odds that a state-year is a **STRUCTURAL '
+    'ZERO**; positive b = MORE zeros = FEWER events | | exp(b) = **OR** | |')
+
+
 def jafari_table(r, cell):
     """One cell's selected M3 model in Jafari et al. Table 5 two-block layout.
 
     Rows the reached ZI tier did not include are rendered as an em dash, so the
     table never implies a term was estimated at zero when it was simply absent
     from the ZI formula.
+
+    Each block carries a self-describing header row and its own effect-size
+    column label (IRR for the count block, OR for the zero-inflation block).
+    The bare labels "Conditional Model" / "Zero-inflated Model" were read
+    backwards in the 2026-09-11 team meeting -- the conditional block was taken
+    for the model of the zeros -- and the raw coefficients were read as if they
+    were already ratios. Both readings invert the finding, so the table states
+    the estimand and prints the exponentiated value itself.
     """
     meta = r[f'{cell}__meta']
     fam = meta['m3_winner']
@@ -300,24 +348,131 @@ def jafari_table(r, cell):
            f'**Selected family:** {FAMILY_LABEL[fam]} &nbsp;&nbsp; '
            f'**Zero-inflation component:** {ZI_TIER_LABEL.get(tier, "none")} &nbsp;&nbsp; '
            f'N = {v["n_obs"]} ({v["n_states"]} states x {v["n_years"]} years)', '',
-           '| Factor | Estimate | Pr(>\\|z\\|) |', '|---|---:|---:|',
-           '| *Conditional Model* | | |']
+           '| Factor | b (SE) | exp(b) | Pr(>\\|z\\|) |', '|---|---:|---:|---:|',
+           COND_BLOCK_HEADER]
     for t in order:
         e = cond[t]
         est, pv = _fmt(e['b'], e['se'], e['p'])
-        out.append(f'| {TERM_LABEL.get(t, t)} | {est} | {pv} |')
+        out.append(f'| {TERM_LABEL.get(t, t)} | {est} | {_fmt_exp(e["b"], t)} | {pv} |')
     if zi:
-        out.append('| *Zero-inflated Model* | | |')
+        out.append(ZI_BLOCK_HEADER)
         for t in order:
             if t in zi:
                 e = zi[t]
                 est, pv = _fmt(e['b'], e['se'], e['p'])
-                out.append(f'| {TERM_LABEL.get(t, t)} | {est} | {pv} |')
+                out.append(f'| {TERM_LABEL.get(t, t)} | {est} '
+                           f'| {_fmt_exp(e["b"], t)} | {pv} |')
             else:
-                out.append(f'| {TERM_LABEL.get(t, t)} | — | — |')
+                out.append(f'| {TERM_LABEL.get(t, t)} | — | — | — |')
     else:
-        out.append('| *Zero-inflated Model* | not estimated (plain count family selected) | |')
+        out.append('| **ZERO-INFLATION model** — log-odds that a state-year is a '
+                   '**STRUCTURAL ZERO** | not estimated (a plain count family was '
+                   'selected for this cell) | | |')
     out.append('')
+    return '\n'.join(out)
+
+
+def _pick(r, cell, model, block, term):
+    """One coefficient from a cell's selected model, or None if it is absent.
+
+    The worked example in the "How to read" section quotes real numbers, so it
+    reads them out of the artifact rather than carrying typed copies that could
+    drift away from the tables printed 40 lines below them.
+    """
+    meta = r[f'{cell}__meta']
+    fam = meta['m1_winner'] if model == 'M1' else meta['m3_winner']
+    v = r.get(f'{cell}__{model}__{fam}')
+    if v is None or not v.get('converged'):
+        return None
+    return (v.get('cond' if block == 'conditional' else 'zi') or {}).get(term)
+
+
+def how_to_read(r):
+    """The block-reading guide, immediately before the first Model 3 table.
+
+    Written because two specific misreadings actually happened in the
+    2026-09-11 team meeting and were about to reach a results section: the two
+    blocks were swapped, and raw logit coefficients were quoted as risk ratios.
+    The worked example is the exact number that was misread.
+    """
+    zi_app = _pick(r, 'insp_2021', 'M3', 'zero_inflated', 'SPEND_APP_z')
+    cond_app = _pick(r, 'insp_2021', 'M3', 'conditional', 'SPEND_APP_z')
+    cond_h2a = _pick(r, 'insp_2021', 'M3', 'conditional', 'h2a_per_farmworker_z')
+    zi_h2a = _pick(r, 'insp_2021', 'M3', 'zero_inflated', 'h2a_per_farmworker_z')
+
+    out = ["""
+## How to read these two blocks
+
+**Read this before quoting any number from the tables below.** Every
+zero-inflated model here has **two** blocks. `glmmTMB` estimates them
+**jointly, in one likelihood** -- they are not two separate models run one
+after the other -- but they answer **different questions**, and reading either
+one as the other reverses the finding.
+
+- **Conditional (count) model. This is the COUNT model, NOT the model of the
+  zeros.** It gives the expected number of inspections (or violations) in a
+  state-year, *given that the state-year is not a structural zero*. A
+  **positive** coefficient means **MORE** events.
+- **Zero-inflation model. This is the model of the zeros.** It is a logistic
+  regression for whether a state-year is a **structural zero** -- a state-year
+  that was never at risk of producing a count at all. A **positive** coefficient
+  means **MORE structural zeros**, and therefore **FEWER** events. That is the
+  **opposite** sign direction from a positive conditional coefficient.
+
+**The `b (SE)` column holds raw coefficients, not ratios.** They are on the log
+scale in the conditional block and on the logit scale in the zero-inflation
+block. The `exp(b)` column converts them -- and the conversion means a different
+thing in each block:
+
+- conditional block: `exp(b)` is an **incidence rate ratio (IRR)**, the
+  multiplicative change in the expected **count** per 1-unit increase in the
+  predictor (per **1 SD**, for every variable marked `(z)`);
+- zero-inflation block: `exp(b)` is an **odds ratio (OR)**, the multiplicative
+  change in the **odds that the state-year is a structural zero**.
+
+An IRR and an OR are **not interchangeable**, and neither may be quoted as the
+other. An OR above 1 in the zero-inflation block is a *reduction* in enforcement
+activity, not an increase. `exp(b)` is left as an em dash on the **intercept**
+rows of both blocks: the intercept is a baseline level, not a ratio, and
+exponentiating it describes a state-year with every predictor at zero --
+including `log Inspections = 0` -- which no state in the sample is.
+"""]
+
+    if zi_app is not None:
+        b = zi_app['b']
+        lines = [
+            '\n### Worked example, using the number that was misread\n',
+            f'In **{CELL_LABEL["insp_2021"]}**, the **zero-inflation** block gives '
+            f'`STAG $ per applicator (z)` **b = {b:.4f}** (p = {zi_app["p"]:.3g}). '
+            f'That is a logit coefficient, so **OR = exp({b:.4f}) = '
+            f'{float(np.exp(b)):.2f}**.\n',
+            f'> A 1-SD increase in STAG spending per pesticide applicator is '
+            f'associated with about **{float(np.exp(b)):.1f} times the odds that a '
+            f'state-year is a structural zero for inspections** -- that is, with '
+            f'**FEWER** inspections, not more.\n',
+            f'Reading the raw `{b:.4f}` as though it were already a ratio -- which '
+            f'would suggest a change of about {100 * (b - 1):.0f}% -- is wrong twice '
+            f'over: it treats a coefficient as a ratio, and it treats the '
+            f'zero-inflation block as if it were the count block. The direction comes '
+            f'out backwards.\n',
+        ]
+        if cond_app is not None:
+            lines.append(
+                f'In the **conditional** block of that same cell the same predictor '
+                f'is **b = {cond_app["b"]:.4f}** (IRR = {float(np.exp(cond_app["b"])):.3f}, '
+                f'p = {cond_app["p"]:.3g}) -- no detectable association with the '
+                f'inspection count.\n')
+        if cond_h2a is not None and zi_h2a is not None:
+            lines.append(
+                f'The same care applies to `H-2A per farmworker (z)` in this cell. It '
+                f'is **b = {cond_h2a["b"]:+.4f}, p = {cond_h2a["p"]:.3g}, in the '
+                f'CONDITIONAL (count) block** -- IRR = '
+                f'{float(np.exp(cond_h2a["b"])):.3f}, i.e. **more inspections**. In '
+                f'the zero-inflation block it is {zi_h2a["b"]:.4f} and **not** '
+                f'significant (p = {zi_h2a["p"]:.3g}), so it says nothing about '
+                f'structural zeros. It is a finding about inspection **counts**, '
+                f'not about zeros.\n')
+        out.append('\n'.join(lines))
     return '\n'.join(out)
 
 
@@ -356,6 +511,19 @@ closed here; no new estimation machinery was required.
 - **The two windows are different measures, not a longer one.** WPS-view counts
   (2011-2021) run 2-3x establishments-view counts (2011-2019) and correlate
   ~0 from 2017 on.
+
+## Reporting scope (PI direction, 2026-09-11)
+
+Reporting focus has moved to the **WPS view** (2011-2021). The establishments
+view covers pesticide **producers, sellers and distributors** rather than the
+WPS-protected agricultural operations this paper is about, so it is no longer
+the outcome the team writes up, and the new stepwise arm is **WPS-only**.
+
+The two 2011-2019 establishments-view cells are **kept in this memo**. They are
+the record of what was actually fit, and the validator checks them; deleting
+them would make the ladder, the family-selection table and the matched
+zero-inflation tallies unreproducible from what is printed here. Read them as
+the record, not as the reported results.
 
 ## The binding constraint: zeros
 
@@ -479,13 +647,20 @@ def write_memo(r, sel, coef, var, tally):
                      'collapsed onto a plain twin. That is the reportable result.\n')
 
     # --- Jafari Table 5 blocks ---
+    parts.append(how_to_read(r))
     parts.append('\n## Model 3, Jafari Table 5 format\n\n'
                  'Significance: `***` p<.001, `**` p<.01, `*` p<.05, `+` p<.10. '
                  'This is the project convention and differs in rendering from '
                  "Jafari's own legend; the two tables should not be read against "
                  'each other on stars alone. An em dash in the zero-inflated block '
                  'means the term was **absent from the ZI formula** at the tier '
-                 'reached, not estimated at zero.\n')
+                 'reached, not estimated at zero.\n\n'
+                 '`b (SE)` is the **raw coefficient** -- log scale in the '
+                 'conditional block, logit scale in the zero-inflation block. '
+                 '`exp(b)` is an **incidence rate ratio** in the conditional block '
+                 'and an **odds ratio on being a structural zero** in the '
+                 'zero-inflation block; the two are not interchangeable. See '
+                 '"How to read these two blocks" above.\n')
     for cell in CELLS:
         parts.append(jafari_table(r, cell))
 
