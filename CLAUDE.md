@@ -807,3 +807,216 @@ python3 scripts/validate_jafari_crossed.py   # sections [0]-[10]
   arm is vacuous on `main` (same known limitation as `validate_nb2_stepwise.py [8]`), so this
   arm was developed on the `jafari-crossed-re` branch where the question it asks is the right
   one.
+
+**2026-09-17 post-meeting arms (PI meeting 2026-09-11).** Joe walked through
+`docs/jafari_crossed_models.md` in the 2026-09-11 meeting and assigned three pieces of work,
+plus one scope direction. All three are implemented as **standalone arms**; the crossed arm
+(`jafari_crossed_models.R`) is untouched except for a presentation fix to its reporter. Run
+order for the two new arms (each is independent of the other):
+
+```bash
+# Stepwise state-to-state variance (Joe's Thing 1 + Thing 2)
+Rscript scripts/jafari_stepwise_models.R      # → data/generated/jafari_stepwise_results.json
+python3 scripts/report_jafari_stepwise.py     # → docs/jafari_stepwise_variance.md
+python3 scripts/validate_jafari_stepwise.py
+
+# Violations per inspection (Joe's Thing 3)
+Rscript scripts/jafari_ratio_models.R         # → data/generated/jafari_ratio_results.json
+python3 scripts/report_jafari_ratio.py        # → docs/jafari_ratio_models.md
+python3 scripts/validate_jafari_ratio.py
+```
+
+Both consume `data/generated/count_model_panel_2021.csv` (WPS view, 2011–2021, RAW counts) and
+nothing else, so the 2021-extension pipeline must have been run first.
+
+**Scope direction: WPS view only.** At 18:44 in the meeting, after reading the ECHO dashboard
+definitions aloud, Joe settled a question that had been open: the **establishments** view
+covers pesticide *producers, sellers and distributors*, not WPS-protected agricultural
+operations, so reporting focuses on the **WPS view**. Both new arms are WPS-only (2011–2021).
+The 2011–2019 establishments cells are **kept** in `docs/jafari_crossed_models.md` as the
+record of what was fit — do not delete them; `validate_jafari_crossed.py` checks them and the
+memo flags them as the record rather than the reported results.
+
+**2026-09-17 stepwise state-to-state variance arm.** The crossed arm entered every covariate
+simultaneously and computes no variance reduction at all, which Joe named as the single thing
+blocking submission ("the only thing that we're missing at the moment is state to state
+variation"). This arm supplies it. Three cells: `insp_2021`; `viol_2021_wi` (violations WITH
+`log_inspections`); `viol_2021_ni` (violations WITHOUT it — Joe's Thing 2). M1 (base) → M2
+(+`SPEND_APP_z`, `SPEND_WORK_z`, `lii_2017_z`) → M3 (+`h2a_per_farmworker_z`,
+`dol_demand_met_pct_z`, `pct_flc_z`), crossed random intercepts `(1|state) + (1|year)`, no
+random slope.
+
+- **The family is held FIXED across M1/M2/M3 within a cell** (`zinb2` / `zinb2_re` / `zinb2`).
+  This is the arm's central methodological commitment: the crossed ladder re-selects a family
+  per model, and under that policy a σ²_state change between steps reflects the family, not
+  the covariates. Same reasoning that motivated the NB2-only arm. `viol_2021_ni` had no
+  precedent and was raced at M3 across the same 8-family ladder — **ZINB2 wins** (AIC 3727.78;
+  next is ZINB2+ZI-RE 3742.09, then NB2 3781.74).
+- **Two ZI series, and the headline is `zi_intercept`, not `mirror`.** Under a mirrored ZI
+  block the zero-inflation predictors grow as the conditional block grows, so a σ²_state
+  reduction confounds the two. `zi_intercept` holds `ziformula = ~1` constant across all
+  steps and is the reduction series. `mirror` is reported beside it and is **explicitly not**
+  the reduction series.
+- **Correctness anchor**: the `mirror` series reproduces `jafari_crossed_results.json` on all
+  six comparable values to **0.00e+00** (insp M1/M2/M3 = 1.0992/0.9300/0.9162;
+  viol M1/M2/M3 = 0.8358/0.8302/0.7507). If a future change breaks that, the arm has drifted.
+- **Both reduction bases are reported and they disagree in OPPOSITE directions by outcome** —
+  the same trap the NB2 arm documented. M1 keeps 49 states; M2/M3 drop AK/RI/VT (no BLS
+  applicator series) to 46, so an `M1matched` baseline is refit on the M2/M3 sample.
+  Inspections M3 is **+16.6% unmatched but only +5.0% matched** (dropping AK/RI/VT *lowers*
+  that baseline, so the unmatched column **overstates** the covariates); both violations cells
+  go the other way — `viol_2021_wi` M3 is +10.4% unmatched, **+15.5% matched**, and
+  `viol_2021_ni` M2 is **negative** (−1.0%) unmatched but +5.7% matched. **Never quote one
+  column alone** — it misreports every cell, and in different directions.
+- **The violations cells differ in TWO ways, not one — so 45% is an UPPER BOUND, not an
+  attribution.** M1 σ²_state is 1.5329 without `log(inspections)` and 0.8411 with it, a gap of
+  about 45%. It is tempting, and **wrong**, to write that `log(inspections)` absorbs 45% of the
+  between-state variance by itself. The two cells also carry **different families**:
+  `viol_2021_wi` is **ZINB2 + ZI-RE** (`ziformula ~1 + (1 | state)`, ZI random-intercept
+  variance **1.741** at M3) because it inherits the crossed arm's M3 winner, while
+  `viol_2021_ni` is **ZINB2** (`ziformula ~1`) because it raced its own ladder and ZINB2 beat
+  ZINB2+ZI-RE by 14.31 AIC. Per-cell family selection is correct by design, but it means
+  between-state heterogeneity in the zero process has somewhere to go in `wi` and **nowhere to
+  go in `ni`**, where it must load onto the conditional σ²_state. **Do NOT write
+  "log(inspections) absorbs 45%."** The memo derives this comparison at run time from
+  `family_tag` + `zi_formula` and prints the clean one-term sentence only if the two cells ever
+  do share a family.
+- **The clean separation is NOT yet fit.** Refitting `viol_2021_ni` under ZINB2 + ZI-RE as a
+  matched-family companion would isolate what `log(inspections)` does; that fit does not exist
+  and needs a new rung in `jafari_stepwise_models.R`. Until it does, the upper-bound framing is
+  the honest statement. Open PI decision.
+- **What is NOT confounded**: removing `log(inspections)` **flips one significance verdict** —
+  `time` goes from b = 0.122, p < .0001 to b = 0.056, p = 0.069 at M3. No spending or labour
+  covariate flips. The variable is not inert.
+- **The covariates LOSE on AIC everywhere** (+3.4 to +6.5 against the matched M1 baseline)
+  even in the cells where they cut σ²_state. Variance reduction and model selection are
+  different questions; the memo carries an `AIC vs matched M1` column and says so without
+  editorialising. Do not report the variance reduction without this.
+- **σ²_year is NOT uniformly at the boundary here**, contrary to the crossed arm's pattern:
+  `insp_2021` 9.8e-10 and `viol_2021_wi` 5.0e-09 are pinned at zero, but `viol_2021_ni` is
+  **1.2e-03** — small (0.081% of state+year variance) but not boundary. The conclusion still
+  holds that the crossed state × year structure behaves as a **state-only random intercept**,
+  but the claim must be derived per cell, not asserted for all of them.
+- One fit failed to converge: `viol_2021_ni__M3__zinb1_re__selection`, a losing
+  family-selection candidate. **Every fit in every reported series converged.** The memo
+  separates "failed in a reported series" from "failed as a selection candidate" rather than
+  giving a single count.
+- **Validator**: `scripts/validate_jafari_stepwise.py`, sections `[0]`–`[10]`, **3,323 pass /
+  0 fail / 1 skip** (the skip is reasoned — `viol_2021_ni` has no crossed-arm anchor, which is
+  *why* its family was raced). Do not quote the total alone; `[1]`, `[4]` and `[9]` are record
+  loops. `[0]` runs `validate_jafari_crossed.py --skip-precondition` as an upstream gate. `[8]`
+  is a Gaussian round-trip on **this arm's own 12 specifications** — `viol_2021_ni`, Model 2
+  and the `M1matched` sample construction are all invisible to `validate_jafari_crossed.py
+  [2]`, and those are exactly where a sample-assembly bug would live. It uses the project's
+  live-vs-live multi-optimizer idiom (`powell` wins 3 of 12; statsmodels' default `lbfgs`
+  quits early on a near-flat σ²_year ridge at the *same* REML loglik to 8 decimals — not a
+  package disagreement). The validator is **mutation-tested**: 8 deliberate corruptions
+  (falsified anchor, family swapped at M2, matched baseline replaced by the unmatched one,
+  perturbed coefficient) each produce the expected FAIL.
+- **`[10]`'s history arm is scoped per commit, not per branch.** This branch carries three
+  arms, so a whole `merge-base..HEAD` diff flags the other two as freeze violations. It
+  asserts the promise CLAUDE.md actually states: every commit touching a `jafari_stepwise_*`
+  path must touch nothing frozen. Vacuous on `main` (same known limitation as
+  `validate_nb2_stepwise.py [8]`).
+
+**2026-09-17 violations-per-inspection arm.** Joe's Thing 3: a rate outcome, stepwise, with
+inspections removed as a covariate because it is now the denominator. His rationale (33:06)
+is that Jafari et al. had only a violations count and could not separate "no violations" from
+"never inspected", so a rate sits closer to their data.
+
+- **A ratio cannot be swapped in as a count DV** — `glmmTMB`'s NB/ZINB families need
+  non-negative integers. The count-preserving form is an **offset**, `log(inspections)`.
+- **This deliberately re-opens something the crossed arm closed, and the two notes do not
+  contradict each other.** The crossed arm's "Four cells, not six" bullet above drops the
+  offset variant because the offset deletes every zero-inspection state-year and therefore
+  the structural zeros that arm exists to model. That reasoning stands **for that arm**. Here
+  the offset is the point of the exercise, and the empirical question — does zero-inflation
+  survive it — is answered rather than assumed. It does (below). Cite whichever arm the
+  surrounding analysis is actually using.
+- **Three specs, so the trade-off is visible instead of decided silently**: **A** `nbinom2` +
+  `offset(log(inspections))`, `inspections > 0`; **B** `zinb2` with the same offset, ZI
+  mirroring the conditional block; **C** Gaussian LMM on `log((violations+1)/(inspections+1))`,
+  all available rows. **Never AIC-compare C to A or B** — different likelihood, different
+  outcome scale. A vs B is valid (same rows, same conditional formula, ZI block the only
+  difference).
+- **Zero-inflation survives the offset decisively**: the full Jafari-style mirror is
+  estimable, converged and non-degenerate at all three steps, and B beats A by **75.88 /
+  88.29 / 80.13 AIC** at M1/M2/M3. So the offset does not destroy the zeros. Mean
+  Pr(structural zero) 0.0892/0.0810/0.0869 against observed zero rates 0.1635/0.1599/0.1599 —
+  below the observed rate in every model, as must hold.
+- **The offset costs 7 of 533 rows** — CT-2018, KS-2018, MA-2018, OR-2020, OR-2021, UT-2017,
+  WV-2012, all 7 zero-violation, none positive — **derived from the panel, not asserted**
+  (`__offset_derivation`). Spec C keeps them and reproduces A's substantive picture, which is
+  the evidence that the dropped rows are not driving conclusions.
+- **NEW, recorded nowhere else: 6 rows have a MISSING violation count** (DE/IN/LA/ND/VT/VA,
+  all 2011) and drop from **every** spec including C. So the all-rows baseline is **533, not
+  539** — do not write that Spec C keeps all 539 rows.
+- **Spec B is the recommendation, and it reinterprets the spending result.** Adding the ZI
+  block moves both significant Model-3 conditional predictors to null (`SPEND_WORK_z`
+  −0.394\* → −0.226 n.s.; `h2a_per_farmworker_z` −0.150\* → −0.013 n.s.) while `SPEND_WORK_z`
+  re-emerges in the **ZI block at +0.714\*\* (OR 2.04)**. Under the sign convention below that
+  says STAG spending per farmworker predicts a state being a **structural zero**, not a lower
+  violation rate among states that are enforcing. That is a different claim from the one
+  sketched in the meeting (30:25) and from what Spec A or C supports on their own.
+- σ²_year is at the boundary in 8 of 9 fits (largest anywhere 1.0e-03), so as elsewhere the
+  crossed structure behaves as a state-only random intercept. No COVID indicator is fit; this
+  arm says nothing about COVID.
+- **Validator**: `scripts/validate_jafari_ratio.py`, sections `[0]`–`[13]`, **2,109 pass / 0
+  fail / 5 skip**. Do not quote the total alone; `[1]` is a loop over 13 records. `--skip-slow`
+  bypasses `[9]`/`[12]`/`[13]` and says so. `[9]` is **the first offset gate in this project** —
+  nothing previously validated an offset specification across the R/Python bridge — and a
+  deliberate probe confirms the offset is *applied* (the intercept moves ~3.5 when removed).
+  `[7]` reconstructs the structural-zero probability from the panel plus the stored
+  coefficients rather than round-tripping it (legitimate here because the ZI formula carries
+  no random term, so `predict(type="zprob")` is exactly `plogis(x'β_zi)` row by row); it agrees
+  to <1e-8 and is demonstrably **not** `plogis(b0)` (0.0869 vs 0.1143 at M3). Mutation-tested,
+  including setting `zi_prob_mean` to the historical wrong estimand — caught.
+- **A near-miss worth remembering**: statsmodels' default optimizer genuinely fails on the
+  Spec C M3 surface, stopping 0.07 loglik short and reporting σ²_state 0.8522 against
+  glmmTMB's 0.8159. A naive gate would have reported that 4.3% gap as an arm defect; `powell`
+  and `nm` both reach the same optimum as glmmTMB to ~6 significant figures. The
+  discard-failures/take-highest-loglik idiom is **load-bearing here, not decorative**.
+- **Latent hazard, currently inert**: `analytic_rows()` in `jafari_ratio_models.R` runs
+  `complete.cases()` over the DV and predictors but **not** over `inspections`, then filters
+  `inspections > 0`. An `NA` denominator would survive `complete.cases` and then index with
+  `NA`, injecting all-NA rows. Inert only because that column has no missing values today;
+  `[0]` asserts that precondition so it cannot go live silently. Not fixed — there is no
+  defect in the current output.
+- Two memo-wording imprecisions are pinned by the validator rather than fixed: the ZI
+  probability is described as "conditional on the fitted random effects" when this arm has no
+  ZI random effects (vacuous, but a reader could infer one exists), and the "Zeros (rate)"
+  column counts zero-**violation** rows in every spec including Spec C, whose response is the
+  log ratio. Both are deliberate in the R; `[4]` pins the estimand so it cannot drift.
+
+**2026-09-17 the two model blocks must never be presented unlabelled again.** In the meeting
+the PI read `docs/jafari_crossed_models.md` aloud and made two inverted readings, then said he
+would draft the results and discussion from them. Both traced to the memo's presentation, and
+both are now structurally prevented:
+
+- **He swapped the blocks** — "is there anything predicting the number of zeros? So that's the
+  conditional model" (29:56) is backwards. Because of it he reported the `insp_2021` H-2A
+  finding as predicting *more zeros*, when `h2a_per_farmworker_z` is **+0.0874, p = 0.028, in
+  the CONDITIONAL (count) block** (more inspections) and −4.16 **n.s.** in the ZI block.
+- **He read raw coefficients as risk ratios.** The memo printed log/logit coefficients;
+  `exp(b)` existed only in the JSON and only for the conditional block. He read ZI
+  `SPEND_APP_z = 1.3042` as "a 30% increase in the incidence of having an inspection" (26:00).
+  It is a logit coefficient: **OR = 3.68**, ~3.7× the odds of being a structural zero, i.e.
+  **FEWER** inspections. Same inversion applies to ZI `dol_demand_met_pct_z` = 1.6606
+  (OR 5.26) and to the violations ZI `SPEND_WORK_z` = +0.7595 (OR 2.14).
+- **THE SIGN RULE, which every memo in this project must now carry**: the conditional block is
+  the **COUNT** model (expected count given the state-year is NOT a structural zero); the ZI
+  block is the **log-odds of BEING a structural zero**. A **positive ZI coefficient means MORE
+  structural zeros and therefore FEWER events** — the opposite direction from a positive
+  conditional coefficient. An IRR and an OR are not interchangeable and neither may be quoted
+  as the other.
+- `report_jafari_crossed.py` now prints an `exp(b)` column labelled **IRR** in the conditional
+  block and **OR** in the ZI block (the OR was not computed anywhere before), gives both blocks
+  self-describing headers, and carries a "How to read these two blocks" section whose
+  worked-example numbers are **read from the JSON** so they cannot drift from the tables below
+  them. `exp(b)` is an em dash on intercept rows — exponentiating an intercept describes a
+  state-year with every predictor at zero, including `log Inspections = 0`, which no state
+  occupies. **No estimate, SE or p-value changed**; this was presentation only.
+- `validate_jafari_crossed.py`'s `MEMO_REQUIRED` asserted the literal strings
+  `*Conditional Model*` / `*Zero-inflated Model*` — the exact labels that were misread — so
+  they are retargeted to the new headers, plus four new guards. Sections `[0]`–`[10]`:
+  **774 pass / 0 fail / 3 skip** (the 3 skips pre-existing and unchanged).
