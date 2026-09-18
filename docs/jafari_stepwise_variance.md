@@ -114,7 +114,14 @@ The two cells that inherit their family from `jafari_crossed_results.json` shoul
 
 ## 4. With vs without inspections (Joe's second request)
 
-Both series model the same outcome (`violations`) on the same window. They differ in exactly one term: `log(inspections)` as a Level-1 covariate. Jafari et al. had no such variable.
+Both series model the same outcome (`violations`) on the same window, over the same rows, with the same conditional covariate build-up and the same `(1 | state) + (1 | year)` random effects.
+
+**They differ in two things, not one, and the second is easy to miss.**
+
+1. `log(inspections)` enters the conditional block of `viol_2021_wi` and not `viol_2021_ni`. That is the comparison Joe asked for; Jafari et al. had no such variable.
+2. **The family is not the same.** `viol_2021_wi` is fit as **ZINB2 + ZI-RE** (ziformula `~1 + (1 | state)`) and `viol_2021_ni` as **ZINB2** (ziformula `~1`). Each cell's family was chosen for that cell (section 1), and the two choices did not coincide.
+
+The second difference matters for the table below, and it matters in a specific direction. `viol_2021_wi` carries a state random intercept in its **zero-inflation** block (variance 1.741 at Model 3) and `viol_2021_ni` does not. Between-state heterogeneity in the zero process therefore has somewhere to go in `viol_2021_wi` and nowhere to go in `viol_2021_ni`, where it must load onto the conditional `sigma^2_state` instead. So the gap between the two columns below is **not** attributable to `log(inspections)` alone: part of it is the zero-inflation random effect. Read the "share absorbed" column as an **upper bound** on what `log(inspections)` does, not as an estimate of it. Isolating the two would need `viol_2021_ni` refit under `ZINB2 + ZI-RE` as well, which this arm does not do.
 
 | Model | sigma^2_state WITH inspections | sigma^2_state WITHOUT | Difference | Share of between-state variance absorbed by log(inspections) |
 |---|---|---|---|---|
@@ -128,9 +135,9 @@ Both series model the same outcome (`violations`) on the same window. They diffe
 | M2 (+ spending, commodity mix) | +1.3 | -1.0 | +7.0 | +5.7 |
 | M3 (+ H-2A block) | +10.4 | +1.9 | +15.5 | +8.5 |
 
-**What `log(inspections)` is doing.** At Model 1 the between-state variance in violations is 1.533 without it and 0.841 with it -- so that single term absorbs about **45%** of the state-to-state variance in violation counts before any covariate is entered. States differ in violations in large part because they differ in how much they inspect.
+**What `log(inspections)` is doing.** At Model 1 the between-state variance in violations is 1.533 without it and 0.841 with it -- a gap of about **45%** of the state-to-state variance in violation counts, before any covariate is entered. States differ in violations in large part because they differ in how much they inspect. But see the two-differences note above: the two cells do not share a zero-inflation structure, so **45% is an upper bound on what that single term does**, not an estimate of it. Do not quote it as "log(inspections) absorbs 45% of the between-state variance".
 
-**Do the covariate conclusions change?** Model 3 conditional-block coefficients, side by side:
+**Do the covariate conclusions change?** Model 3 conditional-block coefficients, side by side (same caveat: the two columns also differ in zero-inflation structure, not only in `log(inspections)`):
 
 | Term | b (with insp.) | p | | b (without insp.) | p | | Same sign? | Same significance at p<.05? |
 |---|---|---|---|---|---|---|---|---|

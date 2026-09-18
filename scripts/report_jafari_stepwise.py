@@ -479,10 +479,62 @@ def write_memo(res):
         swi, sni = headline_series(res, wi), headline_series(res, ni)
         rwi = {r['model']: r for r in variance_rows(res, wi, swi)}
         rni = {r['model']: r for r in variance_rows(res, ni, sni)}
+        # What actually differs between the two cells is DERIVED, not
+        # asserted. An earlier draft of this paragraph said the two series
+        # "differ in exactly one term"; they do not, because the family is
+        # selected per cell and the two cells did not land on the same one.
+        # Claiming one difference while there are two would hand the whole of
+        # the absorbed-variance figure below to `log(inspections)`.
+        fam_wi = res[f'{wi}__meta']['family_tag']
+        fam_ni = res[f'{ni}__meta']['family_tag']
+        zi_wi = (get(res, wi, 'M3', swi) or {}).get('zi_formula')
+        zi_ni = (get(res, ni, 'M3', sni) or {}).get('zi_formula')
         A('Both series model the same outcome (`violations`) on the same '
-          'window. They differ in exactly one term: `log(inspections)` as a '
-          'Level-1 covariate. Jafari et al. had no such variable.')
+          'window, over the same rows, with the same conditional covariate '
+          'build-up and the same `(1 | state) + (1 | year)` random effects.')
         A('')
+        if fam_wi == fam_ni and zi_wi == zi_ni:
+            A('They differ in exactly one term: `log(inspections)` as a '
+              'Level-1 covariate. Jafari et al. had no such variable.')
+            A('')
+        else:
+            A('**They differ in two things, not one, and the second is easy '
+              'to miss.**')
+            A('')
+            A('1. `log(inspections)` enters the conditional block of '
+              f'`{wi}` and not `{ni}`. That is the comparison Joe asked for; '
+              'Jafari et al. had no such variable.')
+            A(f'2. **The family is not the same.** `{wi}` is fit as '
+              f'**{FAMILY_LABEL.get(fam_wi, fam_wi)}** '
+              f'(ziformula `{zi_wi}`) and `{ni}` as '
+              f'**{FAMILY_LABEL.get(fam_ni, fam_ni)}** '
+              f'(ziformula `{zi_ni}`). Each cell\'s family was chosen for that '
+              'cell (section 1), and the two choices did not coincide.')
+            A('')
+            zire_wi = '(1 | state)' in (zi_wi or '')
+            zire_ni = '(1 | state)' in (zi_ni or '')
+            if zire_wi != zire_ni:
+                has, hasnt = ((wi, ni) if zire_wi else (ni, wi))
+                s2zi = (get(res, has, 'M3', headline_series(res, has))
+                        or {}).get('sigma2_zi_state')
+                A(f'The second difference matters for the table below, and it '
+                  f'matters in a specific direction. `{has}` carries a state '
+                  f'random intercept in its **zero-inflation** block '
+                  + (f'(variance {fmt(s2zi, ".3f")} at Model 3) '
+                     if s2zi is not None else '')
+                  + f'and `{hasnt}` does not. Between-state heterogeneity in '
+                    f'the zero process therefore has somewhere to go in '
+                    f'`{has}` and nowhere to go in `{hasnt}`, where it must '
+                    f'load onto the conditional `sigma^2_state` instead. So '
+                    f'the gap between the two columns below is **not** '
+                    f'attributable to `log(inspections)` alone: part of it is '
+                    f'the zero-inflation random effect. Read the "share '
+                    f'absorbed" column as an **upper bound** on what '
+                    f'`log(inspections)` does, not as an estimate of it. '
+                    f'Isolating the two would need `{hasnt}` refit under '
+                    f'`{FAMILY_LABEL.get(fam_wi if has == wi else fam_ni)}` as '
+                    f'well, which this arm does not do.')
+                A('')
         A('| Model | sigma^2_state WITH inspections | sigma^2_state WITHOUT | '
           'Difference | Share of between-state variance absorbed by '
           'log(inspections) |')
@@ -515,18 +567,28 @@ def write_memo(res):
         if m1a['converged'] and m1b['converged']:
             share1 = (100 * (m1b['sigma2_state'] - m1a['sigma2_state'])
                       / m1b['sigma2_state'])
+            confounded = (fam_wi != fam_ni) or (zi_wi != zi_ni)
             A(f'**What `log(inspections)` is doing.** At Model 1 the '
               f'between-state variance in violations is '
               f'{fmt(m1b["sigma2_state"], ".3f")} without it and '
-              f'{fmt(m1a["sigma2_state"], ".3f")} with it -- so that single '
-              f'term absorbs about **{share1:.0f}%** of the state-to-state '
-              f'variance in violation counts before any covariate is entered. '
-              f'States differ in violations in large part because they differ '
-              f'in how much they inspect.')
+              f'{fmt(m1a["sigma2_state"], ".3f")} with it -- a gap of about '
+              f'**{share1:.0f}%** of the state-to-state variance in violation '
+              f'counts, before any covariate is entered. States differ in '
+              f'violations in large part because they differ in how much they '
+              f'inspect.'
+              + (f' But see the two-differences note above: the two cells do '
+                 f'not share a zero-inflation structure, so **{share1:.0f}% '
+                 f'is an upper bound on what that single term does**, not an '
+                 f'estimate of it. Do not quote it as "log(inspections) '
+                 f'absorbs {share1:.0f}% of the between-state variance".'
+                 if confounded else ''))
             A('')
         # Do the covariate conclusions change? Derived from M3 coefficients.
         A('**Do the covariate conclusions change?** Model 3 conditional-block '
-          'coefficients, side by side:')
+          'coefficients, side by side'
+          + (' (same caveat: the two columns also differ in zero-inflation '
+             'structure, not only in `log(inspections)`)'
+             if (fam_wi != fam_ni or zi_wi != zi_ni) else '') + ':')
         A('')
         a3 = get(res, wi, 'M3', swi)
         b3 = get(res, ni, 'M3', sni)
