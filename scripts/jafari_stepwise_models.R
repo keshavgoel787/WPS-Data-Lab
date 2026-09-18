@@ -25,6 +25,16 @@
 # cell. If the family were allowed to change between steps, a change in
 # sigma^2_state would reflect the family swap and not the covariates, and the
 # whole deliverable would be meaningless. See "Family" below.
+#
+# COMPANION FITS (STEP 3, added 2026-09-17). The two violations cells answer
+# Joe's Thing 2 by differing in `log_inspections` -- but they also differ in
+# FAMILY, because each raced or inherited its own. So the raw gap between their
+# sigma^2_state is an upper bound on what `log_inspections` does, not an
+# estimate of it. Step 3 fits each violations cell a SECOND time under the
+# OTHER one's family, in the headline `zi_intercept` series only, which brackets
+# the answer between two family-matched comparisons. These records are tagged
+# `is_companion = TRUE` and carry a `__companion` key suffix; they are NOT the
+# reported models and each cell's own selected family is unchanged.
 
 suppressPackageStartupMessages({
   library(glmmTMB)
@@ -556,6 +566,115 @@ for (cell_name in names(CELLS)) {
     crossed_arm = crossed_meta[[cell_name]] %||% NULL,
     m2_add = M2_ADD, m3_add = setdiff(M3_ADD, M2_ADD))
 }
+
+# ------------------------------------------------------------
+# STEP 3. MATCHED-FAMILY COMPANION FITS.
+#
+# WHY. `viol_2021_wi` and `viol_2021_ni` are meant to differ in exactly one
+# thing -- `log_inspections` in the conditional block -- but per-cell family
+# selection made them differ in TWO: `wi` carries a state random intercept in
+# its zero-inflation block (ZINB2 + ZI-RE, inherited from the crossed arm's M3
+# winner) and `ni` does not (plain ZINB2, which won its own race by 14.31 AIC).
+# Between-state heterogeneity in the zero process therefore has somewhere to go
+# in `wi` and nowhere to go in `ni`, where it must load onto the conditional
+# sigma^2_state. Comparing the two as selected confounds the covariate with the
+# variance structure.
+#
+# WHAT. Each violations cell is refit under the OTHER one's family, so the
+# comparison can be made with family held constant. BOTH directions are fit,
+# never one: each direction forces a cell onto a family that loses for that
+# cell, so neither is privileged, and together they BRACKET the answer.
+#
+# SCOPE. The headline `zi_intercept` series only (M1, M2, M3, M1matched). The
+# `mirror` series is explicitly secondary and already carries its own caveat;
+# duplicating it here would add fits nobody reads.
+#
+# STATUS. These are COMPANIONS, not reported models. Each cell's own selected
+# family is untouched, every record here is tagged `is_companion = TRUE`, and
+# the key carries a `__companion` suffix so nothing downstream can mistake one
+# for a selected fit.
+#
+# The job list is DERIVED, not typed: for every ordered pair of cells sharing a
+# DV whose selected families differ, fit the first under the second's family.
+# If the two cells ever land on the same family, this loop produces nothing --
+# correctly, because then no companion is needed.
+# ------------------------------------------------------------
+companion_jobs <- list()
+for (a in names(CELLS)) for (b in names(CELLS)) {
+  if (identical(a, b)) next
+  if (!identical(CELLS[[a]]$dv, CELLS[[b]]$dv)) next
+  if (identical(CELLS[[a]]$family_tag, CELLS[[b]]$family_tag)) next
+  companion_jobs[[length(companion_jobs) + 1]] <- list(
+    cell = a, family_tag = CELLS[[b]]$family_tag, matched_to = b,
+    own_family_tag = CELLS[[a]]$family_tag)
+}
+
+for (job in companion_jobs) {
+  cl <- CELLS[[job$cell]]; cl$d <- panel
+  rung <- rung_of(job$family_tag)
+  cp_tag <- counterpart_of(job$family_tag)
+  # The headline series is `zi_intercept`, which only exists for a ZI family.
+  # A plain family has no ZI block, so there would be nothing to hold constant.
+  if (!rung$zi) stop("companion family ", job$family_tag, " is not ",
+                     "zero-inflated; the zi_intercept series is undefined for it")
+
+  for (model in c("M1", "M2", "M3", "M1matched")) {
+    rhs  <- rhs_for(cl, model)
+    samp <- if (model == "M1matched") rhs_for(cl, "M3") else NULL
+    key  <- sprintf("%s__%s__%s__zi_intercept__companion",
+                    job$cell, model, job$family_tag)
+    cat("fitting", key, "(matched-family companion)\n")
+
+    counterpart <- NULL
+    if (!is.na(cp_tag)) {
+      cp_rung <- rung_of(cp_tag)
+      counterpart <- fit_spec(cl$d, cl$dv, rhs, cp_rung$family, zi = ~0,
+                              sample_rhs = samp)
+      counterpart$family_tag <- cp_tag
+    }
+
+    res <- fit_spec(cl$d, cl$dv, rhs, rung$family,
+                    zi = zi_formula(character(0), rung$zi_re),
+                    sample_rhs = samp)
+    res$zi_tier_reached <- "intercept"; res$zi_tier_attempts <- list()
+    res <- mark_zi_degenerate(res, counterpart)
+
+    res$cell <- job$cell; res$model <- model
+    res$family_tag <- job$family_tag
+    res$series <- "zi_intercept"; res$outcome <- cl$outcome
+    res$with_inspections <- cl$with_inspections
+    res$sample_model <- if (model == "M1matched") "M3" else model
+    res$zi_counterpart <- cp_tag
+    res$counterpart_aic <- if (is.null(counterpart)) NA_real_
+                           else (counterpart$aic %||% NA_real_)
+    # The tags that keep a companion from ever being read as a selected fit.
+    res$is_companion <- TRUE
+    res$family_matched_to <- job$matched_to
+    res$own_family_tag <- job$own_family_tag
+    res$companion_of <- sprintf("%s__%s__%s__zi_intercept",
+                                job$cell, model, job$own_family_tag)
+    if (!isTRUE(res$converged)) {
+      cat(sprintf("WARNING [%s]: companion did NOT converge at %s; message=%s\n",
+                  key, CROSSED_RE, res$message %||% ""))
+    }
+    results[[key]] <- res
+  }
+}
+
+results[["__companion_meta"]] <- list(
+  n_jobs = length(companion_jobs),
+  series = "zi_intercept",
+  models = c("M1", "M2", "M3", "M1matched"),
+  jobs = lapply(companion_jobs, function(j) list(
+    cell = j$cell, own_family_tag = j$own_family_tag,
+    companion_family_tag = j$family_tag, family_matched_to = j$matched_to)),
+  note = paste("Matched-family companions for the with/without-inspections",
+               "comparison. Each violations cell refit under the OTHER cell's",
+               "selected family so that family can be held constant. BOTH",
+               "directions are fit; neither is privileged, and together they",
+               "bracket what log(inspections) absorbs. NOT reported models:",
+               "every reported series still uses its cell's own selected",
+               "family, which these fits do not change."))
 
 results[["__run_meta"]] <- list(
   script = "scripts/jafari_stepwise_models.R",
