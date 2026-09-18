@@ -11,6 +11,15 @@ it owns are:
   delta_pct         = 100 * (s2_state[M1]        - s2_state[m]) / s2_state[M1]
   delta_pct_matched = 100 * (s2_state[M1matched] - s2_state[m]) / s2_state[M1matched]
   IRR / OR          = exp(b)
+  absorbed share    = 100 * (s2_state[without] - s2_state[with]) / s2_state[without]
+
+The absorbed share (section 4) is reported on THREE bases: the two violations
+cells as each is actually selected (which is confounded whenever their families
+differ), and once for each family with BOTH cells held at it. Which bases exist
+is derived from the artifact at run time -- nothing here hardcodes which family
+a cell carries -- and if a matched-family companion fit is missing or
+non-converged the memo falls back to the upper-bound framing and says which
+direction is unavailable.
 
 `delta_pct` measures every model against Model 1 fit on Model 1's OWN 49-state
 sample; `delta_pct_matched` against Model 1 refit on the Model 2/3 46-state
@@ -230,14 +239,18 @@ def nonconverged(res):
 
     `series == 'selection'` records are family-selection CANDIDATES for
     `viol_2021_ni` -- losing candidates in a race, never quoted as estimates.
-    Anything else is a substantive fit in a reported series and would invalidate
-    the row it belongs to, which is why the two are distinguished here rather
-    than lumped into one count."""
+    `is_companion` records are matched-family companions: diagnostic fits for
+    section 4's bracket, not reported models, so a failure there costs the
+    bracket rather than a reported row. Anything else is a substantive fit in a
+    reported series and would invalidate the row it belongs to, which is why
+    the three are distinguished here rather than lumped into one count."""
     out = []
     for key, r in res.items():
         if not isinstance(r, dict) or 'converged' not in r:
             continue
         if not r.get('converged'):
+            role = ('companion' if r.get('is_companion')
+                    else (r.get('series') or 'unknown'))
             # Repeated identical optimizer messages ("NA/NaN function
             # evaluation" x13) carry no extra information; collapse them.
             parts = [p.strip() for p in (r.get('message') or '').split('|')]
@@ -246,9 +259,81 @@ def nonconverged(res):
                 if p and p not in seen:
                     seen.add(p)
                     uniq.append(p)
-            out.append({'key': key, 'role': r.get('series') or 'unknown',
+            out.append({'key': key, 'role': role,
                         'message': ' | '.join(uniq)})
     return out
+
+
+COMPANION_SUFFIX = '__companion'
+
+
+def rec_at_family(res, cell, model, fam, series):
+    """The fit for (cell, model, series) estimated under family `fam`.
+
+    When `fam` is the cell's OWN selected family this is the reported record.
+    Otherwise it is a matched-family COMPANION record -- a fit that exists only
+    so the with/without-inspections comparison can hold the family constant,
+    and which is never a reported model.
+
+    Returns None when the fit is absent or did not converge, so that a caller
+    can fall back to the confounded comparison instead of printing a hole."""
+    own = res[f'{cell}__meta']['family_tag']
+    key = f'{cell}__{model}__{fam}__{series}'
+    if fam != own:
+        key += COMPANION_SUFFIX
+    r = res.get(key)
+    return r if (r is not None and r.get('converged')) else None
+
+
+def comparison_bases(res, wi, ni):
+    """The (label, family used for WI, family used for NI) bases to report.
+
+    Derived from the artifact, never typed. The first is always the cells as
+    actually selected -- which may be confounded. Each additional basis holds
+    ONE family fixed across both cells; there is one per distinct family in
+    play, so both directions appear and neither is privileged. If the two cells
+    already share a family the list collapses to a single (unconfounded) basis.
+    """
+    fam_wi = res[f'{wi}__meta']['family_tag']
+    fam_ni = res[f'{ni}__meta']['family_tag']
+    out, seen = [], set()
+
+    def add(label, a, b, matched):
+        if (a, b) in seen:
+            return
+        seen.add((a, b))
+        out.append({'label': label, 'fam_wi': a, 'fam_ni': b,
+                    'matched': matched})
+
+    add('As selected (each cell keeps its own family)', fam_wi, fam_ni,
+        fam_wi == fam_ni)
+    for fam in (fam_wi, fam_ni):
+        add(f'Both at {FAMILY_LABEL.get(fam, fam)}', fam, fam, True)
+    return out
+
+
+def bracket_rows(res, wi, ni, model, series):
+    """One row per available basis at `model`: sigma^2_state either side and
+    the share of between-state variance the `log(inspections)` term accounts
+    for. A basis whose fit is missing or non-converged is reported as
+    unavailable rather than dropped."""
+    rows = []
+    for basis in comparison_bases(res, wi, ni):
+        a = rec_at_family(res, wi, model, basis['fam_wi'], series)
+        b = rec_at_family(res, ni, model, basis['fam_ni'], series)
+        row = dict(basis, model=model, wi=a, ni=b, available=(a is not None
+                                                              and b is not None))
+        if row['available']:
+            row['share'] = (100 * (b['sigma2_state'] - a['sigma2_state'])
+                            / b['sigma2_state'])
+        else:
+            row['share'] = None
+            row['unavailable_reason'] = (
+                f"missing or non-converged fit: "
+                f"{wi}@{basis['fam_wi']}={'ok' if a else 'UNAVAILABLE'}, "
+                f"{ni}@{basis['fam_ni']}={'ok' if b else 'UNAVAILABLE'}")
+        rows.append(row)
+    return rows
 
 
 def headline_series(res, cell):
@@ -292,7 +377,10 @@ def write_memo(res):
       'variable; ours carries `log(inspections)` as a Level-1 covariate in the '
       'violations models. So the violations series is fit **twice** -- once '
       'with that term and once without -- and section 4 compares them '
-      'directly.')
+      'directly, with **matched-family companion fits** so that the '
+      'comparison is not confounded with the distributional family each cell '
+      'happens to carry. Whether those companions are usable is stated in '
+      'section 4 rather than assumed here.')
     A('')
     A(f'**Window: {run["window"]} only.** Per PI direction 2026-09-11 the '
       '2011-2019 establishments-view window is out of scope here. Panel: '
@@ -493,13 +581,33 @@ def write_memo(res):
           'window, over the same rows, with the same conditional covariate '
           'build-up and the same `(1 | state) + (1 | year)` random effects.')
         A('')
-        if fam_wi == fam_ni and zi_wi == zi_ni:
+        confounded = (fam_wi != fam_ni) or (zi_wi != zi_ni)
+        # The matched-family companion fits, keyed by model. Each row is one
+        # BASIS: the two cells as selected, or both forced onto one family.
+        bracket = {m: bracket_rows(res, wi, ni, m, 'zi_intercept')
+                   for m in MODELS}
+
+        def matched_rows(model):
+            return [r for r in bracket[model] if r['matched'] and r['available']]
+
+        def selected_row(model):
+            """The as-selected basis -- always the first one built."""
+            return bracket[model][0]
+
+        # The bracket is reportable only if BOTH matched directions are
+        # available at every substantive step. Anything less and the memo
+        # falls back to the upper-bound framing rather than printing a hole.
+        n_matched_expected = len({fam_wi, fam_ni})
+        have_bracket = all(len(matched_rows(m)) == n_matched_expected
+                           for m in MODELS)
+
+        if not confounded:
             A('They differ in exactly one term: `log(inspections)` as a '
               'Level-1 covariate. Jafari et al. had no such variable.')
             A('')
         else:
-            A('**They differ in two things, not one, and the second is easy '
-              'to miss.**')
+            A('**As each cell is reported they differ in two things, not one, '
+              'and the second is easy to miss.**')
             A('')
             A('1. `log(inspections)` enters the conditional block of '
               f'`{wi}` and not `{ni}`. That is the comparison Joe asked for; '
@@ -517,24 +625,51 @@ def write_memo(res):
                 has, hasnt = ((wi, ni) if zire_wi else (ni, wi))
                 s2zi = (get(res, has, 'M3', headline_series(res, has))
                         or {}).get('sigma2_zi_state')
-                A(f'The second difference matters for the table below, and it '
-                  f'matters in a specific direction. `{has}` carries a state '
-                  f'random intercept in its **zero-inflation** block '
+                A(f'That second difference matters in a specific direction. '
+                  f'`{has}` carries a state random intercept in its '
+                  f'**zero-inflation** block '
                   + (f'(variance {fmt(s2zi, ".3f")} at Model 3) '
                      if s2zi is not None else '')
                   + f'and `{hasnt}` does not. Between-state heterogeneity in '
                     f'the zero process therefore has somewhere to go in '
                     f'`{has}` and nowhere to go in `{hasnt}`, where it must '
                     f'load onto the conditional `sigma^2_state` instead. So '
-                    f'the gap between the two columns below is **not** '
-                    f'attributable to `log(inspections)` alone: part of it is '
-                    f'the zero-inflation random effect. Read the "share '
-                    f'absorbed" column as an **upper bound** on what '
-                    f'`log(inspections)` does, not as an estimate of it. '
-                    f'Isolating the two would need `{hasnt}` refit under '
-                    f'`{FAMILY_LABEL.get(fam_wi if has == wi else fam_ni)}` as '
-                    f'well, which this arm does not do.')
+                    f'the as-selected gap is **not** attributable to '
+                    f'`log(inspections)` alone: part of it is the '
+                    f'zero-inflation random effect.')
                 A('')
+            if have_bracket:
+                A('**That confound is now removed.** Each violations cell is '
+                  'also fit under the *other* cell\'s family -- a '
+                  '**matched-family companion** fit -- so the comparison can '
+                  'be made with family held constant. Both directions are '
+                  'fit, never one: each direction forces a cell onto a family '
+                  'that loses for that cell, so neither is privileged, and '
+                  'together they **bracket** the answer. The companions are '
+                  'tagged `is_companion` in the JSON and are **not** reported '
+                  'models -- every series in sections 2, 3 and 6 still uses '
+                  'its own cell\'s selected family, unchanged.')
+                A('')
+            else:
+                A('**The matched-family companions are not available**, so '
+                  'the share below remains an **upper bound** on what '
+                  '`log(inspections)` does rather than an estimate of it. '
+                  'Unavailable bases:')
+                for m in MODELS:
+                    for r in bracket[m]:
+                        if r['matched'] and not r['available']:
+                            A(f"  - {MODEL_LABEL[m]}, {r['label']}: "
+                              f"{r['unavailable_reason']}")
+                A('')
+
+        # ---- 4.1 the as-selected comparison ------------------------------
+        A('### 4.1 The comparison as each cell is reported')
+        A('')
+        A('Each cell under its own selected family'
+          + (' -- **confounded**, because those families differ (see above); '
+             'read the share as an upper bound.'
+             if confounded else '.'))
+        A('')
         A('| Model | sigma^2_state WITH inspections | sigma^2_state WITHOUT | '
           'Difference | Share of between-state variance absorbed by '
           'log(inspections) |')
@@ -550,6 +685,208 @@ def write_memo(res):
               f"{fmt(a['sigma2_state'] - b['sigma2_state'], '+.4f')} | "
               f"{fmt(share, '.1f')}% |")
         A('')
+
+        # ---- 4.2 the bracket ----------------------------------------------
+        if confounded and have_bracket:
+            A('### 4.2 Matched-family companions: the bracket')
+            A('')
+            A('Every row below is the same two cells over the same rows, with '
+              'the same conditional build-up; the only thing that changes '
+              'down the table is which family both cells are held at. The '
+              'first row of each block repeats section 4.1 so the confounded '
+              'figure and the two matched ones can be read together.')
+            A('')
+            A('| Model | Basis | Family, WITH | Family, WITHOUT | '
+              'sigma^2_state WITH | sigma^2_state WITHOUT | '
+              'Share absorbed by log(inspections) |')
+            A('|---|---|---|---|---|---|---|')
+            for model in MODELS:
+                for r in bracket[model]:
+                    if not r['available']:
+                        continue
+                    tag = '' if r['matched'] else ' (confounded)'
+                    A(f"| {MODEL_LABEL[model]} | {r['label']}{tag} | "
+                      f"{FAMILY_LABEL.get(r['fam_wi'], r['fam_wi'])} | "
+                      f"{FAMILY_LABEL.get(r['fam_ni'], r['fam_ni'])} | "
+                      f"{fmt(r['wi']['sigma2_state'], '.4f')} | "
+                      f"{fmt(r['ni']['sigma2_state'], '.4f')} | "
+                      f"{fmt(r['share'], '.1f')}% |")
+            A('')
+            A('Both cells sit on identical analytic samples at every step '
+              '(N = '
+              + ', '.join(f"{m} {bracket[m][0]['wi']['n_obs']}"
+                          for m in MODELS)
+              + '), so nothing in this table is a sample effect.')
+            A('')
+
+        # ---- 4.3 the plain-language answer --------------------------------
+        A('### 4.3 What `log(inspections)` actually does')
+        A('')
+        m1a, m1b = rwi['M1'], rni['M1']
+        if not (m1a['converged'] and m1b['converged']):
+            A('Not reportable -- at least one Model-1 fit did not converge.')
+            A('')
+        elif not confounded:
+            share1 = (100 * (m1b['sigma2_state'] - m1a['sigma2_state'])
+                      / m1b['sigma2_state'])
+            A(f'At Model 1 the between-state variance in violations is '
+              f'{fmt(m1b["sigma2_state"], ".3f")} without `log(inspections)` '
+              f'and {fmt(m1a["sigma2_state"], ".3f")} with it: the term '
+              f'accounts for **{share1:.0f}%** of the state-to-state variance '
+              f'in violation counts. The two cells share a family, so this is '
+              f'an estimate, not a bound.')
+            A('')
+        elif have_bracket:
+            lo1 = min(r['share'] for r in matched_rows('M1'))
+            hi1 = max(r['share'] for r in matched_rows('M1'))
+            lo3 = min(r['share'] for r in matched_rows('M3'))
+            hi3 = max(r['share'] for r in matched_rows('M3'))
+            sel1 = selected_row('M1')['share']
+            sel3 = selected_row('M3')['share']
+            ratio3 = [r['ni']['sigma2_state'] / r['wi']['sigma2_state']
+                      for r in matched_rows('M3')]
+            A('**Once the family is held constant, `log(inspections)` '
+              f'accounts for {lo1:.1f}-{hi1:.1f}% of the state-to-state '
+              'variance in violation counts at Model 1, and '
+              f'{lo3:.1f}-{hi3:.1f}% at Model 3.** Each range is a bracket, '
+              'not a confidence interval: its two ends are the two ways of '
+              'matching the family (both cells at '
+              f'{FAMILY_LABEL.get(fam_wi, fam_wi)}, and both at '
+              f'{FAMILY_LABEL.get(fam_ni, fam_ni)}), and neither end is '
+              'privileged, because each forces one cell onto a family that '
+              'loses for it.')
+            A('')
+            A('In plain terms: **states differ in recorded violations in '
+              'large part because they differ in how much they inspect, and '
+              'that stays true after the zero-inflation structure is held '
+              'constant.** At Model 3 the between-state variance is '
+              f'{min(ratio3):.1f}-{max(ratio3):.1f} times larger without the '
+              'term than with it, and the state-level covariates do not '
+              'close that gap. The variable is doing real work, and the '
+              'finding is not an artifact of the two cells having been fit '
+              'under different families.')
+            A('')
+            direction = ('above' if sel1 > hi1 and sel3 > hi3
+                         else 'below' if sel1 < lo1 and sel3 < lo3
+                         else 'outside' if (sel1 > hi1 or sel1 < lo1)
+                         and (sel3 > hi3 or sel3 < lo3) else 'inside')
+            A(f'The as-selected figures in section 4.1 -- {sel1:.1f}% at '
+              f'Model 1 and {sel3:.1f}% at Model 3 -- sit **{direction}** the '
+              'bracket'
+              + ('. They were an upper bound, as the note above predicted, '
+                 'and the confound was inflating them by '
+                 f'{sel1 - hi1:.1f} points at Model 1 and '
+                 f'{sel3 - hi3:.1f} at Model 3.'
+                 if direction == 'above' else
+                 ', which the two-differences note above did not predict; '
+                 'treat that as a finding, not a rounding artifact.'))
+            A('')
+            A('Do **not** quote the as-selected figure on its own as "'
+              f'log(inspections) absorbs {sel1:.0f}% of the between-state '
+              'variance". Quote the bracket.')
+            A('')
+        else:
+            share1 = (100 * (m1b['sigma2_state'] - m1a['sigma2_state'])
+                      / m1b['sigma2_state'])
+            A(f'At Model 1 the between-state variance in violations is '
+              f'{fmt(m1b["sigma2_state"], ".3f")} without it and '
+              f'{fmt(m1a["sigma2_state"], ".3f")} with it -- a gap of about '
+              f'**{share1:.0f}%** of the state-to-state variance in violation '
+              f'counts, before any covariate is entered. States differ in '
+              f'violations in large part because they differ in how much they '
+              f'inspect. But the two cells do not share a zero-inflation '
+              f'structure and the matched-family companions are unavailable, '
+              f'so **{share1:.0f}% is an upper bound on what that single term '
+              f'does**, not an estimate of it. Do not quote it as '
+              f'"log(inspections) absorbs {share1:.0f}% of the between-state '
+              f'variance".')
+            A('')
+
+        # ---- 4.4 which family actually fits -------------------------------
+        if confounded and have_bracket:
+            A('### 4.4 Which family fits better, once the ZI block is held at '
+              'the intercept')
+            A('')
+            A('The companions make one further comparison possible that the '
+              'arm could not make before. Within a cell, the own-family fit '
+              'and its companion sit on the **same rows with the same '
+              'conditional formula and an intercept-only ZI block**; the only '
+              'difference is the ZI state random intercept. Their AICs are '
+              'therefore directly comparable.')
+            A('')
+            A('| Cell | Model | AIC under its own family | AIC under the '
+              'companion family | Better fit here |')
+            A('|---|---|---|---|---|')
+            reversals = []
+            for cell, own, other in ((wi, fam_wi, fam_ni), (ni, fam_ni, fam_wi)):
+                for model in MODELS:
+                    a = rec_at_family(res, cell, model, own, 'zi_intercept')
+                    b = rec_at_family(res, cell, model, other, 'zi_intercept')
+                    if a is None or b is None:
+                        continue
+                    better = (FAMILY_LABEL.get(own, own) if a['aic'] < b['aic']
+                              else FAMILY_LABEL.get(other, other))
+                    if a['aic'] > b['aic']:
+                        reversals.append((cell, model, b['aic'] - a['aic']))
+                    A(f"| {CELL_LABEL.get(cell, cell)} | "
+                      f"{MODEL_LABEL[model]} | "
+                      f"{FAMILY_LABEL.get(own, own)} "
+                      f"{fmt(a['aic'], '.2f')} | "
+                      f"{FAMILY_LABEL.get(other, other)} "
+                      f"{fmt(b['aic'], '.2f')} | "
+                      f"**{better}** ({fmt(b['aic'] - a['aic'], '+.2f')} AIC "
+                      f"for the companion) |")
+            A('')
+            if reversals:
+                cells_rev = sorted({c for c, _, _ in reversals})
+                A('**Worth flagging.** In '
+                  + ', '.join(f'`{c}`' for c in cells_rev)
+                  + ' the companion family fits *better* than the family the '
+                    'cell actually carries, at every step ('
+                  + ', '.join(f'{m} {d:+.2f}'
+                              for c, m, d in reversals
+                              if c == cells_rev[0])
+                  + ' AIC). That is not a contradiction of section 1: the '
+                    'family race walks the ZI **fidelity** ladder first and '
+                    'compares families at whatever ZI tier each one reached, '
+                    'so the two candidates were not compared at the same ZI '
+                    'specification.')
+                sm = res.get(f'{cells_rev[0]}__selection_meta')
+                if sm:
+                    tiers = {c['family_tag']: c['zi_tier_reached']
+                             for c in sm['candidates']}
+                    aics = {c['family_tag']: c['aic'] for c in sm['candidates']}
+                    pair = [f for f in (fam_wi, fam_ni) if f in tiers]
+                    A('')
+                    A('| Family | ZI tier reached in the race | AIC in the '
+                      'race | AIC at Model 3 with the ZI block held at the '
+                      'intercept |')
+                    A('|---|---|---|---|')
+                    for f in pair:
+                        r3 = rec_at_family(res, cells_rev[0], 'M3', f,
+                                           'zi_intercept')
+                        A(f"| {FAMILY_LABEL.get(f, f)} | "
+                          f"{tiers.get(f) or '--'} | "
+                          f"{fmt(aics.get(f), '.2f')} | "
+                          f"{fmt(r3['aic'] if r3 else None, '.2f')} |")
+                    A('')
+                    A('The race is the arm\'s stated rule and section 1\'s '
+                      'selection stands. But the headline series holds the ZI '
+                      'block at the intercept, and at *that* specification the '
+                      'ranking reverses -- which is a reason to read the '
+                      'bracket rather than either end of it as the answer, and '
+                      'a reason not to describe either family as "the '
+                      'best-fitting one" without saying at which ZI tier.')
+            else:
+                A('In both cells the family the cell actually carries also '
+                  'fits better than its companion at this ZI specification, '
+                  'so the selection in section 1 and the intercept-only '
+                  'headline series agree.')
+            A('')
+
+        # ---- 4.5 the within-cell reduction, side by side -------------------
+        A('### 4.5 Variance reduction within each cell, side by side')
+        A('')
         A('| Model | Delta % vs M1, WITH | Delta % vs M1, WITHOUT | '
           'Delta % vs matched M1, WITH | Delta % vs matched M1, WITHOUT |')
         A('|---|---|---|---|---|')
@@ -562,33 +899,16 @@ def write_memo(res):
               f"{fmt(a['delta_pct_matched'], '+.1f')} | "
               f"{fmt(b['delta_pct_matched'], '+.1f')} |")
         A('')
-        # Derived reading.
-        m1a, m1b = rwi['M1'], rni['M1']
-        if m1a['converged'] and m1b['converged']:
-            share1 = (100 * (m1b['sigma2_state'] - m1a['sigma2_state'])
-                      / m1b['sigma2_state'])
-            confounded = (fam_wi != fam_ni) or (zi_wi != zi_ni)
-            A(f'**What `log(inspections)` is doing.** At Model 1 the '
-              f'between-state variance in violations is '
-              f'{fmt(m1b["sigma2_state"], ".3f")} without it and '
-              f'{fmt(m1a["sigma2_state"], ".3f")} with it -- a gap of about '
-              f'**{share1:.0f}%** of the state-to-state variance in violation '
-              f'counts, before any covariate is entered. States differ in '
-              f'violations in large part because they differ in how much they '
-              f'inspect.'
-              + (f' But see the two-differences note above: the two cells do '
-                 f'not share a zero-inflation structure, so **{share1:.0f}% '
-                 f'is an upper bound on what that single term does**, not an '
-                 f'estimate of it. Do not quote it as "log(inspections) '
-                 f'absorbs {share1:.0f}% of the between-state variance".'
-                 if confounded else ''))
-            A('')
         # Do the covariate conclusions change? Derived from M3 coefficients.
+        A('### 4.6 Do the covariate conclusions change?')
+        A('')
         A('**Do the covariate conclusions change?** Model 3 conditional-block '
           'coefficients, side by side'
-          + (' (same caveat: the two columns also differ in zero-inflation '
-             'structure, not only in `log(inspections)`)'
-             if (fam_wi != fam_ni or zi_wi != zi_ni) else '') + ':')
+          + (' (each cell under its OWN family, so the same caveat as 4.1 '
+             'applies: the two columns also differ in zero-inflation '
+             'structure, not only in `log(inspections)`; 4.2 is where that '
+             'is held constant)'
+             if confounded else '') + ':')
         A('')
         a3 = get(res, wi, 'M3', swi)
         b3 = get(res, ni, 'M3', sni)
@@ -731,8 +1051,10 @@ def write_memo(res):
       'of the per-observation zero-inflation probability, not '
       '`plogis(zi intercept)`.')
     nc = nonconverged(res)
-    reported = [x for x in nc if x['role'] != 'selection']
+    reported = [x for x in nc
+                if x['role'] not in ('selection', 'companion')]
     cand = [x for x in nc if x['role'] == 'selection']
+    comp = [x for x in nc if x['role'] == 'companion']
     if not nc:
         A('- **Every fit in this artifact converged.**')
     else:
@@ -752,6 +1074,17 @@ def write_memo(res):
               'exactly that reason; none is a reported model:')
             for x in cand:
                 A(f"  - `{x['key']}`: {x['message']}")
+        if comp:
+            A(f'- {len(comp)} matched-family COMPANION fit(s) did not '
+              'converge. These are section 4\'s off-family diagnostics, not '
+              'reported models; where one is missing, section 4 marks that '
+              'direction of the bracket unavailable and falls back to the '
+              'upper-bound framing:')
+            for x in comp:
+                A(f"  - `{x['key']}`: {x['message']}")
+        else:
+            A('- **Every matched-family companion fit converged**, so '
+              'section 4 reports both directions of the bracket.')
     A('')
 
     # ---------------------------------------------------------------- 6

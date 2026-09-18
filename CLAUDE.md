@@ -881,10 +881,41 @@ random slope.
   "log(inspections) absorbs 45%."** The memo derives this comparison at run time from
   `family_tag` + `zi_formula` and prints the clean one-term sentence only if the two cells ever
   do share a family.
-- **The clean separation is NOT yet fit.** Refitting `viol_2021_ni` under ZINB2 + ZI-RE as a
-  matched-family companion would isolate what `log(inspections)` does; that fit does not exist
-  and needs a new rung in `jafari_stepwise_models.R`. Until it does, the upper-bound framing is
-  the honest statement. Open PI decision.
+- **RESOLVED 2026-09-17 — the matched-family companions are fit and the memo reports a
+  BRACKET.** Eight companion fits were added to the headline `zi_intercept` series:
+  `viol_2021_ni` under ZINB2 + ZI-RE and `viol_2021_wi` under plain ZINB2, each at
+  M1/M2/M3/M1matched. **Both directions were fit deliberately** — each forces one cell onto a
+  family that loses for it, so neither is privileged and together they bracket the answer.
+  All 8 converged. Absorbed share = (σ²_without − σ²_with)/σ²_without:
+
+  | Model | as selected (confounded) | both at ZINB2+ZI-RE | both at plain ZINB2 |
+  |---|---|---|---|
+  | M1 | 45.1% | **39.5%** | **40.1%** |
+  | M3 | 49.8% | **45.2%** | **47.8%** |
+
+  The confounded figure sits **above both matched ends at every step**, so the upper-bound
+  framing was right and the confound was inflating it by 5.1 points at M1 and 2.1 at M3. The
+  range is a **bracket, not a confidence interval**. Report it as: holding the family constant,
+  `log(inspections)` accounts for **39.5–40.1% of the between-state variance at Model 1 and
+  45.2–47.8% at Model 3**. **The answer to Thing 2 is yes, the inspections term is needed.**
+- **The companions are NOT reported models.** Each cell's primary series keeps its own selected
+  family; companions carry `is_companion: true`, `family_matched_to`, `companion_of` and a
+  `__companion` key suffix, and the validator excludes them from the family-held-fixed check
+  `[3]` and the selection check `[7]` **by an explicit rule**, asserting each is flagged and
+  off-family rather than skipping them by accident.
+- **The `viol_2021_ni` family ranking REVERSES at the ZI tier the headline series uses — worth
+  a PI note.** The race picked plain ZINB2 (AIC 3727.78) over ZINB2+ZI-RE (3742.09), but those
+  were compared at *different ZI tiers*: ZINB2 reached the full `mirror` (10 ZI params),
+  ZINB2+ZI-RE only `reduced`. **With the ZI block held at the intercept — which is what the
+  headline series does — ZINB2+ZI-RE beats plain ZINB2 by 15.03–24.99 AIC at every step.** This
+  does not overturn the selection (the race follows the arm's stated fidelity-then-AIC rule),
+  but it means the 39.5% / 45.2% end of the bracket is the **better-fitting** end at the
+  specification actually in use. Never call either family "best-fitting" without naming the ZI
+  tier. Memo §4.4, derived at run time.
+- **The two violations cells sit on byte-identical state-year sets** (533 at M1, 501 at M2/M3)
+  despite `log_inspections` appearing in only one rhs — that column has no missingness beyond
+  `violations`. Now asserted per state-year, so the bracket cannot silently become a sample
+  effect.
 - **What is NOT confounded**: removing `log(inspections)` **flips one significance verdict** —
   `time` goes from b = 0.122, p < .0001 to b = 0.056, p = 0.069 at M3. No spending or labour
   covariate flips. The variable is not inert.
@@ -901,7 +932,7 @@ random slope.
   family-selection candidate. **Every fit in every reported series converged.** The memo
   separates "failed in a reported series" from "failed as a selection candidate" rather than
   giving a single count.
-- **Validator**: `scripts/validate_jafari_stepwise.py`, sections `[0]`–`[10]`, **3,323 pass /
+- **Validator**: `scripts/validate_jafari_stepwise.py`, sections `[0]`–`[10]`, **4,205 pass /
   0 fail / 1 skip** (the skip is reasoned — `viol_2021_ni` has no crossed-arm anchor, which is
   *why* its family was raced). Do not quote the total alone; `[1]`, `[4]` and `[9]` are record
   loops. `[0]` runs `validate_jafari_crossed.py --skip-precondition` as an upstream gate. `[8]`

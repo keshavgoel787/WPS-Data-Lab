@@ -8,7 +8,7 @@ Every number below is read from `data/generated/jafari_stepwise_results.json`, p
 
 Joe Grzywacz, in the meeting of **2026-09-11**, named one thing as blocking submission: the Jafari-aligned crossed random-effects models enter every covariate at once and report **no variance reduction at all**, so there is nothing to say about how much of the state-to-state differences the covariates actually explain. This arm supplies that: a **stepwise Model 1 -> Model 2 -> Model 3 build-up** with the between-state variance `sigma^2_state` at every step.
 
-It also answers his second request. Jafari et al. had no inspections variable; ours carries `log(inspections)` as a Level-1 covariate in the violations models. So the violations series is fit **twice** -- once with that term and once without -- and section 4 compares them directly.
+It also answers his second request. Jafari et al. had no inspections variable; ours carries `log(inspections)` as a Level-1 covariate in the violations models. So the violations series is fit **twice** -- once with that term and once without -- and section 4 compares them directly, with **matched-family companion fits** so that the comparison is not confounded with the distributional family each cell happens to carry. Whether those companions are usable is stated in section 4 rather than assumed here.
 
 **Window: 2011-2021 (WPS view) only.** Per PI direction 2026-09-11 the 2011-2019 establishments-view window is out of scope here. Panel: `data/generated/count_model_panel_2021.csv`, 539 rows, 49 states.
 
@@ -116,12 +116,18 @@ The two cells that inherit their family from `jafari_crossed_results.json` shoul
 
 Both series model the same outcome (`violations`) on the same window, over the same rows, with the same conditional covariate build-up and the same `(1 | state) + (1 | year)` random effects.
 
-**They differ in two things, not one, and the second is easy to miss.**
+**As each cell is reported they differ in two things, not one, and the second is easy to miss.**
 
 1. `log(inspections)` enters the conditional block of `viol_2021_wi` and not `viol_2021_ni`. That is the comparison Joe asked for; Jafari et al. had no such variable.
 2. **The family is not the same.** `viol_2021_wi` is fit as **ZINB2 + ZI-RE** (ziformula `~1 + (1 | state)`) and `viol_2021_ni` as **ZINB2** (ziformula `~1`). Each cell's family was chosen for that cell (section 1), and the two choices did not coincide.
 
-The second difference matters for the table below, and it matters in a specific direction. `viol_2021_wi` carries a state random intercept in its **zero-inflation** block (variance 1.741 at Model 3) and `viol_2021_ni` does not. Between-state heterogeneity in the zero process therefore has somewhere to go in `viol_2021_wi` and nowhere to go in `viol_2021_ni`, where it must load onto the conditional `sigma^2_state` instead. So the gap between the two columns below is **not** attributable to `log(inspections)` alone: part of it is the zero-inflation random effect. Read the "share absorbed" column as an **upper bound** on what `log(inspections)` does, not as an estimate of it. Isolating the two would need `viol_2021_ni` refit under `ZINB2 + ZI-RE` as well, which this arm does not do.
+That second difference matters in a specific direction. `viol_2021_wi` carries a state random intercept in its **zero-inflation** block (variance 1.741 at Model 3) and `viol_2021_ni` does not. Between-state heterogeneity in the zero process therefore has somewhere to go in `viol_2021_wi` and nowhere to go in `viol_2021_ni`, where it must load onto the conditional `sigma^2_state` instead. So the as-selected gap is **not** attributable to `log(inspections)` alone: part of it is the zero-inflation random effect.
+
+**That confound is now removed.** Each violations cell is also fit under the *other* cell's family -- a **matched-family companion** fit -- so the comparison can be made with family held constant. Both directions are fit, never one: each direction forces a cell onto a family that loses for that cell, so neither is privileged, and together they **bracket** the answer. The companions are tagged `is_companion` in the JSON and are **not** reported models -- every series in sections 2, 3 and 6 still uses its own cell's selected family, unchanged.
+
+### 4.1 The comparison as each cell is reported
+
+Each cell under its own selected family -- **confounded**, because those families differ (see above); read the share as an upper bound.
 
 | Model | sigma^2_state WITH inspections | sigma^2_state WITHOUT | Difference | Share of between-state variance absorbed by log(inspections) |
 |---|---|---|---|---|
@@ -130,14 +136,71 @@ The second difference matters for the table below, and it matters in a specific 
 | M2 (+ spending, commodity mix) | 0.8302 | 1.5489 | -0.7187 | 46.4% |
 | M3 (+ H-2A block) | 0.7538 | 1.5030 | -0.7492 | 49.8% |
 
+### 4.2 Matched-family companions: the bracket
+
+Every row below is the same two cells over the same rows, with the same conditional build-up; the only thing that changes down the table is which family both cells are held at. The first row of each block repeats section 4.1 so the confounded figure and the two matched ones can be read together.
+
+| Model | Basis | Family, WITH | Family, WITHOUT | sigma^2_state WITH | sigma^2_state WITHOUT | Share absorbed by log(inspections) |
+|---|---|---|---|---|---|---|
+| M1 (cubic time only) | As selected (each cell keeps its own family) (confounded) | ZINB2 + ZI-RE | ZINB2 | 0.8411 | 1.5329 | 45.1% |
+| M1 (cubic time only) | Both at ZINB2 + ZI-RE | ZINB2 + ZI-RE | ZINB2 + ZI-RE | 0.8411 | 1.3909 | 39.5% |
+| M1 (cubic time only) | Both at ZINB2 | ZINB2 | ZINB2 | 0.9189 | 1.5329 | 40.1% |
+| M1 refit on the M2/M3 sample (matched baseline) | As selected (each cell keeps its own family) (confounded) | ZINB2 + ZI-RE | ZINB2 | 0.8926 | 1.6424 | 45.7% |
+| M1 refit on the M2/M3 sample (matched baseline) | Both at ZINB2 + ZI-RE | ZINB2 + ZI-RE | ZINB2 + ZI-RE | 0.8926 | 1.4701 | 39.3% |
+| M1 refit on the M2/M3 sample (matched baseline) | Both at ZINB2 | ZINB2 | ZINB2 | 0.9373 | 1.6424 | 42.9% |
+| M2 (+ spending, commodity mix) | As selected (each cell keeps its own family) (confounded) | ZINB2 + ZI-RE | ZINB2 | 0.8302 | 1.5489 | 46.4% |
+| M2 (+ spending, commodity mix) | Both at ZINB2 + ZI-RE | ZINB2 + ZI-RE | ZINB2 + ZI-RE | 0.8302 | 1.4030 | 40.8% |
+| M2 (+ spending, commodity mix) | Both at ZINB2 | ZINB2 | ZINB2 | 0.8749 | 1.5489 | 43.5% |
+| M3 (+ H-2A block) | As selected (each cell keeps its own family) (confounded) | ZINB2 + ZI-RE | ZINB2 | 0.7538 | 1.5030 | 49.8% |
+| M3 (+ H-2A block) | Both at ZINB2 + ZI-RE | ZINB2 + ZI-RE | ZINB2 + ZI-RE | 0.7538 | 1.3747 | 45.2% |
+| M3 (+ H-2A block) | Both at ZINB2 | ZINB2 | ZINB2 | 0.7853 | 1.5030 | 47.8% |
+
+Both cells sit on identical analytic samples at every step (N = M1 533, M1matched 501, M2 501, M3 501), so nothing in this table is a sample effect.
+
+### 4.3 What `log(inspections)` actually does
+
+**Once the family is held constant, `log(inspections)` accounts for 39.5-40.1% of the state-to-state variance in violation counts at Model 1, and 45.2-47.8% at Model 3.** Each range is a bracket, not a confidence interval: its two ends are the two ways of matching the family (both cells at ZINB2 + ZI-RE, and both at ZINB2), and neither end is privileged, because each forces one cell onto a family that loses for it.
+
+In plain terms: **states differ in recorded violations in large part because they differ in how much they inspect, and that stays true after the zero-inflation structure is held constant.** At Model 3 the between-state variance is 1.8-1.9 times larger without the term than with it, and the state-level covariates do not close that gap. The variable is doing real work, and the finding is not an artifact of the two cells having been fit under different families.
+
+The as-selected figures in section 4.1 -- 45.1% at Model 1 and 49.8% at Model 3 -- sit **above** the bracket. They were an upper bound, as the note above predicted, and the confound was inflating them by 5.1 points at Model 1 and 2.1 at Model 3.
+
+Do **not** quote the as-selected figure on its own as "log(inspections) absorbs 45% of the between-state variance". Quote the bracket.
+
+### 4.4 Which family fits better, once the ZI block is held at the intercept
+
+The companions make one further comparison possible that the arm could not make before. Within a cell, the own-family fit and its companion sit on the **same rows with the same conditional formula and an intercept-only ZI block**; the only difference is the ZI state random intercept. Their AICs are therefore directly comparable.
+
+| Cell | Model | AIC under its own family | AIC under the companion family | Better fit here |
+|---|---|---|---|---|
+| Violations, WITH log(inspections) | M1 (cubic time only) | ZINB2 + ZI-RE 3821.81 | ZINB2 3846.36 | **ZINB2 + ZI-RE** (+24.56 AIC for the companion) |
+| Violations, WITH log(inspections) | M1 refit on the M2/M3 sample (matched baseline) | ZINB2 + ZI-RE 3621.34 | ZINB2 3641.13 | **ZINB2 + ZI-RE** (+19.79 AIC for the companion) |
+| Violations, WITH log(inspections) | M2 (+ spending, commodity mix) | ZINB2 + ZI-RE 3624.72 | ZINB2 3644.42 | **ZINB2 + ZI-RE** (+19.70 AIC for the companion) |
+| Violations, WITH log(inspections) | M3 (+ H-2A block) | ZINB2 + ZI-RE 3626.02 | ZINB2 3644.97 | **ZINB2 + ZI-RE** (+18.95 AIC for the companion) |
+| Violations, WITHOUT inspections | M1 (cubic time only) | ZINB2 3947.88 | ZINB2 + ZI-RE 3922.89 | **ZINB2 + ZI-RE** (-24.99 AIC for the companion) |
+| Violations, WITHOUT inspections | M1 refit on the M2/M3 sample (matched baseline) | ZINB2 3748.46 | ZINB2 + ZI-RE 3731.34 | **ZINB2 + ZI-RE** (-17.13 AIC for the companion) |
+| Violations, WITHOUT inspections | M2 (+ spending, commodity mix) | ZINB2 3751.94 | ZINB2 + ZI-RE 3735.24 | **ZINB2 + ZI-RE** (-16.69 AIC for the companion) |
+| Violations, WITHOUT inspections | M3 (+ H-2A block) | ZINB2 3754.94 | ZINB2 + ZI-RE 3739.91 | **ZINB2 + ZI-RE** (-15.03 AIC for the companion) |
+
+**Worth flagging.** In `viol_2021_ni` the companion family fits *better* than the family the cell actually carries, at every step (M1 -24.99, M1matched -17.13, M2 -16.69, M3 -15.03 AIC). That is not a contradiction of section 1: the family race walks the ZI **fidelity** ladder first and compares families at whatever ZI tier each one reached, so the two candidates were not compared at the same ZI specification.
+
+| Family | ZI tier reached in the race | AIC in the race | AIC at Model 3 with the ZI block held at the intercept |
+|---|---|---|---|
+| ZINB2 + ZI-RE | reduced | 3742.09 | 3739.91 |
+| ZINB2 | mirror | 3727.78 | 3754.94 |
+
+The race is the arm's stated rule and section 1's selection stands. But the headline series holds the ZI block at the intercept, and at *that* specification the ranking reverses -- which is a reason to read the bracket rather than either end of it as the answer, and a reason not to describe either family as "the best-fitting one" without saying at which ZI tier.
+
+### 4.5 Variance reduction within each cell, side by side
+
 | Model | Delta % vs M1, WITH | Delta % vs M1, WITHOUT | Delta % vs matched M1, WITH | Delta % vs matched M1, WITHOUT |
 |---|---|---|---|---|
 | M2 (+ spending, commodity mix) | +1.3 | -1.0 | +7.0 | +5.7 |
 | M3 (+ H-2A block) | +10.4 | +1.9 | +15.5 | +8.5 |
 
-**What `log(inspections)` is doing.** At Model 1 the between-state variance in violations is 1.533 without it and 0.841 with it -- a gap of about **45%** of the state-to-state variance in violation counts, before any covariate is entered. States differ in violations in large part because they differ in how much they inspect. But see the two-differences note above: the two cells do not share a zero-inflation structure, so **45% is an upper bound on what that single term does**, not an estimate of it. Do not quote it as "log(inspections) absorbs 45% of the between-state variance".
+### 4.6 Do the covariate conclusions change?
 
-**Do the covariate conclusions change?** Model 3 conditional-block coefficients, side by side (same caveat: the two columns also differ in zero-inflation structure, not only in `log(inspections)`):
+**Do the covariate conclusions change?** Model 3 conditional-block coefficients, side by side (each cell under its OWN family, so the same caveat as 4.1 applies: the two columns also differ in zero-inflation structure, not only in `log(inspections)`; 4.2 is where that is held constant):
 
 | Term | b (with insp.) | p | | b (without insp.) | p | | Same sign? | Same significance at p<.05? |
 |---|---|---|---|---|---|---|---|---|
@@ -194,6 +257,7 @@ In `viol_2021_ni` it is not exactly zero but is still negligible (1.22e-03, 0.08
 - **Every fit in every reported series converged.** No number in sections 2, 3, 4 or 6 comes from a failed optimisation.
 - 1 family-SELECTION candidate(s) failed to converge. These are losing entries in the `viol_2021_ni` family race (section 1) and were excluded from selection for exactly that reason; none is a reported model:
   - `viol_2021_ni__M3__zinb1_re__selection`: NA/NaN function evaluation | Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting') | Model convergence problem; false convergence (8). See vignette('troubleshooting'), help('diagnose')
+- **Every matched-family companion fit converged**, so section 4 reports both directions of the bracket.
 
 ## 6. Full Model 3 coefficients, both blocks
 
