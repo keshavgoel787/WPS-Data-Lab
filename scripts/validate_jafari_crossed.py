@@ -521,8 +521,23 @@ MEMO_REQUIRED = [
     'Not comparable to `docs/count_models_zinb.md`',
     'log link',
     'sigma^2_year rests on',
-    '*Conditional Model*',
-    '*Zero-inflated Model*',
+    # The two block headers. These were the bare labels "*Conditional Model*" /
+    # "*Zero-inflated Model*" until 2026-09-17, when both were read backwards in
+    # a team meeting -- the conditional (count) block was taken for the model of
+    # the zeros, and the finding was reported with its sign inverted. The
+    # required strings now pin the self-describing headers, so the bare labels
+    # cannot come back. This guard is about PRESENTATION only; no estimate,
+    # standard error or p-value changed with it.
+    'CONDITIONAL (count) model',
+    'ZERO-INFLATION model',
+    # ... and the reading guide that goes with them, including the distinction
+    # between the two exp(b) scales that was the second half of the misreading.
+    'How to read these two blocks',
+    # Deliberately short enough to survive a re-wrap of the surrounding prose:
+    # the guard is on the CLAIM, not on the line breaks.
+    'NOT the model of the',
+    'incidence rate ratio',
+    'odds ratio',
     'not** comparable to the COVID coefficients',
     'sample mean',
 ]

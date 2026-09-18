@@ -34,6 +34,19 @@ closed here; no new estimation machinery was required.
   (2011-2021) run 2-3x establishments-view counts (2011-2019) and correlate
   ~0 from 2017 on.
 
+## Reporting scope (PI direction, 2026-09-11)
+
+Reporting focus has moved to the **WPS view** (2011-2021). The establishments
+view covers pesticide **producers, sellers and distributors** rather than the
+WPS-protected agricultural operations this paper is about, so it is no longer
+the outcome the team writes up, and the new stepwise arm is **WPS-only**.
+
+The two 2011-2019 establishments-view cells are **kept in this memo**. They are
+the record of what was actually fit, and the validator checks them; deleting
+them would make the ladder, the family-selection table and the matched
+zero-inflation tallies unreproducible from what is printed here. Read them as
+the record, not as the reported results.
+
 ## The binding constraint: zeros
 
 A mirrored zero-inflation block at Model 3 carries up to 10 logistic
@@ -162,122 +175,174 @@ Matched comparisons only: same cell, same model, same analytic sample, both conv
 Against its **own** negative-binomial counterpart (the comparison that isolates inflation while holding the parameterisation fixed), a zero-inflated family wins **25 of 27** matched comparisons. This arm fits ZI-NB1 rungs, which the previous ladder did not, so an NB1 win is now tested against its own zero-inflated counterpart rather than winning by default.
 
 
+## How to read these two blocks
+
+**Read this before quoting any number from the tables below.** Every
+zero-inflated model here has **two** blocks. `glmmTMB` estimates them
+**jointly, in one likelihood** -- they are not two separate models run one
+after the other -- but they answer **different questions**, and reading either
+one as the other reverses the finding.
+
+- **Conditional (count) model. This is the COUNT model, NOT the model of the
+  zeros.** It gives the expected number of inspections (or violations) in a
+  state-year, *given that the state-year is not a structural zero*. A
+  **positive** coefficient means **MORE** events.
+- **Zero-inflation model. This is the model of the zeros.** It is a logistic
+  regression for whether a state-year is a **structural zero** -- a state-year
+  that was never at risk of producing a count at all. A **positive** coefficient
+  means **MORE structural zeros**, and therefore **FEWER** events. That is the
+  **opposite** sign direction from a positive conditional coefficient.
+
+**The `b (SE)` column holds raw coefficients, not ratios.** They are on the log
+scale in the conditional block and on the logit scale in the zero-inflation
+block. The `exp(b)` column converts them -- and the conversion means a different
+thing in each block:
+
+- conditional block: `exp(b)` is an **incidence rate ratio (IRR)**, the
+  multiplicative change in the expected **count** per 1-unit increase in the
+  predictor (per **1 SD**, for every variable marked `(z)`);
+- zero-inflation block: `exp(b)` is an **odds ratio (OR)**, the multiplicative
+  change in the **odds that the state-year is a structural zero**.
+
+An IRR and an OR are **not interchangeable**, and neither may be quoted as the
+other. An OR above 1 in the zero-inflation block is a *reduction* in enforcement
+activity, not an increase. `exp(b)` is left as an em dash on the **intercept**
+rows of both blocks: the intercept is a baseline level, not a ratio, and
+exponentiating it describes a state-year with every predictor at zero --
+including `log Inspections = 0` -- which no state in the sample is.
+
+
+### Worked example, using the number that was misread
+
+In **Inspections, 2011-2021 (WPS view)**, the **zero-inflation** block gives `STAG $ per applicator (z)` **b = 1.3042** (p = 0.0402). That is a logit coefficient, so **OR = exp(1.3042) = 3.68**.
+
+> A 1-SD increase in STAG spending per pesticide applicator is associated with about **3.7 times the odds that a state-year is a structural zero for inspections** -- that is, with **FEWER** inspections, not more.
+
+Reading the raw `1.3042` as though it were already a ratio -- which would suggest a change of about 30% -- is wrong twice over: it treats a coefficient as a ratio, and it treats the zero-inflation block as if it were the count block. The direction comes out backwards.
+
+In the **conditional** block of that same cell the same predictor is **b = -0.0023** (IRR = 0.998, p = 0.989) -- no detectable association with the inspection count.
+
+The same care applies to `H-2A per farmworker (z)` in this cell. It is **b = +0.0874, p = 0.028, in the CONDITIONAL (count) block** -- IRR = 1.091, i.e. **more inspections**. In the zero-inflation block it is -4.1626 and **not** significant (p = 0.187), so it says nothing about structural zeros. It is a finding about inspection **counts**, not about zeros.
+
+
 ## Model 3, Jafari Table 5 format
 
 Significance: `***` p<.001, `**` p<.01, `*` p<.05, `+` p<.10. This is the project convention and differs in rendering from Jafari's own legend; the two tables should not be read against each other on stars alone. An em dash in the zero-inflated block means the term was **absent from the ZI formula** at the tier reached, not estimated at zero.
+
+`b (SE)` is the **raw coefficient** -- log scale in the conditional block, logit scale in the zero-inflation block. `exp(b)` is an **incidence rate ratio** in the conditional block and an **odds ratio on being a structural zero** in the zero-inflation block; the two are not interchangeable. See "How to read these two blocks" above.
 
 
 ### Inspections, 2011-2019 (establishments view)
 
 **Selected family:** ZI-NB2 &nbsp;&nbsp; **Zero-inflation component:** full mirror (every conditional predictor) &nbsp;&nbsp; N = 423 (47 states x 9 years)
 
-| Factor | Estimate | Pr(>\|z\|) |
-|---|---:|---:|
-| *Conditional Model* | | |
-| Intercept | 2.9624 (0.1142)*** | 2.49e-148 |
-| time | -0.0649 (0.0169)*** | 0.00012 |
-| time² | -0.0103 (0.0107) | 0.333 |
-| time³ | -0.0009 (0.0017) | 0.603 |
-| STAG $ per applicator (z) | -0.2871 (0.1226)* | 0.0192 |
-| STAG $ per farmworker (z) | -0.1114 (0.1539) | 0.469 |
-| Labor intensity index 2017 (z) | -0.2215 (0.1723) | 0.198 |
-| H-2A per farmworker (z) | -0.0019 (0.0408) | 0.962 |
-| DOL demand met % (z) | 0.0289 (0.1392) | 0.836 |
-| % farm labor contractor (z) | 0.0328 (0.1330) | 0.805 |
-| *Zero-inflated Model* | | |
-| Intercept | -11.4003 (4.9234)* | 0.0206 |
-| time | 0.5378 (0.4225) | 0.203 |
-| time² | 0.3028 (0.2875) | 0.292 |
-| time³ | 0.0308 (0.0427) | 0.472 |
-| STAG $ per applicator (z) | -4.7019 (4.3800) | 0.283 |
-| STAG $ per farmworker (z) | 1.2011 (1.0865) | 0.269 |
-| Labor intensity index 2017 (z) | -4.9337 (2.9798)+ | 0.0978 |
-| H-2A per farmworker (z) | -4.6871 (3.5382) | 0.185 |
-| DOL demand met % (z) | 0.2867 (2.0798) | 0.89 |
-| % farm labor contractor (z) | -2.6711 (1.5241)+ | 0.0797 |
+| Factor | b (SE) | exp(b) | Pr(>\|z\|) |
+|---|---:|---:|---:|
+| **CONDITIONAL (count) model** — expected COUNT, given the state-year is NOT a structural zero | | exp(b) = **IRR** | |
+| Intercept | 2.9624 (0.1142)*** | — | 2.49e-148 |
+| time | -0.0649 (0.0169)*** | 0.937 | 0.00012 |
+| time² | -0.0103 (0.0107) | 0.990 | 0.333 |
+| time³ | -0.0009 (0.0017) | 0.999 | 0.603 |
+| STAG $ per applicator (z) | -0.2871 (0.1226)* | 0.750 | 0.0192 |
+| STAG $ per farmworker (z) | -0.1114 (0.1539) | 0.895 | 0.469 |
+| Labor intensity index 2017 (z) | -0.2215 (0.1723) | 0.801 | 0.198 |
+| H-2A per farmworker (z) | -0.0019 (0.0408) | 0.998 | 0.962 |
+| DOL demand met % (z) | 0.0289 (0.1392) | 1.029 | 0.836 |
+| % farm labor contractor (z) | 0.0328 (0.1330) | 1.033 | 0.805 |
+| **ZERO-INFLATION model** — log-odds that a state-year is a **STRUCTURAL ZERO**; positive b = MORE zeros = FEWER events | | exp(b) = **OR** | |
+| Intercept | -11.4003 (4.9234)* | — | 0.0206 |
+| time | 0.5378 (0.4225) | 1.712 | 0.203 |
+| time² | 0.3028 (0.2875) | 1.354 | 0.292 |
+| time³ | 0.0308 (0.0427) | 1.031 | 0.472 |
+| STAG $ per applicator (z) | -4.7019 (4.3800) | 0.009 | 0.283 |
+| STAG $ per farmworker (z) | 1.2011 (1.0865) | 3.324 | 0.269 |
+| Labor intensity index 2017 (z) | -4.9337 (2.9798)+ | 0.007 | 0.0978 |
+| H-2A per farmworker (z) | -4.6871 (3.5382) | 0.009 | 0.185 |
+| DOL demand met % (z) | 0.2867 (2.0798) | 1.332 | 0.89 |
+| % farm labor contractor (z) | -2.6711 (1.5241)+ | 0.069 | 0.0797 |
 
 
 ### Inspections, 2011-2021 (WPS view)
 
 **Selected family:** ZI-NB2 &nbsp;&nbsp; **Zero-inflation component:** full mirror (every conditional predictor) &nbsp;&nbsp; N = 506 (46 states x 11 years)
 
-| Factor | Estimate | Pr(>\|z\|) |
-|---|---:|---:|
-| *Conditional Model* | | |
-| Intercept | 3.6825 (0.1511)*** | 3.13e-131 |
-| time | -0.0494 (0.0166)** | 0.0029 |
-| time² | -0.0034 (0.0038) | 0.37 |
-| time³ | -0.0001 (0.0009) | 0.902 |
-| STAG $ per applicator (z) | -0.0023 (0.1650) | 0.989 |
-| STAG $ per farmworker (z) | 0.1717 (0.1732) | 0.322 |
-| Labor intensity index 2017 (z) | 0.0665 (0.2333) | 0.776 |
-| H-2A per farmworker (z) | 0.0874 (0.0398)* | 0.028 |
-| DOL demand met % (z) | 0.1223 (0.2138) | 0.567 |
-| % farm labor contractor (z) | -0.0136 (0.1844) | 0.941 |
-| *Zero-inflated Model* | | |
-| Intercept | -6.8064 (2.2016)** | 0.00199 |
-| time | 2.7120 (2.2967) | 0.238 |
-| time² | -2.0805 (1.5933) | 0.192 |
-| time³ | 0.3549 (0.2770) | 0.2 |
-| STAG $ per applicator (z) | 1.3042 (0.6356)* | 0.0402 |
-| STAG $ per farmworker (z) | -3.0364 (2.5359) | 0.231 |
-| Labor intensity index 2017 (z) | -0.2515 (0.8585) | 0.77 |
-| H-2A per farmworker (z) | -4.1626 (3.1570) | 0.187 |
-| DOL demand met % (z) | 1.6606 (0.9660)+ | 0.0856 |
-| % farm labor contractor (z) | -0.1506 (0.8513) | 0.86 |
+| Factor | b (SE) | exp(b) | Pr(>\|z\|) |
+|---|---:|---:|---:|
+| **CONDITIONAL (count) model** — expected COUNT, given the state-year is NOT a structural zero | | exp(b) = **IRR** | |
+| Intercept | 3.6825 (0.1511)*** | — | 3.13e-131 |
+| time | -0.0494 (0.0166)** | 0.952 | 0.0029 |
+| time² | -0.0034 (0.0038) | 0.997 | 0.37 |
+| time³ | -0.0001 (0.0009) | 1.000 | 0.902 |
+| STAG $ per applicator (z) | -0.0023 (0.1650) | 0.998 | 0.989 |
+| STAG $ per farmworker (z) | 0.1717 (0.1732) | 1.187 | 0.322 |
+| Labor intensity index 2017 (z) | 0.0665 (0.2333) | 1.069 | 0.776 |
+| H-2A per farmworker (z) | 0.0874 (0.0398)* | 1.091 | 0.028 |
+| DOL demand met % (z) | 0.1223 (0.2138) | 1.130 | 0.567 |
+| % farm labor contractor (z) | -0.0136 (0.1844) | 0.987 | 0.941 |
+| **ZERO-INFLATION model** — log-odds that a state-year is a **STRUCTURAL ZERO**; positive b = MORE zeros = FEWER events | | exp(b) = **OR** | |
+| Intercept | -6.8064 (2.2016)** | — | 0.00199 |
+| time | 2.7120 (2.2967) | 15.059 | 0.238 |
+| time² | -2.0805 (1.5933) | 0.125 | 0.192 |
+| time³ | 0.3549 (0.2770) | 1.426 | 0.2 |
+| STAG $ per applicator (z) | 1.3042 (0.6356)* | 3.685 | 0.0402 |
+| STAG $ per farmworker (z) | -3.0364 (2.5359) | 0.048 | 0.231 |
+| Labor intensity index 2017 (z) | -0.2515 (0.8585) | 0.778 | 0.77 |
+| H-2A per farmworker (z) | -4.1626 (3.1570) | 0.016 | 0.187 |
+| DOL demand met % (z) | 1.6606 (0.9660)+ | 5.263 | 0.0856 |
+| % farm labor contractor (z) | -0.1506 (0.8513) | 0.860 | 0.86 |
 
 
 ### Violations, 2011-2019 (establishments view)
 
 **Selected family:** NB2 &nbsp;&nbsp; **Zero-inflation component:** none &nbsp;&nbsp; N = 378 (47 states x 9 years)
 
-| Factor | Estimate | Pr(>\|z\|) |
-|---|---:|---:|
-| *Conditional Model* | | |
-| Intercept | 1.6468 (0.2438)*** | 1.42e-11 |
-| log Inspections | 0.1942 (0.0643)** | 0.00253 |
-| time | 0.2437 (0.0528)*** | 3.94e-06 |
-| time² | -0.0536 (0.0335) | 0.11 |
-| time³ | -0.0128 (0.0053)* | 0.0162 |
-| STAG $ per applicator (z) | -0.1912 (0.1188) | 0.107 |
-| STAG $ per farmworker (z) | -0.3835 (0.1520)* | 0.0117 |
-| Labor intensity index 2017 (z) | -0.1136 (0.1626) | 0.485 |
-| H-2A per farmworker (z) | 0.0018 (0.0779) | 0.982 |
-| DOL demand met % (z) | 0.1116 (0.1340) | 0.405 |
-| % farm labor contractor (z) | 0.4341 (0.1232)*** | 0.000426 |
-| *Zero-inflated Model* | not estimated (plain count family selected) | |
+| Factor | b (SE) | exp(b) | Pr(>\|z\|) |
+|---|---:|---:|---:|
+| **CONDITIONAL (count) model** — expected COUNT, given the state-year is NOT a structural zero | | exp(b) = **IRR** | |
+| Intercept | 1.6468 (0.2438)*** | — | 1.42e-11 |
+| log Inspections | 0.1942 (0.0643)** | 1.214 | 0.00253 |
+| time | 0.2437 (0.0528)*** | 1.276 | 3.94e-06 |
+| time² | -0.0536 (0.0335) | 0.948 | 0.11 |
+| time³ | -0.0128 (0.0053)* | 0.987 | 0.0162 |
+| STAG $ per applicator (z) | -0.1912 (0.1188) | 0.826 | 0.107 |
+| STAG $ per farmworker (z) | -0.3835 (0.1520)* | 0.682 | 0.0117 |
+| Labor intensity index 2017 (z) | -0.1136 (0.1626) | 0.893 | 0.485 |
+| H-2A per farmworker (z) | 0.0018 (0.0779) | 1.002 | 0.982 |
+| DOL demand met % (z) | 0.1116 (0.1340) | 1.118 | 0.405 |
+| % farm labor contractor (z) | 0.4341 (0.1232)*** | 1.544 | 0.000426 |
+| **ZERO-INFLATION model** — log-odds that a state-year is a **STRUCTURAL ZERO** | not estimated (a plain count family was selected for this cell) | | |
 
 
 ### Violations, 2011-2021 (WPS view)
 
 **Selected family:** ZI-NB2 + ZI-RE &nbsp;&nbsp; **Zero-inflation component:** full mirror (every conditional predictor) &nbsp;&nbsp; N = 501 (46 states x 11 years)
 
-| Factor | Estimate | Pr(>\|z\|) |
-|---|---:|---:|
-| *Conditional Model* | | |
-| Intercept | 0.0475 (0.2920) | 0.871 |
-| log Inspections | 0.7580 (0.0697)*** | 1.65e-27 |
-| time | 0.1427 (0.0255)*** | 2.17e-08 |
-| time² | -0.0170 (0.0061)** | 0.00559 |
-| time³ | -0.0065 (0.0014)*** | 6.59e-06 |
-| STAG $ per applicator (z) | -0.0074 (0.1546) | 0.962 |
-| STAG $ per farmworker (z) | -0.2387 (0.1640) | 0.146 |
-| Labor intensity index 2017 (z) | 0.1050 (0.2185) | 0.631 |
-| H-2A per farmworker (z) | -0.0075 (0.0570) | 0.896 |
-| DOL demand met % (z) | -0.2670 (0.2011) | 0.184 |
-| % farm labor contractor (z) | 0.0966 (0.1725) | 0.575 |
-| *Zero-inflated Model* | | |
-| Intercept | -0.2081 (0.9953) | 0.834 |
-| log Inspections | -0.6702 (0.2484)** | 0.00696 |
-| time | 0.3147 (0.2542) | 0.216 |
-| time² | -0.1125 (0.1212) | 0.353 |
-| time³ | 0.0212 (0.0317) | 0.504 |
-| STAG $ per applicator (z) | -0.1575 (0.3590) | 0.661 |
-| STAG $ per farmworker (z) | 0.7595 (0.3814)* | 0.0464 |
-| Labor intensity index 2017 (z) | -0.2192 (0.5969) | 0.713 |
-| H-2A per farmworker (z) | 0.3137 (0.3003) | 0.296 |
-| DOL demand met % (z) | 0.2614 (0.5466) | 0.633 |
-| % farm labor contractor (z) | -0.3395 (0.4348) | 0.435 |
+| Factor | b (SE) | exp(b) | Pr(>\|z\|) |
+|---|---:|---:|---:|
+| **CONDITIONAL (count) model** — expected COUNT, given the state-year is NOT a structural zero | | exp(b) = **IRR** | |
+| Intercept | 0.0475 (0.2920) | — | 0.871 |
+| log Inspections | 0.7580 (0.0697)*** | 2.134 | 1.65e-27 |
+| time | 0.1427 (0.0255)*** | 1.153 | 2.17e-08 |
+| time² | -0.0170 (0.0061)** | 0.983 | 0.00559 |
+| time³ | -0.0065 (0.0014)*** | 0.994 | 6.59e-06 |
+| STAG $ per applicator (z) | -0.0074 (0.1546) | 0.993 | 0.962 |
+| STAG $ per farmworker (z) | -0.2387 (0.1640) | 0.788 | 0.146 |
+| Labor intensity index 2017 (z) | 0.1050 (0.2185) | 1.111 | 0.631 |
+| H-2A per farmworker (z) | -0.0075 (0.0570) | 0.993 | 0.896 |
+| DOL demand met % (z) | -0.2670 (0.2011) | 0.766 | 0.184 |
+| % farm labor contractor (z) | 0.0966 (0.1725) | 1.101 | 0.575 |
+| **ZERO-INFLATION model** — log-odds that a state-year is a **STRUCTURAL ZERO**; positive b = MORE zeros = FEWER events | | exp(b) = **OR** | |
+| Intercept | -0.2081 (0.9953) | — | 0.834 |
+| log Inspections | -0.6702 (0.2484)** | 0.512 | 0.00696 |
+| time | 0.3147 (0.2542) | 1.370 | 0.216 |
+| time² | -0.1125 (0.1212) | 0.894 | 0.353 |
+| time³ | 0.0212 (0.0317) | 1.021 | 0.504 |
+| STAG $ per applicator (z) | -0.1575 (0.3590) | 0.854 | 0.661 |
+| STAG $ per farmworker (z) | 0.7595 (0.3814)* | 2.137 | 0.0464 |
+| Labor intensity index 2017 (z) | -0.2192 (0.5969) | 0.803 | 0.713 |
+| H-2A per farmworker (z) | 0.3137 (0.3003) | 1.369 | 0.296 |
+| DOL demand met % (z) | 0.2614 (0.5466) | 1.299 | 0.633 |
+| % farm labor contractor (z) | -0.3395 (0.4348) | 0.712 | 0.435 |
 
 
 ## Variance components (selected family, log link)
